@@ -1,0 +1,189 @@
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="mb-2">Usuarios</h2>
+        <p class="text-muted">Gestión de personal: controle el estado, perfiles y accesos de los trabajadores.</p>
+    </div>
+    <div class="d-flex gap-2">
+        <button class="btn btn-outline-dark" data-bs-toggle="modal" data-bs-target="#modalAccionesMasivas">
+            <i class="bi bi-people-fill me-2"></i> Acciones Masivas
+        </button>
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalUsuario">
+            <i class="bi bi-plus-circle"></i> Nuevo Usuario
+        </button>
+    </div>
+</div>
+
+<div class="card shadow-sm mb-4">
+    <div class="card-body">
+        <div class="row g-3 align-items-end">
+            <div class="col-md-3">
+                <label class="form-label text-muted small">Mostrar</label>
+                <select id="filtroCantidad" class="form-select">
+                    <option value="5" selected>5 registros</option>
+                    <option value="10">10 registros</option>
+                    <option value="15">15 registros</option>
+                    <option value="20">20 registros</option>
+                </select>
+            </div>
+            <div class="col-md-9">
+                <label class="form-label text-muted small">Buscar</label>
+                <div class="input-group">
+                    <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
+                    <input type="text" id="buscarUsuario" class="form-control border-start-0" placeholder="Nombre, usuario o correo...">
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card shadow-sm">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-dark">
+                    <tr>
+                        <th style="width: 50px;">ID</th>
+                        <th>Nombre Completo</th>
+                        <th>Usuario</th>
+                        <th>Perfil</th>
+                        <th>Correo</th>
+                        <th style="width: 100px;">Estado</th>
+                        <th style="width: 130px;">Fecha Creación</th>
+                        <th style="width: 130px;">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="tablaUsuarios"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+
+<!-- Modal Usuario Mejorado -->
+<div class="modal fade" id="modalUsuario" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable" style="max-width: 650px;">
+        <div class="modal-content shadow-2xl border-0" style="border-radius: 32px; overflow: hidden;">
+            <div class="modal-header border-0 p-4" style="background: linear-gradient(135deg, #1e2a3a 0%, #0f1724 100%);">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="me-2">
+                        <i class="bi bi-people fs-3 text-white"></i>
+                    </div>
+                    <div>
+                        <h5 class="modal-title text-white fw-bold mb-0" id="tituloModalUsuario">Nuevo Usuario</h5>
+                        <p class="text-white-50 small mb-0">Complete los datos del usuario</p>
+                    </div>
+                </div>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4" style="background: #f8fafc;">
+                <form id="formUsuario">
+                    <input type="hidden" id="usuarioId">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold text-secondary mb-2">
+                                <i class="bi bi-person me-1"></i> Nombre
+                            </label>
+                            <input type="text" class="form-control" id="nombre" required placeholder="Nombre">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold text-secondary mb-2">
+                                <i class="bi bi-person-badge me-1"></i> Apellido
+                            </label>
+                            <input type="text" class="form-control" id="apellido" required placeholder="Apellido">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold text-secondary mb-2">
+                                <i class="bi bi-person-circle me-1"></i> Usuario
+                            </label>
+                            <input type="text" class="form-control" id="username" required placeholder="Nombre de usuario">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold text-secondary mb-2">
+                                <i class="bi bi-envelope me-1"></i> Correo
+                            </label>
+                            <input type="email" class="form-control" id="correo" required placeholder="correo@ejemplo.com">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold text-secondary mb-2">
+                                <i class="bi bi-key me-1"></i> Contraseña
+                            </label>
+                            <input type="password" class="form-control" id="clave">
+                            <small class="text-muted" id="mensajeClave">Deje este campo vacío si no desea cambiar la contraseña.</small>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold text-secondary mb-2">
+                                <i class="bi bi-shield-lock me-1"></i> Perfil
+                            </label>
+                            <select class="form-select" id="id_perfil" required>
+                                <option value="">Seleccione</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="d-flex gap-3 mt-4 pt-2">
+                        <button type="button" class="btn btn-light border flex-grow-1 py-2" data-bs-dismiss="modal" style="border-radius: 14px;">
+                            <i class="bi bi-x-circle me-1"></i> Cancelar
+                        </button>
+                        <button type="button" class="btn btn-guardar flex-grow-1 py-2" id="btnGuardarUsuario" style="border-radius: 14px;">
+                            <i class="bi bi-save me-1"></i> Guardar Usuario
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- Modal Acciones Masivas - Tamaño adaptable -->
+<div class="modal fade" id="modalAccionesMasivas" tabindex="-1" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable" style="max-width: 450px;">
+        <div class="modal-content shadow-lg border-0" style="border-radius: 24px; overflow: hidden; max-height: 90vh;">
+            <div class="modal-header" style="background: linear-gradient(135deg, #1e2a3a 0%, #0f1724 100%); border: none; padding: 1rem 1.5rem;">
+                <h5 class="modal-title text-white">
+                    <i class="bi bi-people-fill me-2"></i> Acciones Masivas
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4" style="background: #f8fafc; overflow-y: auto;">
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Perfil</label>
+                    <select id="perfilAccionMasiva" class="form-select"><option value="">Seleccione perfil</option></select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Acción</label>
+                    <select id="accionMasiva" class="form-select">
+                        <option value="">Seleccione acción</option>
+                        <option value="0">Desactivar usuarios</option>
+                        <option value="1">Activar usuarios</option>
+                    </select>
+                </div>
+                <div class="alert alert-secondary small mb-0">Esta acción modificará el estado de todos los usuarios asociados al perfil seleccionado.</div>
+            </div>
+            <div class="modal-footer border-0 justify-content-end gap-2 p-3" style="background: #f8fafc;">
+                <button type="button" class="btn btn-light border px-4 py-2" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary px-4 py-2" id="btnAplicarAccionMasiva">Aplicar Acción</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- Modal Confirmación -->
+<div class="modal fade" id="modalConfirmacion" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">Confirmar Acción</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-center" id="mensajeConfirmacion">¿Desea continuar?</div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-danger" id="btnConfirmarAccion">Confirmar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+

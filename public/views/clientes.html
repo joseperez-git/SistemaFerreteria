@@ -1,0 +1,165 @@
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="mb-2">Clientes</h2>
+        <p class="text-muted">Gestión de clientes: registro, consulta y administración de la cartera de clientes.</p>
+    </div>
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalCliente">
+        <i class="bi bi-plus-circle"></i> Nuevo Cliente
+    </button>
+</div>
+
+<div class="card shadow-sm mb-4">
+    <div class="card-body">
+        <div class="row g-3 align-items-end">
+            <div class="col-md-3">
+                <label class="form-label text-muted small">Mostrar</label>
+                <select id="filtroCantidadClientes" class="form-select">
+                    <option value="5" selected>5 registros</option>
+                    <option value="10">10 registros</option>
+                    <option value="15">15 registros</option>
+                    <option value="20">20 registros</option>
+                </select>
+            </div>
+            <div class="col-md-9">
+                <label class="form-label text-muted small">Buscar</label>
+                <div class="input-group">
+                    <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
+                    <input type="text" id="buscarCliente" class="form-control border-start-0" placeholder="Nombre, apellido o documento...">
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card shadow-sm">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-dark">
+                    <tr>
+                        <th style="width: 50px;">ID</th>
+                        <th>Tipo Doc.</th>
+                        <th>Nro. Documento</th>
+                        <th>Nombre Completo</th>
+                        <th>Teléfono</th>
+                        <th>Correo</th>
+                        <th style="width: 100px;">Estado</th>
+                        <th style="width: 130px;">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="tablaClientes"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+
+<!-- Modal Cliente Mejorado -->
+<div class="modal fade" id="modalCliente" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable" style="max-width: 700px;">
+        <div class="modal-content shadow-2xl border-0" style="border-radius: 32px; overflow: hidden;">
+            <div class="modal-header border-0 p-4" style="background: linear-gradient(135deg, #1e2a3a 0%, #0f1724 100%);">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="me-2">
+                        <i class="bi bi-person-badge fs-3 text-white"></i>
+                    </div>
+                    <div>
+                        <h5 class="modal-title text-white fw-bold mb-0" id="tituloModalCliente">Nuevo Cliente</h5>
+                        <p class="text-white-50 small mb-0">Complete los datos del cliente</p>
+                    </div>
+                </div>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4" style="background: #f8fafc;">
+                <form id="formCliente">
+                    <input type="hidden" id="clienteId">
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold text-secondary mb-2">
+                                <i class="bi bi-card-text me-1"></i> Tipo Documento
+                            </label>
+                            <select class="form-select" id="tipo_documento" required>
+                                <option value="">Seleccione</option>
+                                <option value="DNI">DNI</option>
+                                <option value="RUC">RUC</option>
+                            </select>
+                        </div>
+                        <!-- Reemplaza el div del campo Número Documento por esto -->
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold text-secondary mb-2">
+                                <i class="bi bi-upc-scan me-1"></i> Número Documento
+                            </label>
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="numero_documento" 
+                                    placeholder="Ej: 87654321" maxlength="11" autocomplete="off">
+                                <button class="btn btn-sunat-search" type="button" id="btnBuscarCliente" 
+                                        title="Consultar datos en SUNAT">
+                                    <i class="bi bi-building-check"></i> 
+                                </button>
+                            </div>
+                            <small class="text-muted">
+                                <i class="bi bi-info-circle"></i> DNI (8 dígitos) o RUC (11 dígitos)
+                            </small>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold text-secondary mb-2">
+                                <i class="bi bi-telephone me-1"></i> Teléfono
+                            </label>
+                            <input type="text" class="form-control" id="telefono" placeholder="Ej: 987654321">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold text-secondary mb-2">
+                                <i class="bi bi-person me-1"></i> Nombre
+                            </label>
+                            <input type="text" class="form-control" id="nombre" required placeholder="Nombre del cliente">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold text-secondary mb-2">
+                                <i class="bi bi-person-badge me-1"></i> Apellido
+                            </label>
+                            <input type="text" class="form-control" id="apellido" placeholder="Apellido del cliente">
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-semibold text-secondary mb-2">
+                                <i class="bi bi-envelope me-1"></i> Correo Electrónico
+                            </label>
+                            <input type="email" class="form-control" id="correo" placeholder="ejemplo@correo.com">
+                        </div>
+                    </div>
+                    <div class="d-flex gap-3 mt-4 pt-2">
+                        <button type="button" class="btn btn-light border flex-grow-1 py-2" data-bs-dismiss="modal" style="border-radius: 14px;">
+                            <i class="bi bi-x-circle me-1"></i> Cancelar
+                        </button>
+                        <button type="button" class="btn btn-guardar flex-grow-1 py-2" id="btnGuardarCliente" style="border-radius: 14px;">
+                            <i class="bi bi-save me-1"></i> Guardar Cliente
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- Modal Confirmación -->
+<div class="modal fade" id="modalConfirmacionCliente" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">Confirmar Acción</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-center" id="mensajeConfirmacionCliente">
+                ¿Desea continuar?
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-danger" id="btnConfirmarAccionCliente">Confirmar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+

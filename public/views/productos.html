@@ -1,0 +1,236 @@
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="mb-2">Productos</h2>
+        <p class="text-muted">Gestión de productos: inventario, precios, categorías y control de stock.</p>
+    </div>
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalProducto">
+        <i class="bi bi-plus-circle"></i> Nuevo Producto
+    </button>
+</div>
+
+<!-- Filtros mejorados -->
+<div class="card shadow-sm mb-4">
+    <div class="card-body">
+        <div class="row g-3 align-items-end">
+            
+            <div class="col-md-3">
+                <label class="form-label text-muted small">Mostrar</label>
+                <select id="filtroCantidadProductos" class="form-select">
+                    <option value="5" selected>5 registros</option>
+                    <option value="10">10 registros</option>
+                    <option value="15">15 registros</option>
+                    <option value="20">20 registros</option>
+                </select>
+            </div>
+            
+            <div class="col-md-4">
+                <label class="form-label text-muted small">Categoría</label>
+                <select id="filtroCategoria" class="form-select">
+                    <option value="">Todas las categorías</option>
+                </select>
+            </div>
+
+            <div class="col-md-5">
+                <label class="form-label text-muted small">Buscar</label>
+                <div class="input-group">
+                    <span class="input-group-text bg-white border-end-0">
+                        <i class="bi bi-search text-muted"></i>
+                    </span>
+                    <input type="text" id="buscarProducto" class="form-control border-start-0" 
+                           placeholder="Por nombre o código de barras...">
+                </div>
+            </div>
+            
+        </div>
+    </div>
+</div>
+
+<!-- Tabla -->
+<div class="card shadow-sm">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-dark">
+                    <tr>
+                        <th style="width: 50px;">ID</th>
+                        <th style="width: 60px;">Imagen</th>
+                        <th>Producto</th>
+                        <th style="width: 130px;">Categoría</th>
+                        <th style="width: 100px;">Precio</th>
+                        <th style="width: 100px;">Stock</th>
+                        <th style="width: 100px;">Stock Mínimo</th>
+                        <th style="width: 90px;">Estado</th>
+                        <th style="width: 130px;">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="tablaProductos"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+
+<!-- Modal Producto Mejorado -->
+<div class="modal fade" id="modalProducto" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable" style="max-width: 900px;">
+        <div class="modal-content shadow-2xl border-0" style="border-radius: 32px; overflow: hidden;">
+            <div class="modal-header border-0 p-4" style="background: linear-gradient(135deg, #1e2a3a 0%, #0f1724 100%);">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="me-2">
+                        <i class="bi bi-box-seam fs-3 text-white"></i>
+                    </div>
+                    <div>
+                        <h5 class="modal-title text-white fw-bold mb-0" id="tituloModalProducto">Nuevo Producto</h5>
+                        <p class="text-white-50 small mb-0">Complete la información del producto</p>
+                    </div>
+                </div>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4" style="background: #f8fafc;">
+                <form id="formProducto">
+                    <input type="hidden" id="productoId">
+                    <div class="row g-3">
+                        <div class="col-md-8">
+                            <label class="form-label fw-semibold text-secondary mb-2">
+                                <i class="bi bi-box me-1"></i> Nombre del Producto
+                            </label>
+                            <input type="text" class="form-control" id="nombreProducto" required placeholder="Nombre del producto">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold text-secondary mb-2">
+                                <i class="bi bi-upc-scan me-1"></i> Código de Barras
+                            </label>
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="codigo_barras" placeholder="Código">
+                                <button class="btn btn-outline-secondary" type="button" id="btnGenerarCodigo" style="border-radius: 0 12px 12px 0;">
+                                    <i class="bi bi-qr-code"></i>
+                                </button>
+                            </div>
+                            <div id="codigoBarrasPreview" class="mt-2 text-center" style="display: none;">
+                                <img id="codigoBarrasImg" src="" alt="Código" style="max-height: 40px;">
+                                <button class="btn btn-sm btn-link" id="btnImprimirCodigo">Imprimir</button>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold text-secondary mb-2">
+                                <i class="bi bi-grid me-1"></i> Categoría
+                            </label>
+                            <select class="form-select" id="id_categoria" required>
+                                <option value="">Seleccione</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold text-secondary mb-2">
+                                <i class="bi bi-rulers me-1"></i> Unidad de Medida
+                            </label>
+                            <select class="form-select" id="id_unidad_medida" required>
+                                <option value="">Seleccione</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold text-secondary mb-2">
+                                <i class="bi bi-coin me-1"></i> Precio (S/.)
+                            </label>
+                            <input type="number" step="0.01" class="form-control" id="precio" required placeholder="0.00">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold text-secondary mb-2">
+                                <i class="bi bi-boxes me-1"></i> Stock Actual
+                            </label>
+                            <input type="number" step="0.01" class="form-control" id="stock" value="0">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold text-secondary mb-2">
+                                <i class="bi bi-exclamation-triangle me-1"></i> Stock Mínimo
+                            </label>
+                            <input type="number" step="0.01" class="form-control" id="stock_minimo" value="0">
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-semibold text-secondary mb-2">
+                                <i class="bi bi-file-text me-1"></i> Descripción
+                            </label>
+                            <textarea class="form-control" id="descripcionProducto" rows="2" placeholder="Descripción del producto"></textarea>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-semibold text-secondary mb-2">
+                                <i class="bi bi-images me-1"></i> Imágenes del Producto
+                            </label>
+                            <div class="border rounded-3 p-3" style="background: #ffffff; border: 1px dashed #cbd5e1;">
+                                <input type="file" id="inputImagenesProducto" class="form-control" accept="image/*" multiple>
+                                <small class="text-muted d-block mt-1">Puede seleccionar múltiples imágenes. Máximo 10.</small>
+                                <div id="previsualizacionProducto" class="d-flex flex-wrap gap-2 mt-2" style="max-height: 150px; overflow-y: auto;"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <hr class="my-3">
+                    <div class="d-flex gap-3">
+                        <button type="button" class="btn btn-light border flex-grow-1 py-2" data-bs-dismiss="modal" style="border-radius: 14px;">
+                            <i class="bi bi-x-circle me-1"></i> Cancelar
+                        </button>
+                        <button type="button" class="btn btn-guardar flex-grow-1 py-2" id="btnGuardarProducto" style="border-radius: 14px;">
+                            <i class="bi bi-save me-1"></i> Guardar Producto
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- Modal Galería - Con límites estrictos -->
+<div class="modal fade" id="modalGaleria" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered" style="max-width: 450px;">
+        <div class="modal-content shadow-lg border-0" style="border-radius: 20px; overflow: hidden;">
+            <div class="modal-header bg-white border-bottom" style="padding: 0.7rem 1.2rem;">
+                <h5 class="modal-title" id="galeriaTitulo" style="font-size: 0.95rem;">
+                    <i class="bi bi-images me-2"></i> Imágenes del Producto
+                </h5>
+                <button type="button" class="btn-close btn-sm" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-3" style="background: #f8fafc;">
+                <!-- Contenedor con tamaño fijo y overflow hidden -->
+                <div class="d-flex align-items-center justify-content-center mx-auto" 
+                     style="width: 100%; height: 250px; background: #f1f5f9; border-radius: 12px; overflow: hidden;">
+                    <img id="imagenActual" src="" alt="Imagen del producto" 
+                         style="width: 100%; height: 100%; object-fit: contain;">
+                </div>
+            </div>
+            <div class="modal-footer bg-white border-top justify-content-between" style="padding: 0.7rem 1.2rem;">
+                <button class="btn btn-outline-secondary btn-sm" id="btnAnterior" style="border-radius: 30px; padding: 4px 14px; font-size: 0.8rem;">
+                    <i class="bi bi-chevron-left"></i> Anterior
+                </button>
+                <span id="contadorImagenes" class="text-muted small fw-semibold" style="font-size: 0.8rem;"></span>
+                <button class="btn btn-outline-secondary btn-sm" id="btnSiguiente" style="border-radius: 30px; padding: 4px 14px; font-size: 0.8rem;">
+                    Siguiente <i class="bi bi-chevron-right"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- Modal Confirmación -->
+<div class="modal fade" id="modalConfirmacionProducto" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title" id="tituloConfirmacionProducto">Confirmar Acción</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-center" id="mensajeConfirmacionProducto">
+                ¿Desea continuar?
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-danger" id="btnConfirmarAccionProducto">Confirmar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+
+
+

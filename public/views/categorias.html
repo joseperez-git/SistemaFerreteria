@@ -1,0 +1,127 @@
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="mb-2">Categorías</h2>
+        <p class="text-muted">Clasificación de productos: organice sus productos por categorías para una mejor gestión.</p>
+    </div>
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalCategoria">
+        <i class="bi bi-plus-circle"></i> Nueva Categoría
+    </button>
+</div>
+
+<!-- Filtros -->
+<div class="card shadow-sm mb-4">
+    <div class="card-body">
+        <div class="row g-3 align-items-end">
+            <div class="col-md-3">
+                <label class="form-label text-muted small">Mostrar</label>
+                <select id="filtroCantidadCategorias" class="form-select">
+                    <option value="5" selected>5 registros</option>
+                    <option value="10">10 registros</option>
+                    <option value="15">15 registros</option>
+                    <option value="20">20 registros</option>
+                </select>
+            </div>
+            <div class="col-md-9">
+                <label class="form-label text-muted small">Buscar</label>
+                <div class="input-group">
+                    <span class="input-group-text bg-white border-end-0">
+                        <i class="bi bi-search text-muted"></i>
+                    </span>
+                    <input type="text" id="buscarCategoria" class="form-control border-start-0" placeholder="Por nombre o descripción...">
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Tabla -->
+<div class="card shadow-sm">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-dark">
+                    <tr>
+                        <th style="width: 50px;">ID</th>
+                        <th>Nombre</th>
+                        <th>Descripción</th>
+                        <th style="width: 100px;">Estado</th>
+                        <th style="width: 130px;">Fecha Creación</th>
+                        <th style="width: 130px;">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="tablaCategorias"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+
+<!-- Modal Categoría Mejorado -->
+<div class="modal fade" id="modalCategoria" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable" style="max-width: 480px;">
+        <div class="modal-content shadow-2xl border-0" style="border-radius: 32px; overflow: hidden;">
+            <div class="modal-header border-0 p-4" style="background: linear-gradient(135deg, #1e2a3a 0%, #0f1724 100%);">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="me-2">
+                        <i class="bi bi-grid fs-3 text-white"></i>
+                    </div>
+                    <div>
+                        <h5 class="modal-title text-white fw-bold mb-0" id="tituloModalCategoria">Nueva Categoría</h5>
+                        <p class="text-white-50 small mb-0">Complete la información de la categoría</p>
+                    </div>
+                </div>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4" style="background: #f8fafc;">
+                <form id="formCategoria">
+                    <input type="hidden" id="categoriaId">
+                    <div class="mb-4">
+                        <label class="form-label fw-semibold text-secondary mb-2">
+                            <i class="bi bi-tag me-1"></i> Nombre
+                        </label>
+                        <input type="text" class="form-control" id="nombreCategoria" required 
+                               placeholder="Ej: Herramientas, Electricidad, etc.">
+                    </div>
+                    <div class="mb-4">
+                        <label class="form-label fw-semibold text-secondary mb-2">
+                            <i class="bi bi-file-text me-1"></i> Descripción
+                        </label>
+                        <textarea class="form-control" id="descripcionCategoria" rows="3" 
+                                  placeholder="Descripción de la categoría"></textarea>
+                    </div>
+                    <div class="d-flex gap-3 mt-4 pt-2">
+                        <button type="button" class="btn btn-light border flex-grow-1 py-2" data-bs-dismiss="modal" style="border-radius: 14px;">
+                            <i class="bi bi-x-circle me-1"></i> Cancelar
+                        </button>
+                        <button type="button" class="btn btn-guardar flex-grow-1 py-2" id="btnGuardarCategoria" style="border-radius: 14px;">
+                            <i class="bi bi-save me-1"></i> Guardar Categoría
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- Modal Confirmación -->
+<div class="modal fade" id="modalConfirmacionCategoria" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">Confirmar Acción</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-center" id="mensajeConfirmacionCategoria">
+                ¿Desea continuar?
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-danger" id="btnConfirmarAccionCategoria">Confirmar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+

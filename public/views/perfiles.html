@@ -1,0 +1,166 @@
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="mb-2">Perfiles</h2>
+        <p class="text-muted">Gestión de roles, asignación de permisos por módulo y control de estado.</p>
+    </div>
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalPerfil">
+        <i class="bi bi-plus-circle"></i> Nuevo Perfil
+    </button>
+</div>
+
+<div class="card shadow-sm mb-4">
+    <div class="card-body">
+        <div class="row g-3 align-items-end">
+            <div class="col-md-3">
+                <label class="form-label text-muted small">Mostrar</label>
+                <select id="filtroCantidadPerfiles" class="form-select">
+                    <option value="5" selected>5 registros</option>
+                    <option value="10">10 registros</option>
+                    <option value="15">15 registros</option>
+                    <option value="20">20 registros</option>
+                </select>
+            </div>
+            <div class="col-md-9">
+                <label class="form-label text-muted small">Buscar</label>
+                <div class="input-group">
+                    <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
+                    <input type="text" id="buscarPerfil" class="form-control border-start-0" placeholder="Por nombre o descripción...">
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Tabla -->
+<div class="card shadow-sm">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-dark">
+                    <tr>
+                        <th style="width: 50px;">ID</th>
+                        <th>Nombre</th>
+                        <th>Descripción</th>
+                        <th style="width: 100px;">Estado</th>
+                        <th style="width: 130px;">Fecha Creación</th>
+                        <th style="width: 180px;">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="tablaPerfiles"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+
+<!-- Modal Perfil Mejorado -->
+<div class="modal fade" id="modalPerfil" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
+    <div class="modal-dialog modal-dialog-centered" style="max-width: 550px;">
+        <div class="modal-content shadow-2xl border-0" style="border-radius: 32px; overflow: hidden;">
+            <div class="modal-header border-0 p-4" style="background: linear-gradient(135deg, #1e2a3a 0%, #0f1724 100%);">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="me-2">
+                        <i class="bi bi-shield-lock fs-3 text-white"></i>
+                    </div>
+                    <div>
+                        <h5 class="modal-title text-white fw-bold mb-0" id="tituloModalPerfil">Nuevo Perfil</h5>
+                        <p class="text-white-50 small mb-0">Configure el rol y sus permisos</p>
+                    </div>
+                </div>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4" style="background: #f8fafc;">
+                <form id="formPerfil">
+                    <input type="hidden" id="perfilId">
+                    <div class="mb-4">
+                        <label class="form-label fw-semibold text-secondary mb-2">
+                            <i class="bi bi-tag me-1"></i> Nombre del Perfil
+                        </label>
+                        <input type="text" class="form-control" id="nombrePerfil" required 
+                               placeholder="Ej: Administrador, Supervisor, etc.">
+                    </div>
+                    <div class="mb-4">
+                        <label class="form-label fw-semibold text-secondary mb-2">
+                            <i class="bi bi-file-text me-1"></i> Descripción
+                        </label>
+                        <textarea class="form-control" id="descripcionPerfil" rows="2" 
+                                  placeholder="Descripción de las funciones del perfil"></textarea>
+                    </div>
+                    <div class="d-flex gap-3 mt-4 pt-2">
+                        <button type="button" class="btn btn-light border flex-grow-1 py-2" data-bs-dismiss="modal" style="border-radius: 14px;">
+                            <i class="bi bi-x-circle me-1"></i> Cancelar
+                        </button>
+                        <button type="button" class="btn btn-guardar flex-grow-1 py-2" id="btnGuardarPerfil" style="border-radius: 14px;">
+                            <i class="bi bi-save me-1"></i> Guardar Perfil
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- Modal Permisos Rediseñado - Tamaño adaptable -->
+<div class="modal fade" id="modalPermisos" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable" style="max-width: 500px;">
+        <div class="modal-content shadow-lg border-0" style="border-radius: 24px; overflow: hidden; max-height: 90vh;">
+            <div class="modal-header" style="background: linear-gradient(135deg, #1e2a3a 0%, #0f1724 100%); border: none; padding: 1rem 1.5rem;">
+                <h5 class="modal-title text-white" id="tituloModalPermisos">
+                    <i class="bi bi-shield-lock me-2"></i> Asignar Permisos al Perfil: <span id="nombrePerfilPermisos" class="fw-bold">Administrador</span>
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            
+            <!-- Contenido con scroll interno -->
+            <div class="modal-body p-4" style="background: #f8fafc; flex: 1; overflow-y: auto;">
+                <!-- Seleccionar todos - Texto ajustado -->
+                <div class="select-all-card mb-4 p-3 rounded" style="background: #e9ecef; border-radius: 16px;">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="seleccionarTodosPermisos" style="transform: scale(1.15); margin-top: 3px;">
+                        <label class="form-check-label fw-semibold ms-2" for="seleccionarTodosPermisos" style="font-size: 0.95rem;">
+                            <i class="bi bi-check-all me-2 text-primary"></i> Seleccionar todos los módulos
+                        </label>
+                    </div>
+                    <small class="text-muted d-block mt-1" style="font-size: 0.7rem; margin-left: 30px;">
+                        <i class="bi bi-info-circle me-1"></i> Marque para seleccionar o deseleccionar todos los permisos
+                    </small>
+                </div>
+                
+                <!-- Lista de permisos -->
+                <div id="listaPermisos" class="permisos-lista"></div>
+            </div>
+            
+            <div class="modal-footer border-0 justify-content-end gap-3 p-3" style="background: #f8fafc;">
+                <button type="button" class="btn btn-light border px-4 py-2" data-bs-dismiss="modal" style="border-radius: 12px;">
+                    <i class="bi bi-x-circle me-1"></i> Cerrar
+                </button>
+                <button type="button" class="btn btn-primary px-4 py-2" id="btnGuardarPermisos" style="border-radius: 12px;">
+                    <i class="bi bi-save me-1"></i> Guardar Cambios
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- Modal Confirmación -->
+<div class="modal fade" id="modalConfirmacionPerfil" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">Confirmar Acción</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-center" id="mensajeConfirmacionPerfil">¿Desea continuar?</div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-danger" id="btnConfirmarAccionPerfil">Confirmar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+
