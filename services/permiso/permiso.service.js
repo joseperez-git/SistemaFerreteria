@@ -1,15 +1,21 @@
 const db = require('../../config/db');
 
-
-// OBTENER PERMISOS POR PERFIL
 exports.getPermisos = async (idPerfil) => {
     const [rows] = await db.query('CALL sp_listar_opciones_por_perfil(?)', [idPerfil]);
-    return rows[0];
+    
+    // Asegurar que devolvemos un array
+    if (rows && Array.isArray(rows[0])) {
+        return rows[0];
+    }
+    
+    if (rows && rows[0] && rows[0][0] && Array.isArray(rows[0][0])) {
+        return rows[0][0];
+    }
+    
+    return [];
 };
 
-
-// GUARDAR PERMISOS DE PERFIL
-exports.savePermisos = async (body) => {
+exports.savePermisos = async (body, idUsuarioSesion = null) => {
     const { id_perfil, opciones } = body;
 
     // Validar que el perfil existe
@@ -24,17 +30,12 @@ exports.savePermisos = async (body) => {
         throw new Error('La lista de opciones debe ser un array');
     }
 
-    // Convertir array a string separado por comas
     const opcionesStr = opciones.join(',');
-
-    // Reemplazar todos los permisos
     await db.query('CALL sp_reemplazar_permisos_perfil(?, ?)', [id_perfil, opcionesStr]);
 
     return {
         message: 'Permisos actualizados correctamente'
     };
 };
-
-
 
 

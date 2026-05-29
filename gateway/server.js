@@ -21,18 +21,24 @@ app.use(
 
 app.use(express.static('public'));
 
-// Rutas (módulos)
-app.use('/api/usuarios', require(path.join(__dirname, '../services/usuario/usuario.routes')));
-app.use('/api/perfiles', require(path.join(__dirname, '../services/perfil/perfil.routes')));
-app.use('/api/clientes', require(path.join(__dirname, '../services/cliente/cliente.routes')));
-app.use('/api/productos', require(path.join(__dirname, '../services/producto/producto.routes')));
-app.use('/api/categorias', require(path.join(__dirname, '../services/categoria/categoria.routes')));
-app.use('/api/permisos', require(path.join(__dirname, '../services/permiso/permiso.routes')));
+// IMPORTAR MIDDLEWARE
+const { soloAutenticacion, validarPermiso } = require('../middlewares/auth');
+
+// RUTAS PÚBLICAS
 app.use('/api/autenticacion', require(path.join(__dirname, '../services/autenticacion/autenticacion.routes')));
-app.use('/api/opciones', require(path.join(__dirname, '../services/opcion/opcion.routes')));
-app.use('/api/unidades-medida', require(path.join(__dirname, '../services/unidadmedida/unidadmedida.routes')));
-app.use('/api/ventas', require(path.join(__dirname, '../services/venta/venta.routes')));
-app.use('/api/pedidos', require(path.join(__dirname, '../services/pedido/pedido.routes')));
+
+// RUTAS DE PERMISOS 
+app.use('/api/permisos', soloAutenticacion, require(path.join(__dirname, '../services/permiso/permiso.routes')));
+
+// RUTAS PROTEGIDAS 
+app.use('/api/usuarios', validarPermiso('Usuarios'), require(path.join(__dirname, '../services/usuario/usuario.routes')));
+app.use('/api/perfiles', validarPermiso('Perfiles'), require(path.join(__dirname, '../services/perfil/perfil.routes')));
+app.use('/api/clientes', validarPermiso('Clientes'), require(path.join(__dirname, '../services/cliente/cliente.routes')));
+app.use('/api/productos', validarPermiso('Productos'), require(path.join(__dirname, '../services/producto/producto.routes')));
+app.use('/api/categorias', validarPermiso('Categorías'), require(path.join(__dirname, '../services/categoria/categoria.routes')));
+app.use('/api/ventas', validarPermiso('Ventas'), require(path.join(__dirname, '../services/venta/venta.routes')));
+app.use('/api/opciones', validarPermiso('Perfiles'), require(path.join(__dirname, '../services/opcion/opcion.routes')));
+app.use('/api/unidades-medida', validarPermiso('Productos'), require(path.join(__dirname, '../services/unidadmedida/unidadmedida.routes')));
 
 // Servir archivos estáticos
 app.use(express.static('public'));
@@ -44,6 +50,5 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
     console.log(`Servidor corriendo en http://localhost:${PORT}`);
 });
-
 
 

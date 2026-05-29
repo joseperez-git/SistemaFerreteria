@@ -1,4 +1,4 @@
-import { mostrarToast, limpiarBackdrops, prepararModal, cerrarModal, mostrarModalConfirmacionProfesional } from './helpers.js';
+import { mostrarToast, limpiarBackdrops, prepararModal, cerrarModal, mostrarModalConfirmacionProfesional, mostrarModalAdvertencia } from './helpers.js';
 
 
 // VARIABLES GLOBALES
@@ -268,6 +268,20 @@ async function abrirModalPermisos(idPerfil) {
                         modal.hide();
                         limpiarBackdrops();
                     }
+                    
+                    // RECARGAR EL MENÚ DEL DASHBOARD
+                    if (window.recargarMenuDashboard) {
+                        await window.recargarMenuDashboard();
+                        mostrarToast('El menú se ha actualizado. Algunos cambios pueden requerir recargar la página.', 'info');
+                    } else {
+                        // Si no hay función global, recargar la página directamente
+                        setTimeout(() => {
+                            if (confirm('Los permisos se actualizaron. ¿Desea recargar la página para ver los cambios en el menú?')) {
+                                location.reload();
+                            }
+                        }, 500);
+                    }
+                    
                 } catch (error) {
                     mostrarToast(error.message, 'danger');
                 }
@@ -283,7 +297,7 @@ async function abrirModalPermisos(idPerfil) {
         
     } catch (error) {
         console.error('Error al cargar permisos:', error);
-        mostrarToast('Error al cargar los permisos: ' + error.message, 'danger');
+        mostrarModalAdvertencia(error.message || 'Error al cargar los permisos');
     }
 }
 
@@ -347,7 +361,7 @@ function initFormPerfil() {
                 limpiarFormularioPerfil();
                 
             } catch (error) {
-                mostrarToast(error.message, 'danger');
+                mostrarModalAdvertencia(error.message);
             }
         };
     }
@@ -391,6 +405,11 @@ function setupEventListeners() {
         if (btnEditar) {
             const id = parseInt(btnEditar.dataset.id);
             const perfil = perfilesGlobal.find(p => p.id === id);
+
+            if (perfil && perfil.nombre.toUpperCase() === 'ADMINISTRADOR') {
+                mostrarModalAdvertencia('No puede editar el perfil Administrador. Este perfil está protegido.');
+                return;
+            }
             
             if (perfil) {
                 getElement('perfilId').value = perfil.id;
@@ -415,6 +434,13 @@ function setupEventListeners() {
         const btnPermisos = e.target.closest('.btnPermisos');
         if (btnPermisos) {
             const idPerfil = parseInt(btnPermisos.dataset.id);
+            const perfil = perfilesGlobal.find(p => p.id === idPerfil);
+
+            if (perfil && perfil.nombre.toUpperCase() === 'ADMINISTRADOR') {
+                mostrarModalAdvertencia('El perfil Administrador tiene todos los permisos por defecto. No puede modificar sus permisos.');
+                return;
+            }
+
             await abrirModalPermisos(idPerfil);
             return;
         }
@@ -423,28 +449,47 @@ function setupEventListeners() {
         const btnDesactivar = e.target.closest('.btnDesactivarPerfil');
         if (btnDesactivar) {
             const id = parseInt(btnDesactivar.dataset.id);
+            const perfil = perfilesGlobal.find(p => p.id === id);
             
-            const responseCount = await fetch(`/api/perfiles/${id}/usuarios-activos`);
-            const { totalUsuarios } = await responseCount.json();
+            // Validar que no sea Administrador
+            if (perfil && perfil.nombre.toUpperCase() === 'ADMINISTRADOR') {
+                mostrarModalAdvertencia('No se puede desactivar el perfil Administrador.');
+                return;
+            }
             
-            let mensajeConfirmacion = '¿Está seguro que desea desactivar este perfil?';
+            // Obtener cantidad de usuarios activos
+            let totalUsuarios = 0;
+            try {
+                const response = await fetch(`/api/perfiles/${id}/usuarios-activos`);
+                const data = await response.json();
+                totalUsuarios = data.totalUsuarios || 0;
+            } catch (error) {
+                console.error('Error al contar usuarios:', error);
+            }
+            
+            let mensaje = `¿Desea desactivar el perfil "${perfil?.nombre}"?`;
+            
             if (totalUsuarios > 0) {
-                mensajeConfirmacion = `⚠️ ADVERTENCIA: Este perfil tiene ${totalUsuarios} usuario(s) activo(s).\n\nSi desactiva este perfil, estos usuarios NO podrán iniciar sesión hasta que el perfil sea reactivado.`;
+                mensaje = `⚠️ ADVERTENCIA: Este perfil tiene ${totalUsuarios} usuario(s) activo(s).\n\nSi desactiva este perfil, estos usuarios NO podrán iniciar sesión hasta que el perfil sea reactivado.\n\n¿Desea continuar?`;
             }
             
             mostrarModalConfirmacionProfesional(
                 'Desactivar Perfil',
-                mensajeConfirmacion,
+                mensaje,
                 async () => {
-                    const response = await fetch(`/api/perfiles/${id}`, {
-                        method: 'PUT',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ estado: 0 })
-                    });
-                    const data = await response.json();
-                    if (!response.ok) throw new Error(data.error);
-                    await cargarPerfiles();
-                    mostrarToast(data.message, 'warning');
+                    try {
+                        const response = await fetch(`/api/perfiles/${id}`, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ estado: 0 })
+                        });
+                        const data = await response.json();
+                        if (!response.ok) throw new Error(data.error);
+                        await cargarPerfiles();
+                        mostrarToast(data.message, 'warning');
+                    } catch (error) {
+                        mostrarToast(error.message, 'danger');
+                    }
                 },
                 'warning'
             );
@@ -479,23 +524,29 @@ function setupEventListeners() {
         if (btnEliminar) {
             const id = parseInt(btnEliminar.dataset.id);
             const perfil = perfilesGlobal.find(p => p.id === id);
-            let mensajeAdicional = '';
-            if (perfil && perfil.total_usuarios > 0) {
-                mensajeAdicional = `\n\n⚠️ ADVERTENCIA: Este perfil tiene ${perfil.total_usuarios} usuario(s) asociado(s). Al eliminarlo, los usuarios quedarán sin perfil.`;
+            
+            // Validar que no sea Administrador
+            if (perfil && perfil.nombre.toUpperCase() === 'ADMINISTRADOR') {
+                mostrarModalAdvertencia('No se puede eliminar el perfil Administrador.');
+                return;
             }
+            
             mostrarModalConfirmacionProfesional(
                 'Eliminar Perfil',
-                `¿Desea eliminar este perfil?${mensajeAdicional}`,
+                `¿Desea eliminar el perfil "${perfil?.nombre}"? Esta acción no se puede deshacer.`,
                 async () => {
-                    const response = await fetch(`/api/perfiles/${id}`, {
-                        method: 'PUT',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ estado: 2 })
-                    });
-                    const data = await response.json();
-                    if (!response.ok) throw new Error(data.error);
-                    await cargarPerfiles();
-                    mostrarToast(data.message, 'danger');
+                    try {
+                        const response = await fetch(`/api/perfiles/${id}`, {
+                            method: 'DELETE',
+                            headers: { 'Content-Type': 'application/json' }
+                        });
+                        const data = await response.json();
+                        if (!response.ok) throw new Error(data.error);
+                        await cargarPerfiles();
+                        mostrarToast(data.message, 'danger');
+                    } catch (error) {
+                        mostrarToast(error.message, 'danger');
+                    }
                 },
                 'danger'
             );

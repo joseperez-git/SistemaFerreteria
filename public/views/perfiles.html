@@ -162,5 +162,43 @@
 </div>
 
 
+<!-- Modal de Advertencia (para errores de permisos) -->
+<div class="modal fade" id="modalAdvertencia" tabindex="-1" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 24px; overflow: hidden;">
+            <div class="modal-header border-0 p-4" style="background: linear-gradient(135deg, #dc3545 0%, #b02a37 100%);">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="me-2">
+                        <i class="bi bi-shield-lock fs-3 text-white"></i>
+                    </div>
+                    <div>
+                        <h5 class="modal-title text-white fw-bold mb-0">Acción no permitida</h5>
+                        <p class="text-white-50 small mb-0">Restricción de seguridad</p>
+                    </div>
+                </div>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4" style="background: #f8fafc;">
+                <div class="text-center mb-3">
+                    <i class="bi bi-shield-slash fs-1 text-danger"></i>
+                </div>
+                <p class="text-center fw-semibold fs-6" id="mensajeAdvertencia">
+                    No tiene permisos para realizar esta acción.
+                </p>
+                <div class="alert alert-light border rounded-3 mt-3 mb-0 py-2 px-3" style="background: #e9ecef;">
+                    <i class="bi bi-info-circle text-primary me-2"></i>
+                    <small class="text-muted">Si cree que esto es un error, contacte con el administrador del sistema.</small>
+                </div>
+            </div>
+            <div class="modal-footer border-0 bg-light p-3">
+                <button type="button" class="btn btn-danger px-4" data-bs-dismiss="modal">
+                    <i class="bi bi-check-circle me-1"></i> Entendido
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
 
 

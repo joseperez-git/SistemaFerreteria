@@ -25,7 +25,6 @@ exports.login = async (username, clave) => {
             throw new Error('Su perfil está desactivado. No puede iniciar sesión.');
         }
 
-        // Verificar bloqueo activo
         if (usuario.bloqueo_hasta && new Date() < new Date(usuario.bloqueo_hasta)) {
             throw new Error('Demasiados intentos fallidos. Acceso bloqueado temporalmente.');
         }
@@ -46,8 +45,6 @@ exports.login = async (username, clave) => {
 
         await db.query('CALL sp_reiniciar_login(?)', [usuario.id]);
 
-        const [permisos] = await db.query('CALL sp_listar_opciones_por_perfil(?)', [usuario.id_perfil]);
-
         return {
             usuario: {
                 id: usuario.id,
@@ -57,8 +54,7 @@ exports.login = async (username, clave) => {
                 correo: usuario.correo,
                 id_perfil: usuario.id_perfil,
                 perfil_nombre: usuario.perfil_nombre
-            },
-            permisos: permisos[0] || []
+            }
         };
 
     } catch (error) {
@@ -66,5 +62,21 @@ exports.login = async (username, clave) => {
     }
 };
 
+exports.getMenu = async (idUsuario) => {
+    if (!idUsuario) {
+        throw new Error('Usuario no autenticado');
+    }
+    
+    const [perfilRows] = await db.query('SELECT id_perfil FROM usuario WHERE id = ?', [idUsuario]);
+    const idPerfil = perfilRows[0]?.id_perfil;
+    
+    if (!idPerfil) {
+        return [];
+    }
+    
+    const [permisos] = await db.query('CALL sp_listar_opciones_por_perfil(?)', [idPerfil]);
+    
+    return permisos[0] || [];
+};
 
 

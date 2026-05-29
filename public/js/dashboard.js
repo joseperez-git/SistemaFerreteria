@@ -19,6 +19,7 @@ let moduloActual = null;
 let vistaActual = '';
 let cargandoVista = false;
 let menuItemsInicializados = false;
+let menuPermisos = []; 
 
 
 // FUNCIONES DE UTILIDAD
@@ -90,21 +91,69 @@ function mostrarToast(mensaje, tipo = 'success') {
     }
 }
 
+// Mostrar modal de advertencia
+function mostrarModalAdvertencia(mensaje) {
+    let modalElement = document.getElementById('modalAdvertenciaGlobal');
+    
+    if (!modalElement) {
+        // Crear modal si no existe
+        modalElement = document.createElement('div');
+        modalElement.className = 'modal fade';
+        modalElement.id = 'modalAdvertenciaGlobal';
+        modalElement.setAttribute('data-bs-backdrop', 'static');
+        modalElement.innerHTML = `
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content border-0 shadow-lg" style="border-radius: 24px; overflow: hidden;">
+                    <div class="modal-header border-0 p-4" style="background: linear-gradient(135deg, #dc3545 0%, #b02a37 100%);">
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="rounded-circle bg-white bg-opacity-20 p-2">
+                                <i class="bi bi-shield-exclamation fs-4 text-white"></i>
+                            </div>
+                            <div>
+                                <h5 class="modal-title text-white fw-bold mb-0">Acceso denegado</h5>
+                                <p class="text-white-50 small mb-0">Permisos insuficientes</p>
+                            </div>
+                        </div>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body p-4" style="background: #f8fafc;">
+                        <div class="text-center mb-3">
+                            <i class="bi bi-shield-slash fs-1 text-danger"></i>
+                        </div>
+                        <p class="text-center fw-semibold fs-6" id="mensajeAdvertenciaGlobal">
+                            No tiene permisos para realizar esta acción.
+                        </p>
+                    </div>
+                    <div class="modal-footer border-0 bg-light p-3">
+                        <button type="button" class="btn btn-danger px-4" data-bs-dismiss="modal">
+                            <i class="bi bi-check-circle me-1"></i> Entendido
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modalElement);
+    }
+    
+    const mensajeEl = document.getElementById('mensajeAdvertenciaGlobal');
+    if (mensajeEl) mensajeEl.textContent = mensaje;
+    
+    const modal = new bootstrap.Modal(modalElement);
+    modal.show();
+}
+
 
 // RESALTAR MÓDULO ACTIVO EN EL MENÚ
 function resaltarModuloActivo(view) {
-    // Remover clase active de todos los links
     document.querySelectorAll('.sidebar-nav .nav-link').forEach(link => {
         link.classList.remove('active');
     });
     
-    // Agregar clase active al link correspondiente
     const activeLink = document.querySelector(`.sidebar-nav .nav-link[data-view="${view}"]`);
     if (activeLink) {
         activeLink.classList.add('active');
     }
     
-    // También resaltar dashboard si es el caso
     if (view === 'dashboard') {
         const dashboardLink = document.querySelector('.sidebar-nav .nav-link[data-view="dashboard"]');
         if (dashboardLink) {
@@ -256,6 +305,115 @@ async function cargarDashboardPrincipal() {
 }
 
 
+// CARGAR MENÚ DESDE API
+async function cargarMenuDesdeAPI() {
+    try {
+        const response = await fetch('/api/autenticacion/menu');
+        
+        if (response.status === 401) {
+            localStorage.removeItem('sesion');
+            window.location.href = '/login.html';
+            return false;
+        }
+        
+        if (response.status === 403) {
+            mostrarModalAdvertencia('No tiene permisos para acceder al sistema');
+            return false;
+        }
+        
+        if (!response.ok) {
+            throw new Error('Error al cargar el menú');
+        }
+        
+        const opciones = await response.json();
+        menuPermisos = opciones || [];
+        
+        // Guardar en sesión solo para referencia (no para seguridad)
+        sesion.permisos = menuPermisos;
+        localStorage.setItem('sesion', JSON.stringify(sesion));
+        
+        return true;
+        
+    } catch (error) {
+        console.error('Error al cargar menú:', error);
+        mostrarToast('Error al cargar el menú', 'danger');
+        return false;
+    }
+}
+
+
+// CONSTRUIR MENÚ DESDE API
+function construirMenuDesdeAPI() {
+    if (menuItemsInicializados) return;
+    
+    const menu = document.getElementById('menu');
+    if (!menu) {
+        console.error('Elemento "menu" no encontrado');
+        return;
+    }
+    
+    if (!menuPermisos || menuPermisos.length === 0) {
+        menu.innerHTML = '<li class="nav-item"><span class="nav-link text-muted">Sin permisos</span></li>';
+        return;
+    }
+    
+    const iconosPorModulo = {
+        'dashboard': 'bi bi-speedometer2',
+        'usuarios': 'bi bi-people',
+        'perfiles': 'bi bi-shield-lock',
+        'clientes': 'bi bi-person-badge',
+        'productos': 'bi bi-box-seam',
+        'categorias': 'bi bi-grid',
+        'ventas': 'bi bi-cart-check',
+        'pedidos': 'bi bi-truck',
+        'inventario': 'bi bi-clipboard-data'
+    };
+    
+    const ordenModulos = [
+        'dashboard',
+        'usuarios',
+        'perfiles',
+        'clientes',
+        'productos',
+        'categorias',
+        'ventas',
+        'pedidos',
+        'inventario'
+    ];
+    
+    const permisosOrdenados = [...menuPermisos].sort((a, b) => {
+        const viewA = a.ruta?.replace('/', '') || '';
+        const viewB = b.ruta?.replace('/', '') || '';
+        const indexA = ordenModulos.indexOf(viewA);
+        const indexB = ordenModulos.indexOf(viewB);
+        
+        if (indexA === -1 && indexB === -1) return 0;
+        if (indexA === -1) return 1;
+        if (indexB === -1) return -1;
+        return indexA - indexB;
+    });
+    
+    menu.innerHTML = '';
+    
+    permisosOrdenados.forEach(opcion => {
+        const viewName = opcion.ruta?.replace('/', '') || '';
+        const icono = iconosPorModulo[viewName] || 'bi bi-circle';
+        const nombreMostrar = opcion.nombre || viewName;
+        
+        menu.innerHTML += `
+            <li class="nav-item">
+                <a href="#" class="nav-link menu-link" data-view="${viewName}">
+                    <i class="${icono}"></i>
+                    <span>${nombreMostrar}</span>
+                </a>
+            </li>
+        `;
+    });
+    
+    menuItemsInicializados = true;
+}
+
+
 // CARGA DE VISTAS
 async function loadContent(view) {
     if (view === 'dashboard') {
@@ -375,80 +533,7 @@ async function inicializarModulo(view) {
 }
 
 
-// CONSTRUCCIÓN DEL MENÚ
-function construirMenu() {
-    if (menuItemsInicializados) return;
-    
-    const menu = document.getElementById('menu');
-    if (!menu) {
-        console.error('Elemento "menu" no encontrado');
-        return;
-    }
-    
-    if (!sesion.permisos || sesion.permisos.length === 0) {
-        menu.innerHTML = '<li class="nav-item"><span class="nav-link text-muted">Sin permisos</span></li>';
-        return;
-    }
-    
-    // Mapeo de íconos por módulo
-    const iconosPorModulo = {
-        'dashboard': 'bi bi-speedometer2',
-        'usuarios': 'bi bi-people',
-        'perfiles': 'bi bi-shield-lock',
-        'clientes': 'bi bi-person-badge',
-        'productos': 'bi bi-box-seam',
-        'categorias': 'bi bi-grid',
-        'ventas': 'bi bi-cart-check',
-        'pedidos': 'bi bi-truck',
-        'inventario': 'bi bi-clipboard-data'
-    };
-    
-    // Orden deseado de los módulos
-    const ordenModulos = [
-        'dashboard',
-        'usuarios',
-        'perfiles',
-        'clientes',
-        'productos',
-        'categorias',
-        'ventas',
-        'pedidos',
-        'inventario'
-    ];
-    
-    // Ordenar los permisos según el orden definido
-    const permisosOrdenados = [...sesion.permisos].sort((a, b) => {
-        const viewA = a.ruta.replace('/', '');
-        const viewB = b.ruta.replace('/', '');
-        const indexA = ordenModulos.indexOf(viewA);
-        const indexB = ordenModulos.indexOf(viewB);
-        
-        if (indexA === -1 && indexB === -1) return 0;
-        if (indexA === -1) return 1;
-        if (indexB === -1) return -1;
-        return indexA - indexB;
-    });
-    
-    menu.innerHTML = '';
-    
-    permisosOrdenados.forEach(opcion => {
-        const viewName = opcion.ruta.replace('/', '');
-        const icono = iconosPorModulo[viewName] || 'bi bi-circle';
-        
-        menu.innerHTML += `
-            <li class="nav-item">
-                <a href="#" class="nav-link menu-link" data-view="${viewName}">
-                    <i class="${icono}"></i>
-                    <span>${opcion.nombre}</span>
-                </a>
-            </li>
-        `;
-    });
-    
-    menuItemsInicializados = true;
-}
-
-
+// CONFIGURACIÓN DE EVENTOS DEL MENÚ
 function configurarEventosMenu() {
     const menuLinks = document.querySelectorAll('.sidebar-nav .menu-link');
     
@@ -469,6 +554,17 @@ function configurarEventosMenu() {
             
             const view = newLink.dataset.view;
             if (!view) return;
+            
+            // Validar permiso antes de cargar
+            const tienePermiso = menuPermisos.some(p => {
+                const viewName = p.ruta?.replace('/', '') || '';
+                return viewName === view;
+            });
+            
+            if (!tienePermiso && view !== 'dashboard') {
+                mostrarModalAdvertencia('No tiene permisos para acceder a este módulo.');
+                return;
+            }
             
             if (view === 'dashboard') {
                 await cargarDashboardPrincipal();
@@ -550,9 +646,10 @@ function configurarBotones() {
         const newBtn = btnDashboard.cloneNode(true);
         btnDashboard.parentNode.replaceChild(newBtn, btnDashboard);
 
-        const tienePermisoDashboard = sesion.permisos.some(p => 
-            p.ruta === '/dashboard' || p.nombre === 'Dashboard'
-        );
+        const tienePermisoDashboard = menuPermisos.some(p => {
+            const viewName = p.ruta?.replace('/', '') || '';
+            return viewName === 'dashboard';
+        });
 
         if (tienePermisoDashboard) {
             newBtn.addEventListener('click', async () => {
@@ -562,8 +659,7 @@ function configurarBotones() {
                 limpiarModuloAnterior();
                 limpiarModalesAbiertos();
             });
-
-        } else{
+        } else {
             newBtn.style.cursor = 'default';
             newBtn.title = 'No tiene permiso para acceder al Dashboard';
         }
@@ -574,12 +670,24 @@ function configurarBotones() {
 // INICIALIZACIÓN PRINCIPAL
 async function initDashboard() {
     try {
-        construirMenu();
+        // Cargar menú desde API
+        const menuCargado = await cargarMenuDesdeAPI();
+        
+        if (!menuCargado) {
+            console.error('No se pudo cargar el menú');
+            return;
+        }
+        
+        // Construir menú con los permisos obtenidos
+        construirMenuDesdeAPI();
+        
+        // Configurar eventos
         configurarEventosMenu();
         configurarSidebar();
         configurarModalesGlobales();
         configurarBotones();
         
+        // Cargar dashboard
         await cargarDashboardPrincipal();
         
         vistaActual = 'dashboard';
@@ -597,10 +705,46 @@ async function initDashboard() {
 // EXPORTAR FUNCIONES GLOBALES
 window.mostrarToast = mostrarToast;
 window.limpiarModalesAbiertos = limpiarModalesAbiertos;
+window.mostrarModalAdvertencia = mostrarModalAdvertencia;
+
+window.recargarMenuDashboard = async function() {
+    try {
+        const response = await fetch('/api/autenticacion/menu');
+        
+        if (response.status === 401) {
+            localStorage.removeItem('sesion');
+            window.location.href = '/login.html';
+            return false;
+        }
+        
+        if (!response.ok) {
+            throw new Error('Error al cargar el menú');
+        }
+        
+        const opciones = await response.json();
+        menuPermisos = opciones || [];
+        
+        // Actualizar sesión en localStorage
+        const sesionActual = JSON.parse(localStorage.getItem('sesion') || '{}');
+        sesionActual.permisos = menuPermisos;
+        localStorage.setItem('sesion', JSON.stringify(sesionActual));
+        
+        // Reconstruir el menú
+        menuItemsInicializados = false;
+        construirMenuDesdeAPI();
+        configurarEventosMenu();
+        
+        console.log('Menú recargado correctamente');
+        return true;
+        
+    } catch (error) {
+        console.error('Error al recargar menú:', error);
+        return false;
+    }
+};
+
 
 // Iniciar dashboard
 initDashboard();
-
-
 
 

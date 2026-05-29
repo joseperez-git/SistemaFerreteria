@@ -38,17 +38,18 @@ function setLoading(loading) {
     }
 }
 
-// Toggle mostrar/ocultar contraseña
 const togglePassword = document.getElementById('togglePassword');
 const claveInput = document.getElementById('clave');
 const toggleIcon = document.getElementById('toggleIcon');
 
-togglePassword.addEventListener('click', () => {
-    const type = claveInput.getAttribute('type') === 'password' ? 'text' : 'password';
-    claveInput.setAttribute('type', type);
-    toggleIcon.classList.toggle('bi-eye');
-    toggleIcon.classList.toggle('bi-eye-slash');
-});
+if (togglePassword) {
+    togglePassword.addEventListener('click', () => {
+        const type = claveInput.getAttribute('type') === 'password' ? 'text' : 'password';
+        claveInput.setAttribute('type', type);
+        toggleIcon.classList.toggle('bi-eye');
+        toggleIcon.classList.toggle('bi-eye-slash');
+    });
+}
 
 form.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -74,40 +75,17 @@ form.addEventListener('submit', async (e) => {
         const data = await response.json();
 
         if (!response.ok) {
-            const mensajeError = data.error;
-            
-            if (mensajeError.includes('bloqueado')) {
-                mostrarMensaje('Demasiados intentos fallidos. Acceso bloqueado temporalmente.', 'danger', 4000);
-                setLoading(false);
-                return;
-            }
-            
-            if (mensajeError.includes('Usuario desactivado') || mensajeError.includes('Usuario eliminado')) {
-                mostrarMensaje(mensajeError, 'danger', 4000);
-                setLoading(false);
-                return;
-            }
-            
-            if (mensajeError.includes('perfil está desactivado')) {
-                mostrarMensaje(mensajeError, 'danger', 4000);
-                setLoading(false);
-                return;
-            }
-            
-            if (mensajeError.includes('Le quedan')) {
-                mostrarMensaje(mensajeError, 'warning', 4000);
-                setLoading(false);
-                return;
-            }
-            
-            mostrarMensaje('Usuario o contraseña incorrectos', 'warning', 3000);
+            mostrarMensaje(data.error || 'Usuario o contraseña incorrectos', 'warning', 3000);
             setLoading(false);
             return;
         }
 
         mostrarMensaje('Redirigiendo...', 'success', 1500);
         
-        localStorage.setItem('sesion', JSON.stringify(data));
+        // Solo guardamos el usuario, NO los permisos
+        localStorage.setItem('sesion', JSON.stringify({
+            usuario: data.usuario
+        }));
         
         setTimeout(() => {
             window.location.href = '/dashboard.html';
@@ -118,7 +96,5 @@ form.addEventListener('submit', async (e) => {
         setLoading(false);
     }
 });
-
-
 
 

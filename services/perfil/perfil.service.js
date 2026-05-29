@@ -9,17 +9,25 @@ exports.getPerfiles = async () => {
 };
 
 
+// OBTENER PERFIL POR ID
+exports.getPerfilById = async (id) => {
+    const [rows] = await db.query('CALL sp_perfil_obtener(?)', [id]);
+    return rows[0][0];
+};
+
+
 // CREAR PERFIL
-exports.createPerfil = async (body) => {
+exports.createPerfil = async (body, idUsuarioSesion) => {
     const { nombre, descripcion } = body;
 
     if (!nombre || nombre.trim() === '') {
         throw new Error('El nombre del perfil es obligatorio');
     }
 
-    await db.query('CALL sp_perfil_insertar(?, ?)', [
+    await db.query('CALL sp_perfil_insertar(?, ?, ?)', [
         nombre.trim(),
-        descripcion?.trim() || null
+        descripcion?.trim() || null,
+        idUsuarioSesion
     ]);
 
     return { message: 'Perfil registrado correctamente' };
@@ -34,41 +42,61 @@ exports.contarUsuariosActivos = async (idPerfil) => {
 };
 
 
+// VALIDAR PERMISOS SOBRE UN PERFIL
+exports.validarPermisosPerfil = async (idPerfil, idUsuarioSesion, accion) => {
+    const [result] = await db.query(
+        'CALL sp_validar_modificacion_perfil(?, ?, ?, @p_permiso, @p_mensaje)',
+        [idPerfil, idUsuarioSesion, accion]
+    );
+    
+    const [permisoResult] = await db.query('SELECT @p_permiso AS permiso, @p_mensaje AS mensaje');
+    
+    if (permisoResult[0].permiso === 0 || permisoResult[0].permiso === false) {
+        throw new Error(permisoResult[0].mensaje);
+    }
+    
+    return true;
+};
+
+
 // ACTUALIZAR PERFIL
-exports.updatePerfil = async (id, body) => {
+exports.updatePerfil = async (id, body, idUsuarioSesion) => {
     const { nombre, descripcion, estado } = body;
 
-    if (estado !== undefined) {
-        if (estado === 0) {
-            console.log(`Desactivando perfil ID: ${id}`);
-            await db.query('CALL sp_perfil_desactivar(?)', [id]);
-            console.log(`Perfil ${id} desactivado`);
-            
-            const totalUsuarios = await exports.contarUsuariosActivos(id);
-            
-            let mensaje = 'Perfil desactivado correctamente';
-            if (totalUsuarios > 0) {
-                mensaje = `Perfil desactivado. ${totalUsuarios} usuario(s) no podrán iniciar sesión hasta que el perfil sea reactivado.`;
-            }
-            return { message: mensaje, totalUsuarios: totalUsuarios };
-            
-        } else if (estado === 1) {
-            await db.query('CALL sp_perfil_activar(?)', [id]);
-            return { message: 'Perfil activado correctamente' };
-        } else if (estado === 2) {
-            await db.query('CALL sp_perfil_eliminar(?)', [id]);
-            return { message: 'Perfil eliminado correctamente' };
+    // DESACTIVAR
+    if (estado === 0) {
+        await exports.validarPermisosPerfil(id, idUsuarioSesion, 'DESACTIVAR');
+        await db.query('CALL sp_perfil_desactivar(?, ?)', [id, idUsuarioSesion]);
+        
+        const totalUsuarios = await exports.contarUsuariosActivos(id);
+        let mensaje = 'Perfil desactivado correctamente';
+        if (totalUsuarios > 0) {
+            mensaje = `Perfil desactivado. ${totalUsuarios} usuario(s) no podrán iniciar sesión hasta que el perfil sea reactivado.`;
         }
+        return { message: mensaje, totalUsuarios: totalUsuarios };
     }
-
-    if (nombre !== undefined) {
-        if (!nombre || nombre.trim() === '') {
-            throw new Error('El nombre del perfil es obligatorio');
-        }
-        await db.query('CALL sp_perfil_actualizar(?, ?, ?)', [
+    
+    // ACTIVAR
+    if (estado === 1) {
+        await db.query('CALL sp_perfil_activar(?)', [id]);
+        return { message: 'Perfil activado correctamente' };
+    }
+    
+    // ELIMINAR
+    if (estado === 2) {
+        await exports.validarPermisosPerfil(id, idUsuarioSesion, 'ELIMINAR');
+        await db.query('CALL sp_perfil_eliminar(?, ?)', [id, idUsuarioSesion]);
+        return { message: 'Perfil eliminado correctamente' };
+    }
+    
+    // EDITAR (nombre, descripción)
+    if (nombre !== undefined || descripcion !== undefined) {
+        await exports.validarPermisosPerfil(id, idUsuarioSesion, 'EDITAR');
+        await db.query('CALL sp_perfil_actualizar(?, ?, ?, ?)', [
             id,
-            nombre.trim(),
-            descripcion?.trim() || null
+            nombre?.trim() || null,
+            descripcion?.trim() || null,
+            idUsuarioSesion
         ]);
         return { message: 'Perfil actualizado correctamente' };
     }
@@ -77,16 +105,19 @@ exports.updatePerfil = async (id, body) => {
 };
 
 
-// OBTENER PERMISOS DE UN PERFIL
+// OBTENER PERMISOS DE UN PERFIL 
 exports.obtenerPermisosPerfil = async (idPerfil) => {
     return await permisoService.getPermisos(idPerfil);
 };
 
 
-// GUARDAR PERMISOS DE UN PERFIL
-exports.guardarPermisosPerfil = async (idPerfil, permisos) => {
-    return await permisoService.savePermisos({ id_perfil: idPerfil, opciones: permisos });
+// GUARDAR PERMISOS DE UN PERFIL 
+exports.guardarPermisosPerfil = async (idPerfil, permisos, idUsuarioSesion) => {
+    // Validar permisos para modificar permisos
+    await exports.validarPermisosPerfil(idPerfil, idUsuarioSesion, 'PERMISOS');
+    
+    // Si pasa la validación, guardar permisos
+    return await permisoService.savePermisos({ id_perfil: idPerfil, opciones: permisos }, idUsuarioSesion);
 };
-
 
 
