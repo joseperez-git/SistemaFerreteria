@@ -39,8 +39,9 @@ app.use('/api/categorias', validarPermiso('Categorías'), require(path.join(__di
 app.use('/api/ventas', validarPermiso('Ventas'), require(path.join(__dirname, '../services/venta/venta.routes')));
 app.use('/api/opciones', validarPermiso('Perfiles'), require(path.join(__dirname, '../services/opcion/opcion.routes')));
 app.use('/api/unidades-medida', validarPermiso('Productos'), require(path.join(__dirname, '../services/unidadmedida/unidadmedida.routes')));
+app.use('/api/pago-cuota', soloAutenticacion, require(path.join(__dirname, '../services/pago_cuota/pago_cuota.routes')));
 
-// Servir archivos estáticos
+// Archivos estáticos
 app.use(express.static('public'));
 app.use('/uploads', express.static('public/uploads'));
 

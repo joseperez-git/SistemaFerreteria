@@ -786,7 +786,7 @@ body {
    Botón de búsqueda SUNAT (siempre visible)
    ============================================ */
 .btn-sunat-search {
-    background: #ff8c42;  /* Naranja cálido, llama la atención */
+    background: #ff8c42; 
     border: 1px solid #ff8c42;
     border-left: none;
     color: white;

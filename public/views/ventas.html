@@ -63,43 +63,43 @@
     </div>
 </div>
 
-<!-- Modal Venta -->
+
+<!-- Modal Venta (Tamaño optimizado) -->
 <div class="modal fade" id="modalVenta" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
-    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable" style="max-width: 900px;">
-        <div class="modal-content shadow-2xl border-0" style="border-radius: 32px; overflow: hidden;">
-            <div class="modal-header border-0 p-4" style="background: linear-gradient(135deg, #1e2a3a 0%, #0f1724 100%);">
-                <div class="d-flex align-items-center gap-3">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable" style="max-width: 800px;">
+        <div class="modal-content shadow-lg border-0" style="border-radius: 24px; overflow: hidden; max-height: 90vh;">
+            <!-- HEADER FIJO -->
+            <div class="modal-header border-0 p-3" style="background: linear-gradient(135deg, #1a2a3a 0%, #0f1724 100%);">
+                <div class="d-flex align-items-center gap-2">
                     <div class="me-2">
                         <i class="bi bi-cart-check fs-3 text-white"></i>
                     </div>
                     <div>
-                        <h5 class="modal-title text-white fw-bold mb-0" id="tituloModalVenta">Nueva Venta</h5>
-                        <p class="text-white-50 small mb-0">Complete la información de la venta</p>
+                        <h5 class="modal-title text-white fw-bold mb-0 fs-6" id="tituloModalVenta">Nueva Venta</h5>
+                        <p class="text-white-50 small mb-0" style="font-size: 0.65rem;">Complete la información de la venta</p>
                     </div>
                 </div>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
-            <div class="modal-body p-4" style="background: #f8fafc;">
+            
+            <!-- BODY CON SCROLL INTERNO -->
+            <div class="modal-body p-3" style="background: #f8fafc; overflow-y: auto; max-height: calc(90vh - 130px);">
                 <form id="formVenta">
                     <input type="hidden" id="ventaId">
                     
-                    <div class="row g-3">
-                        <!-- Número de Nota de Venta -->
+                    <!-- ========== DATOS PRINCIPALES ========== -->
+                    <div class="row g-2 mb-3">
                         <div class="col-md-4">
-                            <label class="form-label fw-semibold text-secondary">N° Nota de Venta</label>
-                            <input type="text" class="form-control bg-light" id="numero_nota_venta" required readonly style="background-color: #eef2ff !important;">
+                            <label class="form-label fw-semibold text-secondary mb-0 small">N° Nota de Venta</label>
+                            <input type="text" class="form-control form-control-sm bg-light" id="numero_nota_venta" required readonly style="background-color: #eef2ff !important; font-family: monospace; font-weight: bold; font-size: 0.8rem;">
                         </div>
-                        
-                        <!-- Fecha -->
                         <div class="col-md-4">
-                            <label class="form-label fw-semibold text-secondary">Fecha</label>
-                            <input type="date" class="form-control" id="fecha_venta" required>
+                            <label class="form-label fw-semibold text-secondary mb-0 small">Fecha</label>
+                            <input type="date" class="form-control form-control-sm" id="fecha_venta" required>
                         </div>
-                        
-                        <!-- Modalidad de Pago -->
                         <div class="col-md-4">
-                            <label class="form-label fw-semibold text-secondary">Modalidad de Pago</label>
-                            <select class="form-select" id="modalidad_pago" required>
+                            <label class="form-label fw-semibold text-secondary mb-0 small">Modalidad de Pago</label>
+                            <select class="form-select form-select-sm" id="modalidad_pago" required>
                                 <option value="">Seleccione</option>
                                 <option value="CONTADO">CONTADO</option>
                                 <option value="CREDITO">CRÉDITO</option>
@@ -107,135 +107,185 @@
                         </div>
                     </div>
 
-                    <!-- SECCIÓN CLIENTE -->
-                    <div class="card border-0 shadow-sm mt-3">
-                        <div class="card-header bg-white border-0 pt-3 pb-0">
-                            <h6 class="fw-bold mb-0" style="font-size: 0.9rem;">
-                                <i class="bi bi-person-badge me-1"></i> Datos del Cliente
+                    <!-- ===== SECCIÓN CLIENTE ===== -->
+                    <div class="card border-0 shadow-sm mb-3" style="border-radius: 16px;">
+                        <div class="card-header bg-white border-0 pt-2 pb-0" style="border-radius: 16px 16px 0 0;">
+                            <h6 class="fw-bold mb-0 small">
+                                <i class="bi bi-person-badge text-primary me-1"></i> Datos del Cliente
                             </h6>
-                            <small class="text-muted" style="font-size: 0.7rem;">Ingrese DNI (8 dígitos) o RUC (11 dígitos)</small>
+                            <small class="text-muted" style="font-size: 0.6rem;">Ingrese DNI (8 dígitos) o RUC (11 dígitos)</small>
                         </div>
-                        <div class="card-body p-3">
-                            <div class="row g-2 align-items-end">
+                        <div class="card-body p-2">
+                            <div class="row g-1 align-items-end">
                                 <!-- Tipo de Documento -->
                                 <div class="col-md-3">
-                                    <label class="form-label mb-1" style="font-size: 0.7rem; font-weight: 500; color: #6c757d;">
-                                        Tipo Doc.
-                                    </label>
-                                    <select class="form-select form-select-sm" id="tipo_documento_cliente" style="font-size: 0.8rem;">
+                                    <label class="form-label mb-0 small text-muted">Tipo Doc.</label>
+                                    <select class="form-select form-select-sm" id="tipo_documento_cliente" style="font-size: 0.75rem;">
                                         <option value="">Seleccione</option>
                                         <option value="DNI">DNI</option>
                                         <option value="RUC">RUC</option>
                                     </select>
                                 </div>
                                 
-                                <!-- Número de Documento con botón de búsqueda -->
+                                <!-- Número de Documento con botón de búsqueda SUNAT -->
                                 <div class="col-md-5">
-                                    <label class="form-label mb-1" style="font-size: 0.7rem; font-weight: 500; color: #6c757d;">
-                                        Número de Documento
-                                    </label>
-                                    <div class="input-group">
-                                        <input type="text" class="form-control form-control-sm" id="numero_documento_cliente" 
-                                            placeholder="Ej: 12345678" maxlength="11" autocomplete="off"
-                                            style="font-size: 0.8rem;">
-                                        <button class="btn btn-sunat-search btn-sm" type="button" id="btnBuscarClienteVenta" 
-                                                title="Consultar datos en SUNAT" style="padding: 0.25rem 0.75rem;">
+                                    <label class="form-label mb-0 small text-muted">Número de Documento</label>
+                                    <div class="input-group input-group-sm">
+                                        <span class="input-group-text bg-white"><i class="bi bi-upc-scan text-muted"></i></span>
+                                        <input type="text" class="form-control" id="numero_documento_cliente" 
+                                            placeholder="Ej: 12345678" maxlength="11" autocomplete="off" style="font-size: 0.75rem;">
+                                        <button class="btn btn-sunat-search" type="button" id="btnBuscarClienteVenta" 
+                                                title="Consultar datos en SUNAT" style="padding: 0 0.5rem;">
                                             <i class="bi bi-building-check"></i>
                                         </button>
                                     </div>
                                 </div>
                                 
-                                <!-- Botón para limpiar/registrar -->
+                                <!-- Botón limpiar -->
                                 <div class="col-md-4">
-                                    <label class="form-label mb-1" style="font-size: 0.7rem; font-weight: 500; color: #6c757d;">
-                                        &nbsp;
-                                    </label>
-                                    <button type="button" class="btn btn-outline-secondary btn-sm w-100" id="btnLimpiarCliente" 
-                                            style="font-size: 0.75rem; padding: 0.25rem 0.5rem;">
-                                        <i class="bi bi-arrow-repeat"></i> Limpiar
+                                    <label class="form-label mb-0 small text-muted">&nbsp;</label>
+                                    <button type="button" class="btn btn-outline-secondary btn-sm w-100" id="btnLimpiarCliente" style="font-size: 0.7rem;">
+                                        <i class="bi bi-arrow-repeat me-1"></i> Limpiar
                                     </button>
                                 </div>
                             </div>
                             
-                            <!-- Campos autollenables del cliente (EDITABLES) -->
-                            <div class="row g-2 mt-2">
+                            <!-- Campos del cliente (EDITABLES) -->
+                            <div class="row g-1 mt-2">
                                 <div class="col-md-6">
-                                    <label class="form-label mb-1" style="font-size: 0.7rem; font-weight: 500; color: #6c757d;">
-                                        Nombre / Razón Social
-                                    </label>
-                                    <input type="text" class="form-control form-control-sm" id="nombre_cliente"
-                                        style="font-size: 0.8rem;" placeholder="Nombre del cliente">
+                                    <label class="form-label mb-0 small text-muted">Nombre / Razón Social</label>
+                                    <input type="text" class="form-control form-control-sm" id="nombre_cliente" placeholder="Nombre del cliente" style="font-size: 0.75rem;">
                                 </div>
                                 <div class="col-md-6">
-                                    <label class="form-label mb-1" style="font-size: 0.7rem; font-weight: 500; color: #6c757d;">
-                                        Apellido
-                                    </label>
-                                    <input type="text" class="form-control form-control-sm" id="apellido_cliente"
-                                        style="font-size: 0.8rem;" placeholder="Apellido del cliente">
+                                    <label class="form-label mb-0 small text-muted">Apellido</label>
+                                    <input type="text" class="form-control form-control-sm" id="apellido_cliente" placeholder="Apellido del cliente" style="font-size: 0.75rem;">
                                 </div>
                                 <div class="col-md-6">
-                                    <label class="form-label mb-1" style="font-size: 0.7rem; font-weight: 500; color: #6c757d;">
-                                        Teléfono
+                                    <label class="form-label mb-0 small text-muted">
+                                        <i class="bi bi-telephone me-1"></i> Teléfono
                                     </label>
-                                    <input type="text" class="form-control form-control-sm" id="telefono_cliente" 
-                                        placeholder="Ej: 987654321" maxlength="9" style="font-size: 0.8rem;">
+                                    <input type="text" class="form-control form-control-sm" id="telefono_cliente" placeholder="Ej: 987654321" maxlength="9" style="font-size: 0.75rem;">
                                 </div>
                                 <div class="col-md-6">
-                                    <label class="form-label mb-1" style="font-size: 0.7rem; font-weight: 500; color: #6c757d;">
-                                        Correo Electrónico
+                                    <label class="form-label mb-0 small text-muted">
+                                        <i class="bi bi-envelope me-1"></i> Correo
                                     </label>
-                                    <input type="email" class="form-control form-control-sm" id="correo_cliente" 
-                                        placeholder="cliente@email.com" style="font-size: 0.8rem;">
+                                    <input type="email" class="form-control form-control-sm" id="correo_cliente" placeholder="cliente@email.com" style="font-size: 0.75rem;">
                                 </div>
                             </div>
                             
-                            <!-- Cliente ID oculto -->
                             <input type="hidden" id="id_cliente" value="">
-                            
-                            <!-- Mensaje de alerta si el cliente no existe -->
-                            <div id="clienteNoExistenteAlert" class="alert alert-warning mt-2 mb-0 py-1" style="display: none; font-size: 0.7rem;">
+                            <div id="clienteNoExistenteAlert" class="alert alert-warning mt-1 mb-0 py-1" style="display: none; font-size: 0.65rem;">
                                 <i class="bi bi-info-circle me-1"></i> Este cliente no está registrado. Se registrará automáticamente al guardar.
                             </div>
                         </div>
                     </div>
 
-                    <!-- Campos de crédito (dinámicos) -->
-                    <div id="div_credito_fields" style="display: none;">
-                        <div class="row g-2 mt-2">
-                            <div class="col-md-4">
-                                <label class="form-label mb-1" style="font-size: 0.7rem; font-weight: 500; color: #6c757d;">
-                                    Pago Inicial
-                                </label>
-                                <input type="number" step="0.01" class="form-control form-control-sm" id="pago_inicial" value="0" min="0" style="font-size: 0.8rem;">
+                    <!-- ========== SECCIÓN PRODUCTOS ========== -->
+                    <div class="card border-0 shadow-sm mb-3" style="border-radius: 16px;">
+                        <div class="card-header bg-white border-0 pt-2 pb-0 d-flex justify-content-between align-items-center" style="border-radius: 16px 16px 0 0;">
+                            <h6 class="fw-bold mb-0 small">
+                                <i class="bi bi-box-seam text-success me-1"></i> Productos
+                            </h6>
+                        </div>
+                        <div class="card-body p-2">
+                            <div class="row g-1 mb-2">
+                                <div class="col-md-6">
+                                    <label class="form-label mb-0 small text-muted">Buscar Producto</label>
+                                    <input type="text" class="form-control form-control-sm" id="buscarProductoInput" placeholder="Escriba para buscar..." style="font-size: 0.75rem;">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label mb-0 small text-muted">Seleccionar</label>
+                                    <select class="form-select form-select-sm" id="selectProducto" style="font-size: 0.75rem;">
+                                        <option value="">-- Seleccione un producto --</option>
+                                    </select>
+                                </div>
                             </div>
-                            <div class="col-md-4">
-                                <label class="form-label mb-1" style="font-size: 0.7rem; font-weight: 500; color: #6c757d;">
-                                    Cantidad Cuotas
-                                </label>
-                                <input type="number" class="form-control form-control-sm" id="cantidad_cuotas" value="0" min="0" style="font-size: 0.8rem;">
+                            <div class="row g-1 mb-2">
+                                <div class="col-md-3">
+                                    <label class="form-label mb-0 small text-muted">Precio</label>
+                                    <div class="input-group input-group-sm">
+                                        <span class="input-group-text bg-white" style="font-size: 0.7rem;">S/</span>
+                                        <input type="number" step="0.01" class="form-control bg-light" id="precioUnitario" readonly style="font-size: 0.75rem;">
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label mb-0 small text-muted">Stock</label>
+                                    <input type="text" class="form-control form-control-sm bg-light" id="stockDisponible" readonly style="font-size: 0.75rem;">
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label mb-0 small text-muted">Cantidad</label>
+                                    <input type="number" step="0.01" class="form-control form-control-sm" id="cantidadProducto" value="1" min="0.01" style="font-size: 0.75rem;">
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label mb-0 small text-muted">&nbsp;</label>
+                                    <button type="button" class="btn btn-primary btn-sm w-100" id="btnAgregarProductoLista" style="font-size: 0.7rem;">
+                                        <i class="bi bi-plus-circle me-1"></i> Agregar
+                                    </button>
+                                </div>
                             </div>
-                            <div class="col-md-4">
-                                <label class="form-label mb-1" style="font-size: 0.7rem; font-weight: 500; color: #6c757d;">
-                                    Intervalo (días)
-                                </label>
-                                <input type="number" class="form-control form-control-sm" id="intervalo_dias" value="0" min="0" style="font-size: 0.8rem;">
+                            
+                            <div class="table-responsive mt-2">
+                                <table class="table table-sm table-hover mb-0">
+                                    <thead class="table-light">
+                                        <tr style="font-size: 0.7rem;">
+                                            <th>Producto</th>
+                                            <th class="text-end">Precio</th>
+                                            <th class="text-center">Cant</th>
+                                            <th class="text-end">Subtotal</th>
+                                            <th class="text-center"></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="tablaProductosVenta"></tbody>
+                                    <tfoot class="table-light">
+                                        <tr>
+                                            <td colspan="3" class="text-end fw-bold small">TOTAL:</td>
+                                            <td class="fw-bold text-primary" id="totalVenta" style="font-size: 0.9rem;">S/ 0.00</td>
+                                            <td></td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
                             </div>
                         </div>
-                        
-                        <!-- Panel de resumen de cuotas (dinámico) -->
-                        <div class="card border-0 bg-light mt-2" id="panelCuotas" style="display: none;">
-                            <div class="card-body p-2">
-                                <div class="d-flex justify-content-between align-items-center mb-2">
-                                    <span class="fw-bold" style="font-size: 0.75rem;">📊 Resumen del Crédito</span>
-                                    <span class="text-muted" style="font-size: 0.7rem;">Monto a financiar: <strong id="montoFinanciar">S/ 0.00</strong></span>
+                    </div>
+
+                    <!-- ========== CRÉDITO ========== -->
+                    <div id="div_credito_fields" class="card border-0 shadow-sm mb-3" style="border-radius: 16px; display: none;">
+                        <div class="card-header bg-white border-0 pt-2 pb-0" style="border-radius: 16px 16px 0 0;">
+                            <h6 class="fw-bold mb-0 small">
+                                <i class="bi bi-calendar-check text-warning me-1"></i> Configuración de Crédito
+                            </h6>
+                        </div>
+                        <div class="card-body p-2">
+                            <div class="row g-1">
+                                <div class="col-md-4">
+                                    <label class="form-label mb-0 small text-muted">Pago Inicial</label>
+                                    <div class="input-group input-group-sm">
+                                        <span class="input-group-text" style="font-size: 0.7rem;">S/</span>
+                                        <input type="number" step="0.01" class="form-control" id="pago_inicial" value="0" min="0" style="font-size: 0.75rem;">
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label mb-0 small text-muted">Cantidad Cuotas</label>
+                                    <input type="number" class="form-control form-control-sm" id="cantidad_cuotas" value="0" min="0" style="font-size: 0.75rem;">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label mb-0 small text-muted">Intervalo (días)</label>
+                                    <input type="number" class="form-control form-control-sm" id="intervalo_dias" value="0" min="0" style="font-size: 0.75rem;">
+                                </div>
+                            </div>
+                            <div class="mt-2" id="panelCuotas" style="display: none;">
+                                <div class="alert alert-info py-1 mb-1" style="font-size: 0.7rem;">
+                                    <i class="bi bi-info-circle me-1"></i>
+                                    <strong>Monto a financiar:</strong> <span id="montoFinanciar">S/ 0.00</span>
                                 </div>
                                 <div class="table-responsive">
-                                    <table class="table table-sm table-borderless mb-0">
+                                    <table class="table table-sm table-bordered mb-0">
                                         <thead class="table-light">
-                                            <tr style="font-size: 0.7rem;">
-                                                <th># Cuota</th>
-                                                <th>Monto</th>
-                                                <th>Vencimiento</th>
+                                            <tr style="font-size: 0.65rem;">
+                                                <th class="text-center"># Cuota</th>
+                                                <th class="text-end">Monto</th>
+                                                <th class="text-center">Vencimiento</th>
                                             </tr>
                                         </thead>
                                         <tbody id="tablaResumenCuotas"></tbody>
@@ -244,104 +294,22 @@
                             </div>
                         </div>
                     </div>
-                        
-                    <div class="col-12">
-                        <hr>
-                        <div class="d-flex justify-content-between align-items-center">
-                            <h6 class="fw-semibold mb-0">Productos</h6>
-                            <button type="button" class="btn btn-sm btn-primary" id="btnAgregarProducto">
-                                <i class="bi bi-plus-circle"></i> Agregar Producto
-                            </button>
-                        </div>
-                        <div class="table-responsive mt-2">
-                            <table class="table table-sm">
-                                <thead class="table-light">
-                                    <tr>
-                                        <th>Producto</th>
-                                        <th>Precio</th>
-                                        <th>Cantidad</th>
-                                        <th>Subtotal</th>
-                                        <th></th>
-                                    </tr>
-                                </thead>
-                                <tbody id="tablaProductosVenta"></tbody>
-                                <tfoot>
-                                    <tr>
-                                        <td colspan="3" class="text-end fw-bold">Total:</td>
-                                        <td class="fw-bold text-primary" id="totalVenta">S/ 0.00</td>
-                                        <td></td>
-                                    </tr>
-                                </tfoot>
-                            </table>
-                        </div>
-                    </div>
                     
-                    <div class="col-12">
-                        <label class="form-label fw-semibold text-secondary">Observación</label>
-                        <textarea class="form-control" id="observacion" rows="2"></textarea>
-                    </div>
-                    
-                    <hr class="my-3">
-                    <div class="d-flex gap-3">
-                        <button type="button" class="btn btn-light border flex-grow-1 py-2" data-bs-dismiss="modal" style="border-radius: 14px;">
-                            <i class="bi bi-x-circle me-1"></i> Cancelar
-                        </button>
-                        <button type="button" class="btn btn-guardar flex-grow-1 py-2" id="btnGuardarVenta" style="border-radius: 14px;">
-                            <i class="bi bi-save me-1"></i> Registrar Venta
-                        </button>
+                    <!-- ========== OBSERVACIÓN ========== -->
+                    <div class="mb-2">
+                        <label class="form-label fw-semibold text-secondary mb-0 small">Observación</label>
+                        <textarea class="form-control form-control-sm" id="observacion" rows="2" placeholder="Observaciones adicionales..." style="font-size: 0.75rem;"></textarea>
                     </div>
                 </form>
             </div>
-        </div>
-    </div>
-</div>
-
-
-<!-- Modal Agregar Producto -->
-<div class="modal fade" id="modalAgregarProducto" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content shadow-lg border-0" style="border-radius: 24px;">
-            <div class="modal-header border-0 p-4" style="background: linear-gradient(135deg, #1e2a3a 0%, #0f1724 100%);">
-                <h5 class="modal-title text-white">
-                    <i class="bi bi-box-seam me-2"></i> Agregar Producto
-                </h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body p-4">
-                <!-- Campo de búsqueda -->
-                <div class="mb-3">
-                    <label class="form-label fw-semibold">Buscar Producto</label>
-                    <input type="text" class="form-control" id="buscarProductoInput" 
-                           placeholder="Escriba para buscar...">
-                </div>
-                
-                <!-- Select de productos (estilo normal, como modalidad de pago) -->
-                <div class="mb-3">
-                    <label class="form-label fw-semibold">Producto</label>
-                    <select class="form-select" id="selectProducto">
-                        <option value="">Seleccione producto</option>
-                    </select>
-                </div>
-                
-                <div class="mb-3">
-                    <label class="form-label fw-semibold">Cantidad</label>
-                    <input type="number" step="0.01" class="form-control" id="cantidadProducto" value="1">
-                </div>
-                <div class="mb-3">
-                    <label class="form-label fw-semibold">Precio Unitario</label>
-                    <input type="number" step="0.01" class="form-control" id="precioUnitario" readonly>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label fw-semibold">Stock Disponible</label>
-                    <input type="text" class="form-control" id="stockDisponible" readonly>
-                </div>
-            </div>
-            <div class="modal-footer border-0 gap-2 pb-4">
-                <button type="button" class="btn btn-light border px-4" id="btnCancelarAgregarProducto">
+            
+            <!-- FOOTER FIJO -->
+            <div class="modal-footer border-0 p-2 bg-light" style="border-top: 1px solid #e9ecef;">
+                <button type="button" class="btn btn-light border btn-sm px-3" data-bs-dismiss="modal">
                     <i class="bi bi-x-circle me-1"></i> Cancelar
                 </button>
-                <button type="button" class="btn btn-primary px-4" id="btnConfirmarAgregar">
-                    <i class="bi bi-plus-circle me-1"></i> Agregar
+                <button type="button" class="btn btn-success btn-sm px-3" id="btnGuardarVenta">
+                    <i class="bi bi-check-circle me-1"></i> Registrar Venta
                 </button>
             </div>
         </div>
@@ -367,79 +335,74 @@
 </div>
 
 
-<!-- Modal Detalle de Venta (Rediseñado) -->
-<div class="modal fade" id="modalDetalleVenta" tabindex="-1" data-bs-backdrop="static">
-    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg">
-        <div class="modal-content border-0 shadow-lg" style="border-radius: 28px; overflow: hidden;">
-            <!-- Header compacto -->
-            <div class="modal-header border-0 p-3" style="background: linear-gradient(135deg, #1a2a3a 0%, #0f1724 100%);">
+<!-- Modal Detalle de Venta (con pago de cuotas integrado) -->
+<div class="modal fade" id="modalDetalleVenta" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable" style="max-width: 750px;">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 20px; overflow: hidden;">
+            <!-- Header -->
+            <div class="modal-header border-0 p-2" style="background: linear-gradient(135deg, #1a2a3a 0%, #0f1724 100%);">
                 <div class="d-flex align-items-center gap-2">
-                    <div class="me-2">
-                        <i class="bi bi-cart-check fs-3 text-white"></i>
-                    </div>
+                    <i class="bi bi-receipt text-white fs-5"></i>
                     <div>
                         <h6 class="modal-title text-white fw-bold mb-0">Detalle de Venta</h6>
-                        <small class="text-white-50" id="detalleNumeroNota">-</small>
+                        <small class="text-white-50" id="detalleNumeroNota" style="font-size: 0.7rem;">-</small>
                     </div>
                 </div>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             
-            <div class="modal-body p-3" style="background: #f8fafc;">
-                <!-- Tarjetas de información (2 columnas en desktop, 1 en mobile) -->
-                <div class="row g-2 mb-3">
-                    <div class="col-sm-6">
-                        <div class="card border-0 shadow-sm h-100">
-                            <div class="card-body p-2">
-                                <div class="d-flex justify-content-between align-items-center small">
-                                    <span class="text-muted">Cliente</span>
-                                    <span class="fw-semibold text-truncate ms-2" id="detalleCliente" style="max-width: 200px;">-</span>
-                                </div>
-                                <div class="d-flex justify-content-between align-items-center small mt-1">
-                                    <span class="text-muted">Fecha</span>
-                                    <span class="fw-semibold" id="detalleFecha">-</span>
-                                </div>
-                                <div class="d-flex justify-content-between align-items-center small mt-1">
-                                    <span class="text-muted">Usuario</span>
-                                    <span class="fw-semibold text-truncate ms-2" id="detalleUsuario" style="max-width: 150px;">-</span>
-                                </div>
+            <!-- Body con scroll interno -->
+            <div class="modal-body p-2" style="background: #f8fafc; max-height: 70vh; overflow-y: auto;">
+                <!-- Info básica -->
+                <div class="row g-1 mb-2">
+                    <div class="col-6">
+                        <div class="bg-white rounded p-1 shadow-sm">
+                            <div class="d-flex justify-content-between small">
+                                <span class="text-muted">Cliente:</span>
+                                <span class="fw-semibold" id="detalleCliente">-</span>
+                            </div>
+                            <div class="d-flex justify-content-between small mt-1">
+                                <span class="text-muted">Fecha:</span>
+                                <span class="fw-semibold" id="detalleFecha">-</span>
+                            </div>
+                            <div class="d-flex justify-content-between small mt-1">
+                                <span class="text-muted">Usuario:</span>
+                                <span class="fw-semibold" id="detalleUsuario">-</span>
                             </div>
                         </div>
                     </div>
-                    <div class="col-sm-6">
-                        <div class="card border-0 shadow-sm h-100">
-                            <div class="card-body p-2">
-                                <div class="d-flex justify-content-between align-items-center small">
-                                    <span class="text-muted">Modalidad</span>
-                                    <span id="detalleModalidad" class="badge">-</span>
-                                </div>
-                                <div class="d-flex justify-content-between align-items-center small mt-1">
-                                    <span class="text-muted">Total</span>
-                                    <span class="fw-bold text-primary fs-6" id="detalleTotal">S/ 0.00</span>
-                                </div>
-                                <div id="detalleDeudaRow" style="display: none;" class="d-flex justify-content-between align-items-center small mt-1">
-                                    <span class="text-muted">Deuda</span>
-                                    <span class="fw-bold text-warning" id="detalleDeuda">S/ 0.00</span>
-                                </div>
-                                <div class="d-flex justify-content-between align-items-center small mt-1">
-                                    <span class="text-muted">Estado</span>
-                                    <span id="detalleEstado" class="badge bg-success">Activa</span>
-                                </div>
+                    <div class="col-6">
+                        <div class="bg-white rounded p-1 shadow-sm">
+                            <div class="d-flex justify-content-between small">
+                                <span class="text-muted">Modalidad:</span>
+                                <span id="detalleModalidad" class="badge">-</span>
+                            </div>
+                            <div class="d-flex justify-content-between small mt-1">
+                                <span class="text-muted">Total:</span>
+                                <span class="fw-bold text-primary" id="detalleTotal">S/ 0.00</span>
+                            </div>
+                            <div id="detalleDeudaRow" style="display: none;" class="d-flex justify-content-between small mt-1">
+                                <span class="text-muted">Deuda:</span>
+                                <span class="fw-bold text-warning" id="detalleDeuda">S/ 0.00</span>
+                            </div>
+                            <div class="d-flex justify-content-between small mt-1">
+                                <span class="text-muted">Estado:</span>
+                                <span id="detalleEstado" class="badge bg-success">Activa</span>
                             </div>
                         </div>
                     </div>
                 </div>
                 
-                <!-- Productos (tabla compacta) -->
+                <!-- Productos -->
                 <div class="card border-0 shadow-sm mb-2">
-                    <div class="card-header bg-white border-0 pt-2 pb-0">
-                        <h6 class="fw-bold mb-0 small"><i class="bi bi-box-seam me-1"></i>Productos</h6>
+                    <div class="card-header bg-white border-0 pt-1 pb-0">
+                        <h6 class="fw-bold mb-0 small">Productos</h6>
                     </div>
-                    <div class="card-body p-2">
+                    <div class="card-body p-1">
                         <div class="table-responsive">
-                            <table class="table table-sm table-borderless mb-0">
+                            <table class="table table-sm mb-0" style="font-size: 0.7rem;">
                                 <thead class="table-light">
-                                    <tr class="small">
+                                    <tr>
                                         <th>Producto</th>
                                         <th class="text-end">Precio</th>
                                         <th class="text-center">Cant</th>
@@ -447,10 +410,10 @@
                                     </tr>
                                 </thead>
                                 <tbody id="detalleProductos"></tbody>
-                                <tfoot>
-                                    <tr class="border-top">
-                                        <td colspan="3" class="text-end fw-bold small">TOTAL:</td>
-                                        <td class="text-end fw-bold text-primary small" id="detalleProductosTotal">S/ 0.00</td>
+                                <tfoot class="table-light">
+                                    <tr>
+                                        <td colspan="3" class="text-end fw-bold">TOTAL:</td>
+                                        <td class="text-end fw-bold text-primary" id="detalleProductosTotal">S/ 0.00</td>
                                     </tr>
                                 </tfoot>
                             </table>
@@ -458,56 +421,142 @@
                     </div>
                 </div>
                 
-                <!-- Pagos y Cuotas (2 columnas) -->
-                <div class="row g-2">
-                    <div class="col-sm-6" id="detallePagosSection" style="display: none;">
-                        <div class="card border-0 shadow-sm h-100">
-                            <div class="card-header bg-white border-0 pt-2 pb-0">
-                                <h6 class="fw-bold mb-0 small"><i class="bi bi-credit-card me-1"></i>Pagos</h6>
-                            </div>
-                            <div class="card-body p-2">
-                                <div class="table-responsive">
-                                    <table class="table table-sm table-borderless mb-0">
-                                        <tbody id="detallePagos"></tbody>
-                                    </table>
-                                </div>
-                            </div>
+                <!-- Pagos Realizados -->
+                <div id="detallePagosSection" style="display: none;" class="mb-2">
+                    <div class="card border-0 shadow-sm">
+                        <div class="card-header bg-white border-0 pt-1 pb-0">
+                            <h6 class="fw-bold mb-0 small">Pagos Realizados</h6>
                         </div>
-                    </div>
-                    <div class="col-sm-6" id="detalleCuotasSection" style="display: none;">
-                        <div class="card border-0 shadow-sm h-100">
-                            <div class="card-header bg-white border-0 pt-2 pb-0">
-                                <h6 class="fw-bold mb-0 small"><i class="bi bi-calendar-check me-1"></i>Cuotas</h6>
-                            </div>
-                            <div class="card-body p-2">
-                                <div class="table-responsive">
-                                    <table class="table table-sm table-borderless mb-0">
-                                        <tbody id="detalleCuotas"></tbody>
-                                    </table>
-                                </div>
+                        <div class="card-body p-1">
+                            <div class="table-responsive">
+                                <table class="table table-sm mb-0" style="font-size: 0.7rem;">
+                                    <tbody id="detallePagos"></tbody>
+                                </table>
                             </div>
                         </div>
                     </div>
                 </div>
                 
-                <!-- Observación (si tiene) -->
-                <div id="detalleObservacionRow" style="display: none;" class="mt-2">
-                    <div class="alert alert-light small mb-0 py-1 px-2">
+                <!-- Cuotas con formulario de pago integrado -->
+                <div id="detalleCuotasSection" style="display: none;">
+                    <div class="card border-0 shadow-sm">
+                        <div class="card-header bg-white border-0 pt-1 pb-0">
+                            <h6 class="fw-bold mb-0 small">Cuotas</h6>
+                        </div>
+                        <div class="card-body p-1">
+                            <div class="table-responsive">
+                                <table class="table table-sm mb-0" style="font-size: 0.7rem;">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>#</th>
+                                            <th class="text-end">Monto</th>
+                                            <th class="text-center">Vencimiento</th>
+                                            <th class="text-center">Estado</th>
+                                            <th></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="detalleCuotas"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Formulario de pago de cuota (se muestra al hacer clic en Pagar) -->
+                <div id="formPagoCuotaContainer" style="display: none;" class="mt-2">
+                    <div class="card border-0 shadow-sm" style="border-left: 4px solid #0d6efd;">
+                        <div class="card-header bg-white border-0 pt-2 pb-0">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <h6 class="fw-bold mb-0 small">
+                                    <i class="bi bi-credit-card text-primary me-1"></i> Registrar Pago
+                                </h6>
+                                <button type="button" class="btn-close btn-sm" id="btnCerrarFormaPago"></button>
+                            </div>
+                        </div>
+                        <div class="card-body p-2">
+                            <div class="row g-2">
+                                <div class="col-md-4">
+                                    <label class="form-label small fw-semibold mb-0">Monto de Cuota</label>
+                                    <div class="input-group input-group-sm">
+                                        <span class="input-group-text">S/</span>
+                                        <input type="text" class="form-control bg-light" id="pagoMontoCuota" readonly>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label small fw-semibold mb-0">Método de Pago</label>
+                                    <select class="form-select form-select-sm" id="pagoMetodoPago">
+                                        <option value="">Seleccione</option>
+                                        <option value="EFECTIVO">Efectivo</option>
+                                        <option value="YAPE">Yape</option>
+                                        <option value="PLIN">Plin</option>
+                                        <option value="TRANSFERENCIA">Transferencia</option>
+                                        <option value="TARJETA">Tarjeta</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label small fw-semibold mb-0">Monto a Pagar</label>
+                                    <div class="input-group input-group-sm">
+                                        <span class="input-group-text">S/</span>
+                                        <input type="number" step="0.01" class="form-control" id="pagoMontoPagar" value="0" min="0">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row g-2 mt-1">
+                                <div class="col-12">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="pagoEsMixto">
+                                        <label class="form-check-label small" for="pagoEsMixto">
+                                            Pagar con dos métodos (pago mixto)
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                            <div id="pagoMixtoForm" style="display: none;" class="mt-2">
+                                <div class="row g-2">
+                                    <div class="col-md-6">
+                                        <label class="form-label small mb-0">Segundo Método</label>
+                                        <select class="form-select form-select-sm" id="pagoMetodoPago2">
+                                            <option value="">Seleccione</option>
+                                            <option value="EFECTIVO">Efectivo</option>
+                                            <option value="YAPE">Yape</option>
+                                            <option value="PLIN">Plin</option>
+                                            <option value="TRANSFERENCIA">Transferencia</option>
+                                            <option value="TARJETA">Tarjeta</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label small mb-0">Monto Adicional</label>
+                                        <div class="input-group input-group-sm">
+                                            <span class="input-group-text">S/</span>
+                                            <input type="number" step="0.01" class="form-control" id="pagoMontoPagar2" value="0" min="0">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="mt-2">
+                                <button type="button" class="btn btn-primary btn-sm w-100" id="btnConfirmarPagoCuotaIntegrado">
+                                    <i class="bi bi-check-circle me-1"></i> Confirmar Pago
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Observación -->
+                <div id="detalleObservacionRow" style="display: none;" class="mt-1">
+                    <div class="alert alert-light small mb-0 py-0 px-1">
                         <i class="bi bi-chat me-1"></i> <span id="detalleObservacion">-</span>
                     </div>
                 </div>
             </div>
             
-            <div class="modal-footer border-0 bg-light py-2">
+            <!-- Footer -->
+            <div class="modal-footer border-0 py-1 bg-light">
                 <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cerrar</button>
             </div>
         </div>
     </div>
 </div>
-
-
-
-
 
 
 

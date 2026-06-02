@@ -7,15 +7,70 @@ let eventosInicializados = false;
 let elementos = {};
 let productosSeleccionados = [];
 let totalVenta = 0;
+let productosGlobalParaBusqueda = [];
+let cuotaSeleccionada = null;
 
 
+// ============================================
+// VALIDACIONES
+// ============================================
+function soloNumeros(input) {
+    input.value = input.value.replace(/[^0-9]/g, '');
+}
+
+function soloAlfanumerico(input) {
+    input.value = input.value.replace(/[^A-Za-z0-9]/g, '');
+}
+
+function soloLetrasYEspacios(input) {
+    input.value = input.value.replace(/[^A-Za-záéíóúñÁÉÍÓÚÑ\s]/g, '');
+}
+
+function validarDocumento(tipo, numero) {
+    const num = numero.trim();
+    
+    switch(tipo) {
+        case 'DNI':
+            if (!/^\d{8}$/.test(num)) {
+                return { valido: false, mensaje: 'El DNI debe tener 8 dígitos' };
+            }
+            break;
+        case 'RUC':
+            if (!/^\d{11}$/.test(num)) {
+                return { valido: false, mensaje: 'El RUC debe tener 11 dígitos' };
+            }
+            break;
+        default:
+            return { valido: false, mensaje: 'Tipo de documento no válido' };
+    }
+    return { valido: true, mensaje: '' };
+}
+
+function validarTelefono(telefono) {
+    if (!telefono) return { valido: true, mensaje: '' };
+    if (!/^\d{9}$/.test(telefono.trim())) {
+        return { valido: false, mensaje: 'El teléfono debe tener 9 dígitos' };
+    }
+    return { valido: true, mensaje: '' };
+}
+
+function validarCorreo(correo) {
+    if (!correo) return { valido: true, mensaje: '' };
+    const regex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    if (!regex.test(correo.trim())) {
+        return { valido: false, mensaje: 'Ingrese un correo electrónico válido' };
+    }
+    return { valido: true, mensaje: '' };
+}
+
+
+// ============================================
 // VERIFICAR PÁGINA ACTUAL
+// ============================================
 function isCurrentPage() {
     return document.getElementById('tablaVentas') !== null;
 }
 
-
-// OBTENER ELEMENTO CON CACHE
 function getElement(id) {
     if (!elementos[id]) {
         elementos[id] = document.getElementById(id);
@@ -23,8 +78,6 @@ function getElement(id) {
     return elementos[id];
 }
 
-
-// FORMATEAR FECHA
 function formatearFecha(fechaISO) {
     if (!fechaISO) return '-';
     const fecha = new Date(fechaISO);
@@ -35,7 +88,9 @@ function formatearFecha(fechaISO) {
 }
 
 
+// ============================================
 // LIMPIAR FORMULARIO
+// ============================================
 function limpiarFormulario() {
     const form = getElement('formVenta');
     if (form) form.reset();
@@ -43,14 +98,12 @@ function limpiarFormulario() {
     getElement('ventaId').value = '';
     getElement('tituloModalVenta').textContent = 'Nueva Venta';
     
-    // Resetear fecha
     const hoy = new Date();
     const año = hoy.getFullYear();
     const mes = String(hoy.getMonth() + 1).padStart(2, '0');
     const dia = String(hoy.getDate()).padStart(2, '0');
     getElement('fecha_venta').value = `${año}-${mes}-${dia}`;
     
-    // Resetear cliente
     const tipoDocCliente = document.getElementById('tipo_documento_cliente');
     if (tipoDocCliente) tipoDocCliente.value = '';
     const numeroDocCliente = document.getElementById('numero_documento_cliente');
@@ -68,7 +121,6 @@ function limpiarFormulario() {
     const alertNoExistente = document.getElementById('clienteNoExistenteAlert');
     if (alertNoExistente) alertNoExistente.style.display = 'none';
     
-    // Resetear crédito
     const divCredito = document.getElementById('div_credito_fields');
     if (divCredito) divCredito.style.display = 'none';
     const modalidadPago = getElement('modalidad_pago');
@@ -76,18 +128,18 @@ function limpiarFormulario() {
     const panelCuotas = document.getElementById('panelCuotas');
     if (panelCuotas) panelCuotas.style.display = 'none';
     
-    // Resetear productos
     productosSeleccionados = [];
     totalVenta = 0;
     actualizarTablaProductos();
     
-    // Generar número de nota
     const numeroNota = getElement('numero_nota_venta');
     if (numeroNota) numeroNota.value = generarNumeroNota();
 }
 
 
-// ACTUALIZAR TABLA DE PRODUCTOS
+// ============================================
+// TABLA DE PRODUCTOS
+// ============================================
 function actualizarTablaProductos() {
     const tbody = document.getElementById('tablaProductosVenta');
     if (!tbody) return;
@@ -102,13 +154,13 @@ function actualizarTablaProductos() {
         totalVenta += subtotal;
         
         tbody.innerHTML += `
-            <tr style="font-size: 0.8rem;">
+            <tr>
                 <td class="text-truncate" style="max-width: 200px;">${item.producto_nombre || '-'}</td>
                 <td class="text-end">S/ ${precio.toFixed(2)}</td>
                 <td class="text-center">${cantidad}</td>
                 <td class="text-end">S/ ${subtotal.toFixed(2)}</td>
                 <td class="text-center">
-                    <button class="btn btn-sm btn-danger btn-eliminar-producto" data-idx="${idx}" style="padding: 0.2rem 0.5rem;">
+                    <button class="btn btn-sm btn-danger btn-eliminar-producto" data-idx="${idx}">
                         <i class="bi bi-trash"></i>
                     </button>
                 </td>
@@ -142,7 +194,9 @@ function manejarEliminarProducto(e) {
 }
 
 
+// ============================================
 // CARGAR DATOS
+// ============================================
 async function cargarVentas() {
     if (!isCurrentPage()) return;
     try {
@@ -173,8 +227,8 @@ async function cargarProductos() {
         const response = await fetch('/api/productos');
         if (!response.ok) throw new Error('Error al cargar productos');
         productosGlobal = await response.json();
+        productosGlobalParaBusqueda = productosGlobal;
         
-        // Cargar productos en el select
         const selectProducto = document.getElementById('selectProducto');
         if (selectProducto) {
             cargarSelectProductos('');
@@ -186,7 +240,9 @@ async function cargarProductos() {
 }
 
 
-// APLICAR FILTROS Y RENDERIZAR
+// ============================================
+// FILTROS Y RENDERIZADO
+// ============================================
 function aplicarFiltros() {
     if (!isCurrentPage()) return;
     
@@ -217,7 +273,7 @@ function renderizar(ventas) {
     tabla.innerHTML = '';
     
     if (ventas.length === 0) {
-        tabla.innerHTML = `<tr><td colspan="8" class="text-center text-muted py-4">No hay ventas registradas</td></tr>`;
+        tabla.innerHTML = `<td><td colspan="8" class="text-center text-muted py-4">No hay ventas registradas</td></tr>`;
         return;
     }
     
@@ -257,7 +313,9 @@ function renderizar(ventas) {
 }
 
 
+// ============================================
 // CAMBIAR ESTADO
+// ============================================
 async function cambiarEstado(id, estado, mensajeExito, tipoToast) {
     try {
         const response = await fetch(`/api/ventas/${id}/estado`, {
@@ -275,7 +333,199 @@ async function cambiarEstado(id, estado, mensajeExito, tipoToast) {
 }
 
 
+// ============================================
+// PAGO DE CUOTAS (INTEGRADO EN EL MODAL)
+// ============================================
+function mostrarFormularioPagoCuota(idCuota, montoCuota, numeroCuota, idVenta) {
+    // Guardar en variable global
+    cuotaSeleccionada = {
+        id: parseInt(idCuota),
+        monto: parseFloat(montoCuota),
+        numero: parseInt(numeroCuota),
+        ventaId: parseInt(idVenta)
+    };
+    
+    console.log('Cuota seleccionada:', cuotaSeleccionada);
+    
+    const montoCuotaInput = document.getElementById('pagoMontoCuota');
+    const montoPagarInput = document.getElementById('pagoMontoPagar');
+    const metodoPagoSelect = document.getElementById('pagoMetodoPago');
+    const metodoPago2Select = document.getElementById('pagoMetodoPago2');
+    const montoPagar2Input = document.getElementById('pagoMontoPagar2');
+    const esMixtoCheck = document.getElementById('pagoEsMixto');
+    const mixtoForm = document.getElementById('pagoMixtoForm');
+    const container = document.getElementById('formPagoCuotaContainer');
+    
+    if (montoCuotaInput) montoCuotaInput.value = cuotaSeleccionada.monto.toFixed(2);
+    if (montoPagarInput) {
+        montoPagarInput.value = cuotaSeleccionada.monto;
+        montoPagarInput.max = cuotaSeleccionada.monto;
+    }
+    if (metodoPagoSelect) metodoPagoSelect.value = '';
+    if (metodoPago2Select) metodoPago2Select.value = '';
+    if (montoPagar2Input) montoPagar2Input.value = 0;
+    if (esMixtoCheck) esMixtoCheck.checked = false;
+    if (mixtoForm) mixtoForm.style.display = 'none';
+    if (container) container.style.display = 'block';
+    
+    container.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+
+function ocultarFormularioPagoCuota() {
+    const container = document.getElementById('formPagoCuotaContainer');
+    if (container) container.style.display = 'none';
+    cuotaSeleccionada = null;
+}
+
+
+async function confirmarPagoCuotaIntegrado() {
+    // Verificar que cuotaSeleccionada existe
+    if (!cuotaSeleccionada) {
+        mostrarToast('No hay una cuota seleccionada. Intente nuevamente.', 'warning');
+        return;
+    }
+    
+    // Verificar que tiene ventaId
+    if (!cuotaSeleccionada.ventaId) {
+        mostrarToast('Error: No se pudo identificar la venta asociada.', 'danger');
+        return;
+    }
+    
+    const metodoPago = document.getElementById('pagoMetodoPago')?.value;
+    let montoPago = parseFloat(document.getElementById('pagoMontoPagar')?.value) || 0;
+    const esMixto = document.getElementById('pagoEsMixto')?.checked;
+    const montoTotalCuota = parseFloat(cuotaSeleccionada.monto);
+    const idCuota = cuotaSeleccionada.id;
+    const idVenta = cuotaSeleccionada.ventaId;
+    
+    // Redondear a 2 decimales
+    montoPago = Math.round(montoPago * 100) / 100;
+    
+    console.log('Datos del pago:', { idCuota, idVenta, metodoPago, montoPago, montoTotalCuota, esMixto });
+    
+    if (!metodoPago) {
+        mostrarToast('Seleccione un método de pago', 'warning');
+        return;
+    }
+    
+    if (montoPago <= 0) {
+        mostrarToast('Ingrese un monto válido', 'warning');
+        return;
+    }
+    
+    if (montoPago > montoTotalCuota) {
+        mostrarToast(`El monto no puede exceder el total de la cuota (S/ ${montoTotalCuota.toFixed(2)})`, 'warning');
+        return;
+    }
+    
+    try {
+        if (esMixto) {
+            const metodoPago2 = document.getElementById('pagoMetodoPago2')?.value;
+            let montoPago2 = parseFloat(document.getElementById('pagoMontoPagar2')?.value) || 0;
+            montoPago2 = Math.round(montoPago2 * 100) / 100;
+            
+            if (!metodoPago2) {
+                mostrarToast('Seleccione el segundo método de pago', 'warning');
+                return;
+            }
+            if (montoPago2 <= 0) {
+                mostrarToast('Ingrese un monto válido para el segundo pago', 'warning');
+                return;
+            }
+            if (montoPago + montoPago2 > montoTotalCuota) {
+                mostrarToast('La suma de los pagos excede el total de la cuota', 'warning');
+                return;
+            }
+            
+            const response1 = await fetch('/api/pago-cuota/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    id_cuota_venta: parseInt(idCuota),
+                    metodo_pago: metodoPago,
+                    monto: montoPago
+                })
+            });
+            
+            if (!response1.ok) {
+                const errorData = await response1.json();
+                throw new Error(errorData.error || 'Error al registrar el primer pago');
+            }
+            
+            if (montoPago2 > 0) {
+                const response2 = await fetch('/api/pago-cuota/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        id_cuota_venta: parseInt(idCuota),
+                        metodo_pago: metodoPago2,
+                        monto: montoPago2
+                    })
+                });
+                if (!response2.ok) {
+                    const errorData = await response2.json();
+                    throw new Error(errorData.error || 'Error al registrar el segundo pago');
+                }
+            }
+            
+            mostrarToast('Pago mixto registrado correctamente', 'success');
+        } else {
+            const response = await fetch('/api/pago-cuota/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    id_cuota_venta: parseInt(idCuota),
+                    metodo_pago: metodoPago,
+                    monto: montoPago
+                })
+            });
+            
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Error al registrar el pago');
+            }
+            
+            mostrarToast('Pago registrado correctamente', 'success');
+        }
+        
+        // Ocultar formulario
+        ocultarFormularioPagoCuota();
+        
+        // Recargar el detalle
+        await mostrarDetalleVenta(parseInt(idVenta));
+        
+    } catch (error) {
+        console.error('Error en pago:', error);
+        mostrarToast(error.message, 'danger');
+    }
+}
+
+
+function manejarPagoCuota(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const btn = e.currentTarget;
+    const idCuota = btn.dataset.idCuota;
+    const monto = btn.dataset.monto;
+    const numero = btn.dataset.numero;
+    const idVenta = btn.dataset.idVenta;
+    
+    console.log('Botón pagar:', { idCuota, monto, numero, idVenta });
+    
+    if (!idCuota || !monto || !idVenta) {
+        mostrarToast('Error: Datos de la cuota incompletos', 'danger');
+        return;
+    }
+    
+    mostrarFormularioPagoCuota(idCuota, monto, numero, idVenta);
+}
+
+
+// ============================================
 // MOSTRAR DETALLE DE VENTA
+// ============================================
 async function mostrarDetalleVenta(id) {
     try {
         const response = await fetch(`/api/ventas/${id}`);
@@ -284,51 +534,71 @@ async function mostrarDetalleVenta(id) {
         
         limpiarBackdrops();
         
-        document.getElementById('detalleNumeroNota').textContent = venta.numero_nota_venta || '-';
-        document.getElementById('detalleCliente').textContent = venta.cliente || '-';
-        document.getElementById('detalleFecha').textContent = formatearFecha(venta.fecha_venta);
-        document.getElementById('detalleUsuario').textContent = venta.usuario || '-';
+        const setText = (idEl, value) => {
+            const el = document.getElementById(idEl);
+            if (el) el.textContent = value;
+        };
+        
+        const setHtml = (idEl, value) => {
+            const el = document.getElementById(idEl);
+            if (el) el.innerHTML = value;
+        };
+        
+        const tbodyProductos = document.getElementById('detalleProductos');
+        const tbodyPagos = document.getElementById('detallePagos');
+        const tbodyCuotas = document.getElementById('detalleCuotas');
+        
+        if (tbodyProductos) tbodyProductos.innerHTML = '';
+        if (tbodyPagos) tbodyPagos.innerHTML = '';
+        if (tbodyCuotas) tbodyCuotas.innerHTML = '';
+        
+        setText('detalleNumeroNota', venta.numero_nota_venta || '-');
+        setText('detalleCliente', venta.cliente || '-');
+        setText('detalleFecha', formatearFecha(venta.fecha_venta));
+        setText('detalleUsuario', venta.usuario || '-');
         
         const modalidadBadge = document.getElementById('detalleModalidad');
-        modalidadBadge.textContent = venta.modalidad_pago;
-        modalidadBadge.className = venta.modalidad_pago === 'CONTADO' ? 'badge bg-success' : 'badge bg-warning';
+        if (modalidadBadge) {
+            modalidadBadge.textContent = venta.modalidad_pago;
+            modalidadBadge.className = venta.modalidad_pago === 'CONTADO' ? 'badge bg-success' : 'badge bg-warning';
+        }
         
-        document.getElementById('detalleTotal').innerHTML = `S/ ${parseFloat(venta.total_venta).toFixed(2)}`;
+        setHtml('detalleTotal', `S/ ${parseFloat(venta.total_venta).toFixed(2)}`);
         
         const deudaRow = document.getElementById('detalleDeudaRow');
         if (venta.modalidad_pago === 'CREDITO' && venta.deuda > 0) {
-            deudaRow.style.display = 'flex';
-            document.getElementById('detalleDeuda').innerHTML = `S/ ${parseFloat(venta.deuda).toFixed(2)}`;
+            if (deudaRow) deudaRow.style.display = 'flex';
+            setHtml('detalleDeuda', `S/ ${parseFloat(venta.deuda).toFixed(2)}`);
         } else {
-            deudaRow.style.display = 'none';
+            if (deudaRow) deudaRow.style.display = 'none';
         }
         
         const estadoBadge = document.getElementById('detalleEstado');
-        if (venta.estado === 1) {
-            estadoBadge.textContent = 'Activa';
-            estadoBadge.className = 'badge bg-success';
-        } else {
-            estadoBadge.textContent = 'Anulada';
-            estadoBadge.className = 'badge bg-secondary';
+        if (estadoBadge) {
+            if (venta.estado === 1) {
+                estadoBadge.textContent = 'Activa';
+                estadoBadge.className = 'badge bg-success';
+            } else {
+                estadoBadge.textContent = 'Anulada';
+                estadoBadge.className = 'badge bg-secondary';
+            }
         }
         
         const observacionRow = document.getElementById('detalleObservacionRow');
         if (venta.observacion && venta.observacion.trim() !== '') {
-            observacionRow.style.display = 'block';
-            document.getElementById('detalleObservacion').textContent = venta.observacion;
+            if (observacionRow) observacionRow.style.display = 'block';
+            setText('detalleObservacion', venta.observacion);
         } else {
-            observacionRow.style.display = 'none';
+            if (observacionRow) observacionRow.style.display = 'none';
         }
         
-        const tbodyProductos = document.getElementById('detalleProductos');
-        tbodyProductos.innerHTML = '';
         let totalProductos = 0;
-        if (venta.detalles) {
+        if (tbodyProductos && venta.detalles && venta.detalles.length > 0) {
             venta.detalles.forEach(det => {
                 const subtotal = det.precio_unitario * det.cantidad;
                 totalProductos += subtotal;
                 tbodyProductos.innerHTML += `
-                    <tr class="small">
+                    <tr>
                         <td>${det.producto || '-'}</td>
                         <td class="text-end">S/ ${parseFloat(det.precio_unitario).toFixed(2)}</td>
                         <td class="text-center">${det.cantidad}</td>
@@ -337,16 +607,14 @@ async function mostrarDetalleVenta(id) {
                 `;
             });
         }
-        document.getElementById('detalleProductosTotal').innerHTML = `S/ ${totalProductos.toFixed(2)}`;
+        setHtml('detalleProductosTotal', `S/ ${totalProductos.toFixed(2)}`);
         
         const pagosSection = document.getElementById('detallePagosSection');
-        if (venta.pagos && venta.pagos.length > 0) {
-            pagosSection.style.display = 'block';
-            const tbodyPagos = document.getElementById('detallePagos');
-            tbodyPagos.innerHTML = '';
+        if (tbodyPagos && venta.pagos && venta.pagos.length > 0) {
+            if (pagosSection) pagosSection.style.display = 'block';
             venta.pagos.forEach(pago => {
                 tbodyPagos.innerHTML += `
-                    <tr class="small">
+                    <tr>
                         <td><span class="badge bg-secondary">${pago.metodo_pago}</span></td>
                         <td class="text-end">S/ ${parseFloat(pago.monto).toFixed(2)}</td>
                         <td class="text-end">${pago.fecha_pago || '-'}</td>
@@ -354,33 +622,51 @@ async function mostrarDetalleVenta(id) {
                 `;
             });
         } else {
-            pagosSection.style.display = 'none';
+            if (pagosSection) pagosSection.style.display = 'none';
         }
         
         const cuotasSection = document.getElementById('detalleCuotasSection');
-        if (venta.cuotas && venta.cuotas.length > 0) {
-            cuotasSection.style.display = 'block';
-            const tbodyCuotas = document.getElementById('detalleCuotas');
-            tbodyCuotas.innerHTML = '';
+        if (tbodyCuotas && venta.modalidad_pago === 'CREDITO' && venta.cuotas && venta.cuotas.length > 0) {
+            if (cuotasSection) cuotasSection.style.display = 'block';
             venta.cuotas.forEach(cuota => {
                 const estadoCuota = cuota.estado === 1 
                     ? '<span class="badge bg-success">Pagada</span>' 
                     : '<span class="badge bg-warning">Pendiente</span>';
+                const botonPagar = cuota.estado === 0 
+                    ? `<button class="btn btn-sm btn-primary btnPagarCuota ms-1" 
+                               data-id-cuota="${cuota.id}" 
+                               data-monto="${cuota.monto}" 
+                               data-numero="${cuota.numero_cuota}" 
+                               data-id-venta="${venta.id}">
+                            <i class="bi bi-credit-card"></i> Pagar
+                        </button>` 
+                    : '';
                 tbodyCuotas.innerHTML += `
-                    <tr class="small">
-                        <td>Cuota ${cuota.numero_cuota}</td>
+                    <tr>
+                        <td class="text-center">${cuota.numero_cuota}</td>
                         <td class="text-end">S/ ${parseFloat(cuota.monto).toFixed(2)}</td>
-                        <td class="text-end">${cuota.fecha_vencimiento || '-'}</td>
-                        <td class="text-end">${estadoCuota}</td>
+                        <td class="text-center">${cuota.fecha_vencimiento || '-'}</td>
+                        <td class="text-center">${estadoCuota}</td>
+                        <td class="text-center">${botonPagar}</td>
                     </tr>
                 `;
             });
+            
+            setTimeout(() => {
+                document.querySelectorAll('#detalleCuotas .btnPagarCuota').forEach(btn => {
+                    btn.removeEventListener('click', manejarPagoCuota);
+                    btn.addEventListener('click', manejarPagoCuota);
+                });
+            }, 100);
         } else {
-            cuotasSection.style.display = 'none';
+            if (cuotasSection) cuotasSection.style.display = 'none';
         }
+        
+        ocultarFormularioPagoCuota();
         
         const modal = new bootstrap.Modal(document.getElementById('modalDetalleVenta'));
         modal.show();
+        
     } catch (error) {
         console.error(error);
         mostrarToast('Error al cargar detalles', 'danger');
@@ -388,7 +674,9 @@ async function mostrarDetalleVenta(id) {
 }
 
 
-// BUSCAR CLIENTE POR DNI/RUC
+// ============================================
+// BUSCAR CLIENTE
+// ============================================
 function setupBusquedaClienteVenta() {
     const btnBuscar = document.getElementById('btnBuscarClienteVenta');
     if (!btnBuscar) return;
@@ -401,14 +689,17 @@ function setupBusquedaClienteVenta() {
             mostrarToast('Ingrese un número de documento', 'warning');
             return;
         }
+        
         if (!tipoDoc) {
             mostrarToast('Seleccione el tipo de documento', 'warning');
             return;
         }
+        
         if (tipoDoc === 'DNI' && !/^\d{8}$/.test(numeroDoc)) {
             mostrarToast('El DNI debe tener 8 dígitos', 'warning');
             return;
         }
+        
         if (tipoDoc === 'RUC' && !/^\d{11}$/.test(numeroDoc)) {
             mostrarToast('El RUC debe tener 11 dígitos', 'warning');
             return;
@@ -421,10 +712,20 @@ function setupBusquedaClienteVenta() {
         try {
             const response = await fetch(`/api/clientes/consultar-documento?numero=${numeroDoc}&tipo=${tipoDoc}`);
             const data = await response.json();
-            if (!response.ok) throw new Error(data.error);
+            
+            if (!response.ok) {
+                throw new Error(data.error || 'Error al consultar el documento');
+            }
             
             document.getElementById('nombre_cliente').value = data.nombre || '';
             document.getElementById('apellido_cliente').value = data.apellido || '';
+            
+            if (data.telefono && !document.getElementById('telefono_cliente').value) {
+                document.getElementById('telefono_cliente').value = data.telefono;
+            }
+            if (data.correo && !document.getElementById('correo_cliente').value) {
+                document.getElementById('correo_cliente').value = data.correo;
+            }
             
             const clientesResponse = await fetch('/api/clientes');
             const clientes = await clientesResponse.json();
@@ -432,8 +733,6 @@ function setupBusquedaClienteVenta() {
             
             if (clienteExistente) {
                 document.getElementById('id_cliente').value = clienteExistente.id;
-                document.getElementById('telefono_cliente').value = clienteExistente.telefono || '';
-                document.getElementById('correo_cliente').value = clienteExistente.correo || '';
                 document.getElementById('clienteNoExistenteAlert').style.display = 'none';
                 mostrarToast('Cliente encontrado en el sistema', 'success');
             } else {
@@ -442,13 +741,8 @@ function setupBusquedaClienteVenta() {
                 mostrarToast('Cliente no registrado. Se registrará automáticamente al guardar', 'info');
             }
             
-            if (data.telefono && !document.getElementById('telefono_cliente').value) {
-                document.getElementById('telefono_cliente').value = data.telefono;
-            }
-            if (data.correo && !document.getElementById('correo_cliente').value) {
-                document.getElementById('correo_cliente').value = data.correo;
-            }
         } catch (error) {
+            console.error('Error:', error);
             mostrarToast(error.message || 'Error al consultar', 'danger');
             document.getElementById('nombre_cliente').value = '';
             document.getElementById('apellido_cliente').value = '';
@@ -475,7 +769,44 @@ function setupBusquedaClienteVenta() {
 }
 
 
+// ============================================
+// VALIDACIONES EN TIEMPO REAL
+// ============================================
+function setupValidacionesTiempoRealCliente() {
+    const tipoDocumento = document.getElementById('tipo_documento_cliente');
+    const numeroDocumento = document.getElementById('numero_documento_cliente');
+    const telefono = document.getElementById('telefono_cliente');
+    const nombre = document.getElementById('nombre_cliente');
+    const apellido = document.getElementById('apellido_cliente');
+    
+    if (tipoDocumento) {
+        tipoDocumento.addEventListener('change', () => {
+            if (numeroDocumento) {
+                numeroDocumento.value = '';
+                numeroDocumento.oninput = () => soloNumeros(numeroDocumento);
+                if (tipoDocumento.value === 'DNI') {
+                    numeroDocumento.maxLength = 8;
+                    numeroDocumento.placeholder = 'Ej: 12345678';
+                } else if (tipoDocumento.value === 'RUC') {
+                    numeroDocumento.maxLength = 11;
+                    numeroDocumento.placeholder = 'Ej: 20123456789';
+                } else {
+                    numeroDocumento.maxLength = 11;
+                    numeroDocumento.placeholder = 'Ej: 12345678';
+                }
+            }
+        });
+    }
+    
+    if (telefono) telefono.oninput = () => soloNumeros(telefono);
+    if (nombre) nombre.oninput = () => soloLetrasYEspacios(nombre);
+    if (apellido) apellido.oninput = () => soloLetrasYEspacios(apellido);
+}
+
+
+// ============================================
 // MODALIDAD DE PAGO
+// ============================================
 function setupModalidadPago() {
     const modalidadPago = getElement('modalidad_pago');
     if (!modalidadPago) return;
@@ -483,7 +814,10 @@ function setupModalidadPago() {
     modalidadPago.addEventListener('change', () => {
         const isCredito = modalidadPago.value === 'CREDITO';
         const divCredito = document.getElementById('div_credito_fields');
-        if (divCredito) divCredito.style.display = isCredito ? 'block' : 'none';
+        if (divCredito) {
+            divCredito.style.display = isCredito ? 'block' : 'none';
+        }
+        
         if (isCredito) {
             setTimeout(() => calcularYMostrarCuotas(), 100);
         } else {
@@ -494,7 +828,9 @@ function setupModalidadPago() {
 }
 
 
-// AGREGAR PRODUCTO (CORREGIDO)
+// ============================================
+// PRODUCTOS
+// ============================================
 function cargarSelectProductos(filtro = '') {
     const selectProducto = document.getElementById('selectProducto');
     if (!selectProducto) return;
@@ -509,52 +845,31 @@ function cargarSelectProductos(filtro = '') {
         );
     }
     
-    selectProducto.innerHTML = '<option value="">Seleccione producto</option>';
+    selectProducto.innerHTML = '<option value="">-- Seleccione un producto --</option>';
     
-    productosFiltrados.forEach(producto => {
-        selectProducto.innerHTML += `<option value="${producto.id}" data-precio="${producto.precio}" data-stock="${producto.stock}" data-unidad="${producto.unidad_abreviatura}">${producto.nombre} - Stock: ${producto.stock} ${producto.unidad_abreviatura || ''}</option>`;
-    });
-}
-
-
-//Agregar producto
-function setupAgregarProducto() {
-    const btnAgregar = document.getElementById('btnAgregarProducto');
-    const btnConfirmar = document.getElementById('btnConfirmarAgregar');
-    const btnCancelar = document.getElementById('btnCancelarAgregarProducto');
-    const buscarInput = document.getElementById('buscarProductoInput');
-    const selectProducto = document.getElementById('selectProducto');
-    
-    // Abrir modal de producto
-    if (btnAgregar) {
-        btnAgregar.addEventListener('click', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            
-            // Resetear campos del modal de producto
-            if (buscarInput) buscarInput.value = '';
-            if (selectProducto) selectProducto.value = '';
-            document.getElementById('precioUnitario').value = '';
-            document.getElementById('stockDisponible').value = '';
-            document.getElementById('cantidadProducto').value = '1';
-            
-            // Cargar productos
-            cargarSelectProductos('');
-            
-            // Abrir solo el modal de producto
-            const modalProducto = new bootstrap.Modal(document.getElementById('modalAgregarProducto'));
-            modalProducto.show();
+    if (productosFiltrados.length === 0) {
+        selectProducto.innerHTML += '<option value="" disabled>No se encontraron productos</option>';
+    } else {
+        productosFiltrados.forEach(producto => {
+            const stockClass = producto.stock <= producto.stock_minimo ? 'text-danger' : 'text-success';
+            selectProducto.innerHTML += `<option value="${producto.id}" data-precio="${producto.precio}" data-stock="${producto.stock}" data-unidad="${producto.unidad_abreviatura}">
+                ${producto.nombre} - <span class="${stockClass}">Stock: ${producto.stock} ${producto.unidad_abreviatura || ''}</span>
+            </option>`;
         });
     }
+}
+
+function setupAgregarProducto() {
+    const selectProducto = document.getElementById('selectProducto');
+    const buscarInput = document.getElementById('buscarProductoInput');
+    const btnAgregarLista = document.getElementById('btnAgregarProductoLista');
     
-    // Búsqueda en tiempo real
     if (buscarInput) {
         buscarInput.addEventListener('input', (e) => {
             cargarSelectProductos(e.target.value);
         });
     }
     
-    // Seleccionar producto del select
     if (selectProducto) {
         selectProducto.addEventListener('change', () => {
             const selectedOption = selectProducto.options[selectProducto.selectedIndex];
@@ -564,29 +879,12 @@ function setupAgregarProducto() {
             
             document.getElementById('precioUnitario').value = precio ? parseFloat(precio).toFixed(2) : '';
             document.getElementById('stockDisponible').value = stock ? `${stock} ${unidad || ''}` : '';
+            document.getElementById('cantidadProducto').value = '1';
         });
     }
     
-    // Cancelar (solo cierra el modal de producto)
-    if (btnCancelar) {
-        btnCancelar.addEventListener('click', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            
-            const modalProducto = bootstrap.Modal.getInstance(document.getElementById('modalAgregarProducto'));
-            if (modalProducto) {
-                modalProducto.hide();
-            }
-            limpiarBackdrops();
-        });
-    }
-    
-    // Confirmar agregar producto
-    if (btnConfirmar) {
-        btnConfirmar.addEventListener('click', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            
+    if (btnAgregarLista) {
+        btnAgregarLista.addEventListener('click', () => {
             const productoId = selectProducto?.value;
             const productoNombre = selectProducto?.options[selectProducto.selectedIndex]?.text?.split(' -')[0];
             const precio = parseFloat(document.getElementById('precioUnitario')?.value);
@@ -609,42 +907,37 @@ function setupAgregarProducto() {
                 return;
             }
             
-            // Agregar producto a la lista
-            productosSeleccionados.push({
-                id_producto: parseInt(productoId),
-                producto_nombre: productoNombre,
-                precio_unitario: precio,
-                cantidad: cantidad
-            });
+            const productoExistente = productosSeleccionados.find(p => p.id_producto === parseInt(productoId));
+            if (productoExistente) {
+                productoExistente.cantidad += cantidad;
+                productoExistente.precio_unitario = precio;
+                actualizarTablaProductos();
+                mostrarToast('Producto actualizado en la lista', 'success');
+            } else {
+                productosSeleccionados.push({
+                    id_producto: parseInt(productoId),
+                    producto_nombre: productoNombre,
+                    precio_unitario: precio,
+                    cantidad: cantidad
+                });
+                actualizarTablaProductos();
+                mostrarToast('Producto agregado correctamente', 'success');
+            }
             
-            // Actualizar tabla de productos en el modal principal
-            actualizarTablaProductos();
-            
-            // Limpiar campos del modal de producto
             if (selectProducto) selectProducto.value = '';
             if (buscarInput) buscarInput.value = '';
             document.getElementById('cantidadProducto').value = '1';
             document.getElementById('precioUnitario').value = '';
             document.getElementById('stockDisponible').value = '';
-            
-            // Cerrar SOLO el modal de producto
-            const modalProducto = bootstrap.Modal.getInstance(document.getElementById('modalAgregarProducto'));
-            if (modalProducto) {
-                modalProducto.hide();
-            }
-            
-            // Limpiar backdrops residuales
-            setTimeout(() => {
-                limpiarBackdrops();
-            }, 150);
-            
-            mostrarToast('Producto agregado correctamente', 'success');
+            cargarSelectProductos('');
         });
     }
 }
 
 
+// ============================================
 // GENERAR NÚMERO DE NOTA
+// ============================================
 function generarNumeroNota() {
     const fecha = new Date();
     const año = fecha.getFullYear();
@@ -655,7 +948,9 @@ function generarNumeroNota() {
 }
 
 
+// ============================================
 // GUARDAR VENTA
+// ============================================
 function setupGuardarVenta() {
     const btnGuardar = getElement('btnGuardarVenta');
     if (!btnGuardar) return;
@@ -671,6 +966,39 @@ function setupGuardarVenta() {
         const apellido_cliente = document.getElementById('apellido_cliente')?.value.trim();
         const telefono_cliente = document.getElementById('telefono_cliente')?.value.trim();
         const correo_cliente = document.getElementById('correo_cliente')?.value.trim();
+        
+        if (tipo_documento && numero_documento) {
+            const validDoc = validarDocumento(tipo_documento, numero_documento);
+            if (!validDoc.valido) {
+                mostrarToast(validDoc.mensaje, 'warning');
+                return;
+            }
+        }
+        
+        if (!nombre_cliente) {
+            mostrarToast('El nombre es obligatorio', 'warning');
+            return;
+        }
+        if (nombre_cliente.length < 2) {
+            mostrarToast('El nombre debe tener al menos 2 caracteres', 'warning');
+            return;
+        }
+        
+        if (telefono_cliente) {
+            const validTel = validarTelefono(telefono_cliente);
+            if (!validTel.valido) {
+                mostrarToast(validTel.mensaje, 'warning');
+                return;
+            }
+        }
+        
+        if (correo_cliente) {
+            const validCorreo = validarCorreo(correo_cliente);
+            if (!validCorreo.valido) {
+                mostrarToast(validCorreo.mensaje, 'warning');
+                return;
+            }
+        }
         
         if (!numero_documento) {
             mostrarToast('Ingrese el número de documento del cliente', 'warning');
@@ -794,18 +1122,29 @@ function setupGuardarVenta() {
 }
 
 
+// ============================================
 // NUEVA VENTA
+// ============================================
 function setupNuevaVenta() {
     const nuevoBtn = document.querySelector('[data-bs-target="#modalVenta"]');
     if (nuevoBtn) {
-        nuevoBtn.addEventListener('click', () => {
+        const nuevoBtnClone = nuevoBtn.cloneNode(true);
+        nuevoBtn.parentNode.replaceChild(nuevoBtnClone, nuevoBtn);
+        
+        nuevoBtnClone.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
             limpiarFormulario();
+            const modalVenta = new bootstrap.Modal(document.getElementById('modalVenta'));
+            modalVenta.show();
         });
     }
 }
 
 
+// ============================================
 // CALCULAR CUOTAS
+// ============================================
 function calcularYMostrarCuotas() {
     const totalVentaValue = totalVenta;
     const pagoInicial = parseFloat(document.getElementById('pago_inicial')?.value) || 0;
@@ -817,20 +1156,39 @@ function calcularYMostrarCuotas() {
     if (modalidadPago === 'CREDITO' && cantidadCuotas > 0 && totalVentaValue > pagoInicial) {
         const montoFinanciar = totalVentaValue - pagoInicial;
         const montoPorCuota = montoFinanciar / cantidadCuotas;
-        document.getElementById('montoFinanciar').innerHTML = `S/ ${montoFinanciar.toFixed(2)}`;
+        
+        const montoFinanciarSpan = document.getElementById('montoFinanciar');
+        if (montoFinanciarSpan) {
+            montoFinanciarSpan.innerHTML = `S/ ${montoFinanciar.toFixed(2)}`;
+        }
         
         const tbody = document.getElementById('tablaResumenCuotas');
-        tbody.innerHTML = '';
-        let fechaActual = new Date();
-        const fechaInput = document.getElementById('fecha_venta');
-        if (fechaInput && fechaInput.value) fechaActual = new Date(fechaInput.value);
-        
-        for (let i = 1; i <= cantidadCuotas; i++) {
-            const fechaVencimiento = new Date(fechaActual);
-            fechaVencimiento.setDate(fechaVencimiento.getDate() + (intervaloDias * i));
-            const fechaStr = `${fechaVencimiento.getDate().toString().padStart(2, '0')}/${(fechaVencimiento.getMonth() + 1).toString().padStart(2, '0')}/${fechaVencimiento.getFullYear()}`;
-            tbody.innerHTML += `<tr><td class="text-center">${i}</td><td class="text-end">S/ ${montoPorCuota.toFixed(2)}</td><td class="text-end">${fechaStr}</td></tr>`;
+        if (tbody) {
+            tbody.innerHTML = '';
+            
+            let fechaActual = new Date();
+            const fechaInput = document.getElementById('fecha_venta');
+            if (fechaInput && fechaInput.value) {
+                fechaActual = new Date(fechaInput.value);
+            }
+            
+            for (let i = 1; i <= cantidadCuotas; i++) {
+                const fechaVencimiento = new Date(fechaActual);
+                fechaVencimiento.setDate(fechaVencimiento.getDate() + (intervaloDias * i));
+                
+                const meses = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+                const fechaFormateada = `${fechaVencimiento.getDate().toString().padStart(2, '0')} ${meses[fechaVencimiento.getMonth()]} ${fechaVencimiento.getFullYear()}`;
+                
+                tbody.innerHTML += `
+                    <tr>
+                        <td class="text-center fw-bold">${i}</td>
+                        <td class="text-end">S/ ${montoPorCuota.toFixed(2)}</td>
+                        <td class="text-center">${fechaFormateada}</td>
+                    </tr>
+                `;
+            }
         }
+        
         panelCuotas.style.display = 'block';
     } else {
         panelCuotas.style.display = 'none';
@@ -839,14 +1197,21 @@ function calcularYMostrarCuotas() {
 
 function setupCreditEventos() {
     const recalcular = () => calcularYMostrarCuotas();
-    document.getElementById('pago_inicial')?.addEventListener('input', recalcular);
-    document.getElementById('cantidad_cuotas')?.addEventListener('input', recalcular);
-    document.getElementById('intervalo_dias')?.addEventListener('input', recalcular);
-    document.getElementById('fecha_venta')?.addEventListener('change', recalcular);
+    const pagoInicial = document.getElementById('pago_inicial');
+    const cantidadCuotas = document.getElementById('cantidad_cuotas');
+    const intervaloDias = document.getElementById('intervalo_dias');
+    const fechaVenta = document.getElementById('fecha_venta');
+    
+    if (pagoInicial) pagoInicial.addEventListener('input', recalcular);
+    if (cantidadCuotas) cantidadCuotas.addEventListener('input', recalcular);
+    if (intervaloDias) intervaloDias.addEventListener('input', recalcular);
+    if (fechaVenta) fechaVenta.addEventListener('change', recalcular);
 }
 
 
+// ============================================
 // EVENTOS GLOBALES
+// ============================================
 function setupEventListeners() {
     document.body.addEventListener('click', async (e) => {
         if (!isCurrentPage()) return;
@@ -881,7 +1246,9 @@ function setupEventListeners() {
 }
 
 
+// ============================================
 // INICIALIZACIÓN
+// ============================================
 export async function init() {
     if (!isCurrentPage()) return;
     
@@ -901,6 +1268,31 @@ export async function init() {
     setupAgregarProducto();
     setupBusquedaClienteVenta();
     setupCreditEventos();
+    setupValidacionesTiempoRealCliente();
+    
+    const pagoEsMixto = document.getElementById('pagoEsMixto');
+    const pagoMixtoForm = document.getElementById('pagoMixtoForm');
+    if (pagoEsMixto && pagoMixtoForm) {
+        const newChk = pagoEsMixto.cloneNode(true);
+        pagoEsMixto.parentNode.replaceChild(newChk, pagoEsMixto);
+        newChk.addEventListener('change', (e) => {
+            pagoMixtoForm.style.display = e.target.checked ? 'block' : 'none';
+        });
+    }
+    
+    const btnCerrarFormaPago = document.getElementById('btnCerrarFormaPago');
+    if (btnCerrarFormaPago) {
+        const newBtn = btnCerrarFormaPago.cloneNode(true);
+        btnCerrarFormaPago.parentNode.replaceChild(newBtn, btnCerrarFormaPago);
+        newBtn.addEventListener('click', ocultarFormularioPagoCuota);
+    }
+    
+    const btnConfirmarPagoIntegrado = document.getElementById('btnConfirmarPagoCuotaIntegrado');
+    if (btnConfirmarPagoIntegrado) {
+        const newBtn = btnConfirmarPagoIntegrado.cloneNode(true);
+        btnConfirmarPagoIntegrado.parentNode.replaceChild(newBtn, btnConfirmarPagoIntegrado);
+        newBtn.addEventListener('click', confirmarPagoCuotaIntegrado);
+    }
     
     const buscarInput = getElement('buscarVenta');
     const filtroCantidad = getElement('filtroCantidad');
@@ -914,6 +1306,7 @@ export async function init() {
     await cargarVentas();
 }
 
+
 export function destroy() {
     eventosInicializados = false;
     elementos = {};
@@ -923,7 +1316,5 @@ export function destroy() {
     productosSeleccionados = [];
     totalVenta = 0;
 }
-
-
 
 
