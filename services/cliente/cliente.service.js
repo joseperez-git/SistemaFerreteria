@@ -8,6 +8,13 @@ exports.getClientes = async () => {
 };
 
 
+//OBTENER CLIENTE POR ID
+exports.getClienteById = async (id) => {
+    const [rows] = await db.query('CALL sp_obtener_cliente(?)', [id]);
+    return rows[0][0];
+};
+
+
 // CREAR CLIENTE
 exports.createCliente = async (body) => {
     const { tipo_documento, numero_documento, nombre, apellido, telefono, correo } = body;

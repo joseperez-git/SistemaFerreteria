@@ -63,12 +63,10 @@
     </div>
 </div>
 
-
-<!-- Modal Venta (Tamaño optimizado) -->
+<!-- Modal Venta -->
 <div class="modal fade" id="modalVenta" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
     <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable" style="max-width: 800px;">
         <div class="modal-content shadow-lg border-0" style="border-radius: 24px; overflow: hidden; max-height: 90vh;">
-            <!-- HEADER FIJO -->
             <div class="modal-header border-0 p-3" style="background: linear-gradient(135deg, #1a2a3a 0%, #0f1724 100%);">
                 <div class="d-flex align-items-center gap-2">
                     <div class="me-2">
@@ -82,12 +80,10 @@
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             
-            <!-- BODY CON SCROLL INTERNO -->
             <div class="modal-body p-3" style="background: #f8fafc; overflow-y: auto; max-height: calc(90vh - 130px);">
                 <form id="formVenta">
                     <input type="hidden" id="ventaId">
                     
-                    <!-- ========== DATOS PRINCIPALES ========== -->
                     <div class="row g-2 mb-3">
                         <div class="col-md-4">
                             <label class="form-label fw-semibold text-secondary mb-0 small">N° Nota de Venta</label>
@@ -107,7 +103,6 @@
                         </div>
                     </div>
 
-                    <!-- ===== SECCIÓN CLIENTE ===== -->
                     <div class="card border-0 shadow-sm mb-3" style="border-radius: 16px;">
                         <div class="card-header bg-white border-0 pt-2 pb-0" style="border-radius: 16px 16px 0 0;">
                             <h6 class="fw-bold mb-0 small">
@@ -117,7 +112,6 @@
                         </div>
                         <div class="card-body p-2">
                             <div class="row g-1 align-items-end">
-                                <!-- Tipo de Documento -->
                                 <div class="col-md-3">
                                     <label class="form-label mb-0 small text-muted">Tipo Doc.</label>
                                     <select class="form-select form-select-sm" id="tipo_documento_cliente" style="font-size: 0.75rem;">
@@ -126,8 +120,6 @@
                                         <option value="RUC">RUC</option>
                                     </select>
                                 </div>
-                                
-                                <!-- Número de Documento con botón de búsqueda SUNAT -->
                                 <div class="col-md-5">
                                     <label class="form-label mb-0 small text-muted">Número de Documento</label>
                                     <div class="input-group input-group-sm">
@@ -140,8 +132,6 @@
                                         </button>
                                     </div>
                                 </div>
-                                
-                                <!-- Botón limpiar -->
                                 <div class="col-md-4">
                                     <label class="form-label mb-0 small text-muted">&nbsp;</label>
                                     <button type="button" class="btn btn-outline-secondary btn-sm w-100" id="btnLimpiarCliente" style="font-size: 0.7rem;">
@@ -149,8 +139,6 @@
                                     </button>
                                 </div>
                             </div>
-                            
-                            <!-- Campos del cliente (EDITABLES) -->
                             <div class="row g-1 mt-2">
                                 <div class="col-md-6">
                                     <label class="form-label mb-0 small text-muted">Nombre / Razón Social</label>
@@ -173,7 +161,6 @@
                                     <input type="email" class="form-control form-control-sm" id="correo_cliente" placeholder="cliente@email.com" style="font-size: 0.75rem;">
                                 </div>
                             </div>
-                            
                             <input type="hidden" id="id_cliente" value="">
                             <div id="clienteNoExistenteAlert" class="alert alert-warning mt-1 mb-0 py-1" style="display: none; font-size: 0.65rem;">
                                 <i class="bi bi-info-circle me-1"></i> Este cliente no está registrado. Se registrará automáticamente al guardar.
@@ -181,7 +168,6 @@
                         </div>
                     </div>
 
-                    <!-- ========== SECCIÓN PRODUCTOS ========== -->
                     <div class="card border-0 shadow-sm mb-3" style="border-radius: 16px;">
                         <div class="card-header bg-white border-0 pt-2 pb-0 d-flex justify-content-between align-items-center" style="border-radius: 16px 16px 0 0;">
                             <h6 class="fw-bold mb-0 small">
@@ -224,7 +210,6 @@
                                     </button>
                                 </div>
                             </div>
-                            
                             <div class="table-responsive mt-2">
                                 <table class="table table-sm table-hover mb-0">
                                     <thead class="table-light">
@@ -249,7 +234,6 @@
                         </div>
                     </div>
 
-                    <!-- ========== CRÉDITO ========== -->
                     <div id="div_credito_fields" class="card border-0 shadow-sm mb-3" style="border-radius: 16px; display: none;">
                         <div class="card-header bg-white border-0 pt-2 pb-0" style="border-radius: 16px 16px 0 0;">
                             <h6 class="fw-bold mb-0 small">
@@ -295,7 +279,6 @@
                         </div>
                     </div>
                     
-                    <!-- ========== OBSERVACIÓN ========== -->
                     <div class="mb-2">
                         <label class="form-label fw-semibold text-secondary mb-0 small">Observación</label>
                         <textarea class="form-control form-control-sm" id="observacion" rows="2" placeholder="Observaciones adicionales..." style="font-size: 0.75rem;"></textarea>
@@ -303,7 +286,6 @@
                 </form>
             </div>
             
-            <!-- FOOTER FIJO -->
             <div class="modal-footer border-0 p-2 bg-light" style="border-top: 1px solid #e9ecef;">
                 <button type="button" class="btn btn-light border btn-sm px-3" data-bs-dismiss="modal">
                     <i class="bi bi-x-circle me-1"></i> Cancelar
@@ -315,7 +297,6 @@
         </div>
     </div>
 </div>
-
 
 <!-- Modal Confirmación -->
 <div class="modal fade" id="modalConfirmacionVenta" tabindex="-1">
@@ -334,12 +315,10 @@
     </div>
 </div>
 
-
-<!-- Modal Detalle de Venta (con pago de cuotas integrado) -->
+<!-- Modal Detalle de Venta -->
 <div class="modal fade" id="modalDetalleVenta" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
     <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable" style="max-width: 750px;">
         <div class="modal-content border-0 shadow-lg" style="border-radius: 20px; overflow: hidden;">
-            <!-- Header -->
             <div class="modal-header border-0 p-2" style="background: linear-gradient(135deg, #1a2a3a 0%, #0f1724 100%);">
                 <div class="d-flex align-items-center gap-2">
                     <i class="bi bi-receipt text-white fs-5"></i>
@@ -351,9 +330,7 @@
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             
-            <!-- Body con scroll interno -->
             <div class="modal-body p-2" style="background: #f8fafc; max-height: 70vh; overflow-y: auto;">
-                <!-- Info básica -->
                 <div class="row g-1 mb-2">
                     <div class="col-6">
                         <div class="bg-white rounded p-1 shadow-sm">
@@ -389,11 +366,14 @@
                                 <span class="text-muted">Estado:</span>
                                 <span id="detalleEstado" class="badge bg-success">Activa</span>
                             </div>
+                            <div class="d-flex justify-content-between small mt-1" id="detalleOrigenRow" style="display: none;">
+                                <span class="text-muted">Origen:</span>
+                                <span class="fw-semibold" id="detalleOrigen">-</span>
+                            </div>
                         </div>
                     </div>
                 </div>
                 
-                <!-- Productos -->
                 <div class="card border-0 shadow-sm mb-2">
                     <div class="card-header bg-white border-0 pt-1 pb-0">
                         <h6 class="fw-bold mb-0 small">Productos</h6>
@@ -421,7 +401,6 @@
                     </div>
                 </div>
                 
-                <!-- Pagos Realizados -->
                 <div id="detallePagosSection" style="display: none;" class="mb-2">
                     <div class="card border-0 shadow-sm">
                         <div class="card-header bg-white border-0 pt-1 pb-0">
@@ -437,7 +416,6 @@
                     </div>
                 </div>
                 
-                <!-- Cuotas con formulario de pago integrado -->
                 <div id="detalleCuotasSection" style="display: none;">
                     <div class="card border-0 shadow-sm">
                         <div class="card-header bg-white border-0 pt-1 pb-0">
@@ -452,7 +430,7 @@
                                             <th class="text-end">Monto</th>
                                             <th class="text-center">Vencimiento</th>
                                             <th class="text-center">Estado</th>
-                                            <th></th>
+                                            <th class="text-center">Acciones</th>
                                         </tr>
                                     </thead>
                                     <tbody id="detalleCuotas"></tbody>
@@ -462,7 +440,6 @@
                     </div>
                 </div>
                 
-                <!-- Formulario de pago de cuota (se muestra al hacer clic en Pagar) -->
                 <div id="formPagoCuotaContainer" style="display: none;" class="mt-2">
                     <div class="card border-0 shadow-sm" style="border-left: 4px solid #0d6efd;">
                         <div class="card-header bg-white border-0 pt-2 pb-0">
@@ -541,16 +518,171 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- PAGO ADICIONAL -->
+                <div id="detallePagoAdicionalRow" style="display: none;" class="mt-2">
+                    <hr>
+                    <div class="row g-2">
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">Monto a Pagar</label>
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text">S/</span>
+                                <input type="number" step="0.01" class="form-control" id="montoPagoAdicional" value="0" min="0">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">Método de Pago</label>
+                            <select class="form-select form-select-sm" id="metodoPagoAdicional">
+                                <option value="">Seleccione</option>
+                                <option value="EFECTIVO">Efectivo</option>
+                                <option value="YAPE">Yape</option>
+                                <option value="PLIN">Plin</option>
+                                <option value="TRANSFERENCIA">Transferencia</option>
+                                <option value="TARJETA">Tarjeta</option>
+                            </select>
+                        </div>
+                        <div class="col-12">
+                            <button type="button" class="btn btn-sm btn-primary w-100" id="btnRegistrarPagoAdicional">
+                                <i class="bi bi-plus-circle me-1"></i> Registrar Pago Adicional
+                            </button>
+                        </div>
+                    </div>
+                </div>
                 
-                <!-- Observación -->
-                <div id="detalleObservacionRow" style="display: none;" class="mt-1">
-                    <div class="alert alert-light small mb-0 py-0 px-1">
-                        <i class="bi bi-chat me-1"></i> <span id="detalleObservacion">-</span>
+                <div class="modal-footer border-0 py-1 bg-light">
+                    <div class="btn-group me-auto" role="group">
+                        <button type="button" class="btn btn-sm btn-outline-info" id="btnReenviarNotaCorreo">
+                            <i class="bi bi-envelope"></i> Reenviar Nota
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-success" id="btnReenviarNotaWhatsApp">
+                            <i class="bi bi-whatsapp"></i> Enviar WhatsApp
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" id="btnVerPedidoOrigen" style="display: none;">
+                            <i class="bi bi-truck"></i> Ver Pedido
+                        </button>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                </div>
+                
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- Modal Detalle de Pedido (independiente para ventas) -->
+<div class="modal fade" id="modalDetallePedidoVenta" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable" style="max-width: 700px;">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 20px; overflow: hidden;">
+            <div class="modal-header border-0 p-2" style="background: linear-gradient(135deg, #1a2a3a 0%, #0f1724 100%);">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="bi bi-truck text-white fs-5"></i>
+                    <div>
+                        <h6 class="modal-title text-white fw-bold mb-0">Detalle de Pedido</h6>
+                        <small class="text-white-50" id="detallePedidoNumero" style="font-size: 0.7rem;">-</small>
+                    </div>
+                </div>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            
+            <div class="modal-body p-2" style="background: #f8fafc; max-height: 70vh; overflow-y: auto;">
+                <div class="row g-1 mb-2">
+                    <div class="col-6">
+                        <div class="bg-white rounded p-1 shadow-sm">
+                            <div class="d-flex justify-content-between small">
+                                <span class="text-muted">Cliente:</span>
+                                <span class="fw-semibold" id="detallePedidoCliente">-</span>
+                            </div>
+                            <div class="d-flex justify-content-between small mt-1">
+                                <span class="text-muted">Fecha:</span>
+                                <span class="fw-semibold" id="detallePedidoFecha">-</span>
+                            </div>
+                            <div class="d-flex justify-content-between small mt-1">
+                                <span class="text-muted">Usuario:</span>
+                                <span class="fw-semibold" id="detallePedidoUsuario">-</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="bg-white rounded p-1 shadow-sm">
+                            <div class="d-flex justify-content-between small">
+                                <span class="text-muted">Total:</span>
+                                <span class="fw-bold text-primary" id="detallePedidoTotal">S/ 0.00</span>
+                            </div>
+                            <div class="d-flex justify-content-between small mt-1">
+                                <span class="text-muted">Estado:</span>
+                                <span id="detallePedidoEstado" class="badge bg-warning text-dark">Pendiente</span>
+                            </div>
+                            <div class="d-flex justify-content-between small mt-1">
+                                <span class="text-muted">Observación:</span>
+                                <span class="fw-semibold small" id="detallePedidoObservacion">-</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Información de Entrega -->
+                <div id="detallePedidoEntregaSection" class="card border-0 shadow-sm mb-2">
+                    <div class="card-header bg-white border-0 pt-1 pb-0">
+                        <h6 class="fw-bold mb-0 small" id="detallePedidoTipoEntregaTitulo">Información de Entrega</h6>
+                    </div>
+                    <div class="card-body p-2">
+                        <div id="detallePedidoRecojoInfo">
+                            <div class="row g-1">
+                                <div class="col-12">
+                                    <span class="text-muted small">Fecha de Recogida:</span>
+                                    <span class="fw-semibold small" id="detallePedidoFechaRecojo">-</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="detallePedidoEnvioInfo" style="display: none;">
+                            <div class="row g-1">
+                                <div class="col-6">
+                                    <span class="text-muted small">Fecha de Envío:</span>
+                                    <span class="fw-semibold small" id="detallePedidoFechaEnvio">-</span>
+                                </div>
+                                <div class="col-6">
+                                    <span class="text-muted small">Costo de Envío:</span>
+                                    <span class="fw-semibold small" id="detallePedidoCostoEnvio">S/ 0.00</span>
+                                </div>
+                                <div class="col-12">
+                                    <span class="text-muted small">Dirección de Envío:</span>
+                                    <span class="fw-semibold small" id="detallePedidoDireccionEnvio">-</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Productos -->
+                <div class="card border-0 shadow-sm mb-2">
+                    <div class="card-header bg-white border-0 pt-1 pb-0">
+                        <h6 class="fw-bold mb-0 small">Productos</h6>
+                    </div>
+                    <div class="card-body p-1">
+                        <div class="table-responsive">
+                            <table class="table table-sm mb-0" style="font-size: 0.7rem;">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Producto</th>
+                                        <th class="text-end">Precio</th>
+                                        <th class="text-center">Cant</th>
+                                        <th class="text-end">Subtotal</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="detallePedidoProductos"></tbody>
+                                <tfoot class="table-light">
+                                    <tr>
+                                        <td colspan="3" class="text-end fw-bold">TOTAL:</td>
+                                        <td class="text-end fw-bold text-primary" id="detallePedidoProductosTotal">S/ 0.00</td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
                     </div>
                 </div>
             </div>
             
-            <!-- Footer -->
             <div class="modal-footer border-0 py-1 bg-light">
                 <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cerrar</button>
             </div>

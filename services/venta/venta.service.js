@@ -1,12 +1,10 @@
 const db = require('../../config/db');
 
-
 // LISTAR VENTAS
 exports.getVentas = async () => {
     const [rows] = await db.query('CALL sp_listar_ventas()');
     return rows[0];
 };
-
 
 // OBTENER VENTA POR ID
 exports.getVentaById = async (id) => {
@@ -14,13 +12,11 @@ exports.getVentaById = async (id) => {
     return rows[0][0];
 };
 
-
 // OBTENER DETALLES DE VENTA
 exports.getDetallesVenta = async (idVenta) => {
     const [rows] = await db.query('CALL sp_detalle_venta_listar_por_venta(?)', [idVenta]);
     return rows[0];
 };
-
 
 // OBTENER CUOTAS DE VENTA
 exports.getCuotasVenta = async (idVenta) => {
@@ -28,13 +24,17 @@ exports.getCuotasVenta = async (idVenta) => {
     return rows[0];
 };
 
+// OBTENER CUOTA POR ID
+exports.getCuotaById = async (idCuota) => {
+    const [rows] = await db.query('SELECT id, monto, numero_cuota, fecha_vencimiento, estado FROM cuota_venta WHERE id = ?', [idCuota]);
+    return rows[0];
+};
 
 // OBTENER PAGOS DE VENTA
 exports.getPagosVenta = async (idVenta) => {
     const [rows] = await db.query('CALL sp_pago_venta_listar_por_venta(?)', [idVenta]);
     return rows[0];
 };
-
 
 // CREAR VENTA
 exports.createVenta = async (body) => {
@@ -99,7 +99,6 @@ exports.createVenta = async (body) => {
             throw new Error('No se pudo obtener el ID de la venta');
         }
 
-        // 2. Registrar detalles (actualiza stock y movimiento)
         for (const item of productos) {
             await connection.query(
                 'CALL sp_detalle_venta_registrar(?, ?, ?, ?)',
@@ -107,13 +106,11 @@ exports.createVenta = async (body) => {
             );
         }
 
-        // 3. Registrar cuotas (si es crédito)
         if (modalidad_pago === 'CREDITO' && cantidad_cuotas > 0 && deuda > 0) {
             const montoCuota = deuda / cantidad_cuotas;
             const fechaVencimiento = new Date();
             
             for (let i = 1; i <= cantidad_cuotas; i++) {
-                // Sumar los días correctamente
                 fechaVencimiento.setDate(fechaVencimiento.getDate() + intervalo_dias);
                 const fechaVencimientoStr = fechaVencimiento.toISOString().split('T')[0];
                 
@@ -124,7 +121,6 @@ exports.createVenta = async (body) => {
             }
         }
 
-        // 4. Registrar pago inicial (si hay)
         if (pago_inicial && pago_inicial > 0) {
             await connection.query(
                 'CALL sp_pago_venta_registrar(?, ?, ?)',
@@ -146,7 +142,6 @@ exports.createVenta = async (body) => {
         throw new Error(error.message);
     }
 };
-
 
 // ACTUALIZAR VENTA
 exports.updateVenta = async (id, body) => {
@@ -174,7 +169,6 @@ exports.updateVenta = async (id, body) => {
         return { message: mensaje };
     }
 
-    // Validar campos obligatorios
     if (!numero_nota_venta || numero_nota_venta.trim() === '') {
         throw new Error('El número de nota de venta es obligatorio');
     }
@@ -212,12 +206,10 @@ exports.updateVenta = async (id, body) => {
     return { message: 'Venta actualizada correctamente' };
 };
 
-
 // CAMBIAR ESTADO VENTA
 exports.cambiarEstado = async (id, estado) => {
     await db.query('CALL sp_cambiar_estado_venta(?, ?)', [id, estado]);
     return { message: 'Estado de venta actualizado' };
 };
-
 
 

@@ -1,47 +1,41 @@
 const db = require('../../config/db');
 
-
-// LISTAR PEDIDOS
 exports.getPedidos = async () => {
     const [rows] = await db.query('CALL sp_listar_pedidos()');
     return rows[0];
 };
 
-
-// OBTENER PEDIDO POR ID
 exports.getPedidoById = async (id) => {
     const [rows] = await db.query('CALL sp_obtener_pedido(?)', [id]);
     return rows[0][0];
 };
 
-
-// OBTENER DETALLES DEL PEDIDO
 exports.getDetallesPedido = async (idPedido) => {
     const [rows] = await db.query('CALL sp_listar_detalles_por_pedido(?)', [idPedido]);
     return rows[0];
 };
 
-
-// CREAR PEDIDO (CON DETALLES Y TRANSACCIÓN)
-exports.createPedido = async (body) => {
+exports.createPedido = async (body, idUsuarioSesion) => {
     const {
         numero_pedido,
         id_cliente,
-        id_usuario,
         total_pedido,
         observacion,
-        productos  // Array
+        fecha_recojo,
+        fecha_envio,
+        direccion_envio,
+        costo_envio,
+        productos
     } = body;
 
-    // Validaciones
     if (!numero_pedido || numero_pedido.trim() === '') {
         throw new Error('El número de pedido es obligatorio');
     }
     if (!id_cliente) {
         throw new Error('El cliente es obligatorio');
     }
-    if (!id_usuario) {
-        throw new Error('El usuario es obligatorio');
+    if (!idUsuarioSesion) {
+        throw new Error('Usuario no autenticado');
     }
     if (!total_pedido || total_pedido <= 0) {
         throw new Error('El total del pedido es inválido');
@@ -54,35 +48,31 @@ exports.createPedido = async (body) => {
     await connection.beginTransaction();
 
     try {
-        // Registrar pedido
         await connection.query(
-            'CALL sp_registrar_pedido(?, ?, ?, ?, ?)',
+            'CALL sp_registrar_pedido(?, ?, ?, ?, ?, ?, ?, ?, ?)',
             [
                 numero_pedido.trim(),
                 id_cliente,
-                id_usuario,
+                idUsuarioSesion,
                 total_pedido,
-                observacion || null
+                observacion || null,
+                fecha_recojo || null,
+                fecha_envio || null,
+                direccion_envio || null,
+                costo_envio || 0
             ]
         );
 
-        // Obtener el ID del pedido recién creado
         const [pedidoResult] = await connection.query(
             'SELECT id FROM pedido WHERE numero_pedido = ? ORDER BY id DESC LIMIT 1',
             [numero_pedido.trim()]
         );
         const pedidoId = pedidoResult[0].id;
 
-        // Registrar detalles del pedido
         for (const item of productos) {
             await connection.query(
                 'CALL sp_registrar_detalle_pedido(?, ?, ?, ?)',
-                [
-                    pedidoId,
-                    item.id_producto,
-                    item.precio_unitario,
-                    item.cantidad
-                ]
+                [pedidoId, item.id_producto, item.precio_unitario, item.cantidad]
             );
         }
 
@@ -101,64 +91,77 @@ exports.createPedido = async (body) => {
     }
 };
 
-
-// ACTUALIZAR PEDIDO
-exports.updatePedido = async (id, body) => {
+exports.updatePedido = async (id, body, idUsuarioSesion) => {
     const {
         numero_pedido,
         id_cliente,
-        id_usuario,
         total_pedido,
         observacion,
+        fecha_recojo,
+        fecha_envio,
+        direccion_envio,
+        costo_envio,
         estado
     } = body;
 
-    // Si solo viene estado, cambiar estado
     if (estado !== undefined && Object.keys(body).length === 1) {
         await db.query('CALL sp_cambiar_estado_pedido(?, ?)', [id, estado]);
         let mensaje = '';
-        if (estado === 0) mensaje = 'Pedido cancelado correctamente';
-        if (estado === 1) mensaje = 'Pedido reactivado correctamente';
-        if (estado === 2) mensaje = 'Pedido eliminado correctamente';
+        if (estado === 0) mensaje = 'Pedido reactivado correctamente';
+        if (estado === 1) mensaje = 'Pedido convertido a venta (pagado)';
+        if (estado === 2) mensaje = 'Pedido cancelado correctamente';
         return { message: mensaje };
     }
 
-    // Validar campos obligatorios
     if (!numero_pedido || numero_pedido.trim() === '') {
         throw new Error('El número de pedido es obligatorio');
     }
     if (!id_cliente) {
         throw new Error('El cliente es obligatorio');
     }
-    if (!id_usuario) {
-        throw new Error('El usuario es obligatorio');
-    }
     if (!total_pedido || total_pedido <= 0) {
         throw new Error('El total del pedido es inválido');
     }
 
     await db.query(
-        'CALL sp_actualizar_pedido(?, ?, ?, ?, ?, ?)',
+        'CALL sp_actualizar_pedido(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
         [
             id,
             numero_pedido.trim(),
             id_cliente,
-            id_usuario,
+            idUsuarioSesion,
             total_pedido,
-            observacion || null
+            observacion || null,
+            fecha_recojo || null,
+            fecha_envio || null,
+            direccion_envio || null,
+            costo_envio || 0
         ]
     );
 
     return { message: 'Pedido actualizado correctamente' };
 };
 
-
-// CAMBIAR ESTADO DEL PEDIDO
 exports.cambiarEstado = async (id, estado) => {
     await db.query('CALL sp_cambiar_estado_pedido(?, ?)', [id, estado]);
     return { message: 'Estado del pedido actualizado' };
 };
 
+exports.getVentaByPedido = async (idPedido) => {
+    const [rows] = await db.query('CALL sp_obtener_venta_por_pedido(?)', [idPedido]);
+    return rows[0][0] || null;
+};
 
+exports.convertirAVenta = async (idPedido, montoPago, metodoPago) => {
+    const [result] = await db.query(
+        'CALL sp_convertir_pedido_a_venta(?, ?, ?)',
+        [idPedido, montoPago, metodoPago]
+    );
+    const venta = result[0]?.[0] || null;
+    return {
+        message: 'Pedido convertido a venta exitosamente',
+        venta: venta
+    };
+};
 
 

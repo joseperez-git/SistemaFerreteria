@@ -854,6 +854,46 @@ body {
 }
 
 
+/* Botones con colores fijos */
+.btn-fixed-blue {
+    background: #0d6efd;
+    color: white;
+    border: none;
+    transition: opacity 0.2s;
+}
+
+.btn-fixed-blue:hover {
+    background: #0d6efd;
+    opacity: 0.85;
+    color: white;
+}
+
+.btn-fixed-green {
+    background: #25D366;
+    color: white;
+    border: none;
+    transition: opacity 0.2s;
+}
+
+.btn-fixed-green:hover {
+    background: #25D366;
+    opacity: 0.85;
+    color: white;
+}
+
+.btn-fixed-warning {
+    background: #ffc107;
+    color: #000;
+    border: none;
+    transition: opacity 0.2s;
+}
+
+.btn-fixed-warning:hover {
+    background: #ffc107;
+    opacity: 0.85;
+    color: #000;
+}
+
 
 
 
