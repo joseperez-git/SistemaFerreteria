@@ -273,6 +273,7 @@ function renderizar(ventas) {
         } else if (venta.estado === 3) {
             estadoBadge = '<span class="badge bg-dark">Eliminada</span>';
         }
+<<<<<<< HEAD
 
         let botonesAccion = '';
 
@@ -293,14 +294,31 @@ function renderizar(ventas) {
         // Botón Anular (solo para Pago Parcial)
         if (venta.estado === 0) {
             botonesAccion += `
+=======
+        
+        let botonesAccion = '';
+        
+        if (venta.estado === 0) {
+            // Pago Parcial → Mostrar botón ANULAR
+            botonesAccion = `
+>>>>>>> 59ebc7f7848fe36d69c4e00fbdf9189d8bc47a08
                 <button class="btn btn-sm btn-danger btnAnularVenta" data-id="${venta.id}" title="Anular">
                     <i class="bi bi-slash-circle"></i>
                 </button>
             `;
+<<<<<<< HEAD
         }
         // Botones para ventas anuladas
         else if (venta.estado === 2) {
             botonesAccion += `
+=======
+        } else if (venta.estado === 1) {
+            // Pagada → No mostrar botones (solo ver detalles)
+            botonesAccion = ``;
+        } else if (venta.estado === 2) {
+            // Anulada → Mostrar botones REACTIVAR + ELIMINAR
+            botonesAccion = `
+>>>>>>> 59ebc7f7848fe36d69c4e00fbdf9189d8bc47a08
                 <button class="btn btn-sm btn-success btnActivarVenta" data-id="${venta.id}" title="Reactivar">
                     <i class="bi bi-arrow-repeat"></i>
                 </button>
@@ -308,8 +326,17 @@ function renderizar(ventas) {
                     <i class="bi bi-trash"></i>
                 </button>
             `;
+<<<<<<< HEAD
         }
 
+=======
+        } else if (venta.estado === 3) {
+            // Eliminada → No mostrar nada (o botón ver detalles)
+            botonesAccion = ``;
+        }
+        
+        // Botón Ver Detalles siempre visible para todos los estados
+>>>>>>> 59ebc7f7848fe36d69c4e00fbdf9189d8bc47a08
         tabla.innerHTML += `
             <tr>
                 <td class="text-center">${venta.id}</td>
@@ -320,6 +347,12 @@ function renderizar(ventas) {
                 <td><span class="badge bg-info">${venta.modalidad_pago}</span></td>
                 <td>${estadoBadge}</td>
                 <td class="text-nowrap">
+<<<<<<< HEAD
+=======
+                    <button class="btn btn-sm btn-warning btnVerVenta" data-id="${venta.id}" title="Ver Detalles">
+                        <i class="bi bi-eye"></i>
+                    </button>
+>>>>>>> 59ebc7f7848fe36d69c4e00fbdf9189d8bc47a08
                     ${botonesAccion}
                 </td>
             </tr>
@@ -340,15 +373,25 @@ async function cambiarEstado(id, estado, mensajeExito, tipoToast) {
         });
         const data = await response.json();
         if (!response.ok) throw new Error(data.error);
+<<<<<<< HEAD
 
         await cargarVentas();  // Esto ya recarga la tabla
 
+=======
+        
+        await cargarVentas();  // Esto ya recarga la tabla
+        
+>>>>>>> 59ebc7f7848fe36d69c4e00fbdf9189d8bc47a08
         // Forzar re-renderizado del detalle si está abierto
         const modalDetalle = document.getElementById('modalDetalleVenta');
         if (modalDetalle && modalDetalle.classList.contains('show')) {
             await mostrarDetalleVenta(id);
         }
+<<<<<<< HEAD
 
+=======
+        
+>>>>>>> 59ebc7f7848fe36d69c4e00fbdf9189d8bc47a08
         mostrarToast(mensajeExito, tipoToast);
     } catch (error) {
         mostrarToast(error.message, 'danger');
@@ -410,9 +453,15 @@ async function registrarPagoAdicional() {
         if (!response.ok) throw new Error(data.error);
 
         mostrarToast('Pago registrado correctamente', 'success');
+<<<<<<< HEAD
 
         await mostrarDetalleVenta(idVenta);
 
+=======
+        
+        await mostrarDetalleVenta(idVenta);
+        
+>>>>>>> 59ebc7f7848fe36d69c4e00fbdf9189d8bc47a08
         document.getElementById('montoPagoAdicional').value = '0';
         document.getElementById('metodoPagoAdicional').value = '';
 
@@ -501,20 +550,32 @@ async function confirmarPagoCuotaIntegrado() {
 
         mostrarToast('Pago registrado correctamente', 'success');
         ocultarFormularioPagoCuota();
+<<<<<<< HEAD
 
+=======
+        
+>>>>>>> 59ebc7f7848fe36d69c4e00fbdf9189d8bc47a08
         // ============================================
         // RECARGAR LOS DATOS SIN CERRAR EL MODAL
         // ============================================
         await mostrarDetalleVenta(parseInt(idVenta));
+<<<<<<< HEAD
 
         // Actualizar la tabla principal
         await cargarVentas();
 
+=======
+        
+        // Actualizar la tabla principal
+        await cargarVentas();
+        
+>>>>>>> 59ebc7f7848fe36d69c4e00fbdf9189d8bc47a08
     } catch (error) {
         console.error('Error en pago:', error);
         mostrarToast(error.message, 'danger');
     }
 }
+
 
 // ============================================
 // MOSTRAR DETALLE DE VENTA
@@ -526,11 +587,19 @@ async function mostrarDetalleVenta(id) {
         const response = await fetch(`/api/ventas/${id}`);
         if (!response.ok) throw new Error('Error al obtener detalles');
         const venta = await response.json();
+<<<<<<< HEAD
 
         // Calcular saldo pendiente dinámicamente desde los pagos
         const totalPagado = venta.pagos?.reduce((sum, p) => sum + parseFloat(p.monto), 0) || 0;
         const saldoPendiente = venta.total_venta - totalPagado;
 
+=======
+        
+        // Calcular saldo pendiente dinámicamente desde los pagos
+        const totalPagado = venta.pagos?.reduce((sum, p) => sum + parseFloat(p.monto), 0) || 0;
+        const saldoPendiente = venta.total_venta - totalPagado;
+        
+>>>>>>> 59ebc7f7848fe36d69c4e00fbdf9189d8bc47a08
         limpiarBackdrops();
 
         const setText = (idEl, value) => {
@@ -546,7 +615,11 @@ async function mostrarDetalleVenta(id) {
         const tbodyProductos = document.getElementById('detalleProductos');
         const tbodyPagos = document.getElementById('detallePagos');
         const tbodyCuotas = document.getElementById('detalleCuotas');
+<<<<<<< HEAD
 
+=======
+        
+>>>>>>> 59ebc7f7848fe36d69c4e00fbdf9189d8bc47a08
         // Origen de la venta
         const origenRow = document.getElementById('detalleOrigenRow');
         const origenText = document.getElementById('detalleOrigen');
@@ -564,7 +637,11 @@ async function mostrarDetalleVenta(id) {
             if (origenText) origenText.innerHTML = `<i class="bi bi-cart-check me-1"></i> Venta directa`;
             if (verPedidoBtn) verPedidoBtn.style.display = 'none';
         }
+<<<<<<< HEAD
 
+=======
+        
+>>>>>>> 59ebc7f7848fe36d69c4e00fbdf9189d8bc47a08
         // Mostrar sección de pago adicional solo para crédito con saldo pendiente
         const pagoAdicionalRow = document.getElementById('detallePagoAdicionalRow');
         const tienePedido = venta.id_pedido !== null && venta.id_pedido !== undefined;
@@ -591,7 +668,11 @@ async function mostrarDetalleVenta(id) {
         }
 
         setHtml('detalleTotal', `S/ ${parseFloat(venta.total_venta).toFixed(2)}`);
+<<<<<<< HEAD
 
+=======
+        
+>>>>>>> 59ebc7f7848fe36d69c4e00fbdf9189d8bc47a08
         const saldoRow = document.getElementById('detalleSaldoRow');
         if (venta.modalidad_pago === 'CREDITO' && saldoPendiente > 0) {
             if (saldoRow) saldoRow.style.display = 'flex';
@@ -613,7 +694,11 @@ async function mostrarDetalleVenta(id) {
                 estadoBadge.className = 'badge bg-secondary';
             }
         }
+<<<<<<< HEAD
 
+=======
+        
+>>>>>>> 59ebc7f7848fe36d69c4e00fbdf9189d8bc47a08
         let totalProductos = 0;
         if (tbodyProductos && venta.detalles && venta.detalles.length > 0) {
             venta.detalles.forEach(det => {
@@ -654,7 +739,11 @@ async function mostrarDetalleVenta(id) {
                 const estadoCuota = cuota.estado === 1
                     ? '<span class="badge bg-success">Pagada</span>'
                     : '<span class="badge bg-warning">Pendiente</span>';
+<<<<<<< HEAD
 
+=======
+                
+>>>>>>> 59ebc7f7848fe36d69c4e00fbdf9189d8bc47a08
                 const botonPagar = (cuota.estado === 0 && venta.estado === 0)
                     ? `<button class="btn btn-sm btn-primary btnPagarCuota ms-1" 
                                data-id-cuota="${cuota.id}" 
@@ -664,7 +753,11 @@ async function mostrarDetalleVenta(id) {
                             <i class="bi bi-credit-card"></i> Pagar
                         </button>`
                     : '';
+<<<<<<< HEAD
 
+=======
+                
+>>>>>>> 59ebc7f7848fe36d69c4e00fbdf9189d8bc47a08
                 const botonCorreo = (cuota.estado === 0 && venta.estado === 0)
                     ? `<button class="btn btn-sm btn-outline-info btnEnviarCorreoCuota ms-1" 
                                data-id-cuota="${cuota.id}" 
@@ -673,7 +766,11 @@ async function mostrarDetalleVenta(id) {
                             <i class="bi bi-envelope"></i>
                         </button>`
                     : '';
+<<<<<<< HEAD
 
+=======
+                
+>>>>>>> 59ebc7f7848fe36d69c4e00fbdf9189d8bc47a08
                 const botonWhatsApp = (cuota.estado === 0 && venta.estado === 0)
                     ? `<button class="btn btn-sm btn-outline-success btnEnviarWhatsAppCuota ms-1" 
                                data-id-cuota="${cuota.id}" 
@@ -714,6 +811,7 @@ async function mostrarDetalleVenta(id) {
         }
 
         ocultarFormularioPagoCuota();
+<<<<<<< HEAD
 
         // ============================================
         // FOOTER SIMPLIFICADO - USANDO mostrarModalOpcionesImpresion
@@ -795,6 +893,13 @@ async function mostrarDetalleVenta(id) {
         }
 
         // Mostrar el modal
+=======
+        
+        // ============================================
+        // REUTILIZAR MODAL EN VEZ DE CREAR UNO NUEVO
+        // ============================================
+        const modalElement = document.getElementById('modalDetalleVenta');
+>>>>>>> 59ebc7f7848fe36d69c4e00fbdf9189d8bc47a08
         let modal = bootstrap.Modal.getInstance(modalElement);
         if (!modal) {
             modal = new bootstrap.Modal(modalElement);
@@ -806,6 +911,7 @@ async function mostrarDetalleVenta(id) {
         mostrarToast('Error al cargar detalles', 'danger');
     }
 }
+
 
 // ============================================
 // MANEJADORES DE EVENTOS
@@ -1349,7 +1455,11 @@ function setupGuardarVenta() {
         }
 
         const total_venta = totalVenta;
+<<<<<<< HEAD
 
+=======
+        
+>>>>>>> 59ebc7f7848fe36d69c4e00fbdf9189d8bc47a08
         // Validaciones para crédito
         if (modalidad_pago === 'CREDITO') {
             const deudaCalculada = total_venta - pago_inicial;
@@ -1518,12 +1628,15 @@ function setupEventListeners() {
                     mostrarToast(error.message, 'danger');
                 }
             }, 'danger');
+<<<<<<< HEAD
             return;
         }
         const btnImprimirDirecto = e.target.closest('.btnImprimirVentaDirecto');
         if (btnImprimirDirecto) {
             const id = parseInt(btnImprimirDirecto.dataset.id);
             mostrarModalOpcionesImpresion(id);
+=======
+>>>>>>> 59ebc7f7848fe36d69c4e00fbdf9189d8bc47a08
             return;
         }
     });
@@ -1581,7 +1694,11 @@ async function mostrarDetallePedidoDesdeVenta(idPedido) {
         const response = await fetch(`/api/pedidos/${idPedido}`);
         if (!response.ok) throw new Error('Error al obtener detalles del pedido');
         const pedido = await response.json();
+<<<<<<< HEAD
 
+=======
+        
+>>>>>>> 59ebc7f7848fe36d69c4e00fbdf9189d8bc47a08
         const setText = (idEl, value) => {
             const el = document.getElementById(idEl);
             if (el) el.textContent = value || '-';
@@ -1591,17 +1708,28 @@ async function mostrarDetallePedidoDesdeVenta(idPedido) {
             const el = document.getElementById(idEl);
             if (el) el.innerHTML = value;
         };
+<<<<<<< HEAD
 
         const tbodyProductos = document.getElementById('detallePedidoProductos');
         if (tbodyProductos) tbodyProductos.innerHTML = '';
 
+=======
+        
+        const tbodyProductos = document.getElementById('detallePedidoProductos');
+        if (tbodyProductos) tbodyProductos.innerHTML = '';
+        
+>>>>>>> 59ebc7f7848fe36d69c4e00fbdf9189d8bc47a08
         setText('detallePedidoNumero', pedido.numero_pedido);
         setText('detallePedidoCliente', pedido.cliente);
         setText('detallePedidoFecha', formatearFecha(pedido.fecha_pedido));
         setText('detallePedidoUsuario', pedido.usuario);
         setText('detallePedidoObservacion', pedido.observacion);
         setHtml('detallePedidoTotal', `S/ ${parseFloat(pedido.total_pedido).toFixed(2)}`);
+<<<<<<< HEAD
 
+=======
+        
+>>>>>>> 59ebc7f7848fe36d69c4e00fbdf9189d8bc47a08
         const estadoBadge = document.getElementById('detallePedidoEstado');
         if (estadoBadge) {
             if (pedido.estado === 0) {
@@ -1621,7 +1749,11 @@ async function mostrarDetallePedidoDesdeVenta(idPedido) {
                 estadoBadge.className = 'badge bg-secondary';
             }
         }
+<<<<<<< HEAD
 
+=======
+        
+>>>>>>> 59ebc7f7848fe36d69c4e00fbdf9189d8bc47a08
         const tieneRecojo = pedido.fecha_recojo;
         const tieneEnvio = pedido.fecha_envio || pedido.direccion_envio;
 
@@ -1647,7 +1779,11 @@ async function mostrarDetallePedidoDesdeVenta(idPedido) {
             if (seccionEnvio) seccionEnvio.style.display = 'none';
             setText('detallePedidoFechaRecojo', 'No especificada');
         }
+<<<<<<< HEAD
 
+=======
+        
+>>>>>>> 59ebc7f7848fe36d69c4e00fbdf9189d8bc47a08
         let totalProductos = 0;
         if (pedido.detalles && pedido.detalles.length > 0) {
             pedido.detalles.forEach(det => {
@@ -1664,7 +1800,11 @@ async function mostrarDetallePedidoDesdeVenta(idPedido) {
             });
         }
         setHtml('detallePedidoProductosTotal', `S/ ${totalProductos.toFixed(2)}`);
+<<<<<<< HEAD
 
+=======
+        
+>>>>>>> 59ebc7f7848fe36d69c4e00fbdf9189d8bc47a08
         const modalElement = document.getElementById('modalDetallePedidoVenta');
         const modal = new bootstrap.Modal(modalElement);
         modal.show();
