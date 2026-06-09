@@ -43,11 +43,7 @@ app.use('/api/pago-cuota', soloAutenticacion, require(path.join(__dirname, '../s
 app.use('/api/pedidos', validarPermiso('Pedidos'), require(path.join(__dirname, '../services/pedido/pedido.routes')));
 app.use('/api/movimientos-inventario', soloAutenticacion, require(path.join(__dirname, '../services/movimiento/movimiento.routes')));
 app.use('/api/entregas', soloAutenticacion, require(path.join(__dirname, '../services/entrega_pedido/entrega.routes')));
-<<<<<<< HEAD
-app.use('/api/reportes', soloAutenticacion, require(path.join(__dirname, '../services/reportes/reportes.routes')));
-=======
 
->>>>>>> 59ebc7f7848fe36d69c4e00fbdf9189d8bc47a08
 // Archivos estáticos
 app.use(express.static('public'));
 app.use('/uploads', express.static('public/uploads'));

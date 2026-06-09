@@ -250,8 +250,6 @@ function aplicarFiltros() {
     renderizar(ventasFiltradas);
 }
 
-
-//Renderizar ventas en la tabla
 function renderizar(ventas) {
     const tabla = getElement('tablaVentas');
     if (!tabla) return;
@@ -273,52 +271,26 @@ function renderizar(ventas) {
         } else if (venta.estado === 3) {
             estadoBadge = '<span class="badge bg-dark">Eliminada</span>';
         }
-<<<<<<< HEAD
 
         let botonesAccion = '';
 
-        // Botón Ver Detalles (UN SOLO VEZ)
-        botonesAccion = `<button class="btn btn-sm btn-warning btnVerVenta" data-id="${venta.id}" title="Ver Detalles">
-                            <i class="bi bi-eye"></i>
-                        </button>`;
-
-        // Botón Imprimir (solo para ventas activas)
-        if (venta.estado === 0 || venta.estado === 1) {
-            botonesAccion += `
+        if (venta.estado === 0) {
+            botonesAccion = `
+                <button class="btn btn-sm btn-danger btnAnularVenta" data-id="${venta.id}" title="Anular">
+                    <i class="bi bi-slash-circle"></i>
+                </button>
                 <button class="btn btn-sm btn-primary btnImprimirVentaDirecto" data-id="${venta.id}" title="Imprimir">
                     <i class="bi bi-printer"></i>
                 </button>
             `;
-        }
-
-        // Botón Anular (solo para Pago Parcial)
-        if (venta.estado === 0) {
-            botonesAccion += `
-=======
-        
-        let botonesAccion = '';
-        
-        if (venta.estado === 0) {
-            // Pago Parcial → Mostrar botón ANULAR
+        } else if (venta.estado === 1) {
             botonesAccion = `
->>>>>>> 59ebc7f7848fe36d69c4e00fbdf9189d8bc47a08
-                <button class="btn btn-sm btn-danger btnAnularVenta" data-id="${venta.id}" title="Anular">
-                    <i class="bi bi-slash-circle"></i>
+                <button class="btn btn-sm btn-primary btnImprimirVentaDirecto" data-id="${venta.id}" title="Imprimir">
+                    <i class="bi bi-printer"></i>
                 </button>
             `;
-<<<<<<< HEAD
-        }
-        // Botones para ventas anuladas
-        else if (venta.estado === 2) {
-            botonesAccion += `
-=======
-        } else if (venta.estado === 1) {
-            // Pagada → No mostrar botones (solo ver detalles)
-            botonesAccion = ``;
         } else if (venta.estado === 2) {
-            // Anulada → Mostrar botones REACTIVAR + ELIMINAR
             botonesAccion = `
->>>>>>> 59ebc7f7848fe36d69c4e00fbdf9189d8bc47a08
                 <button class="btn btn-sm btn-success btnActivarVenta" data-id="${venta.id}" title="Reactivar">
                     <i class="bi bi-arrow-repeat"></i>
                 </button>
@@ -326,17 +298,8 @@ function renderizar(ventas) {
                     <i class="bi bi-trash"></i>
                 </button>
             `;
-<<<<<<< HEAD
         }
 
-=======
-        } else if (venta.estado === 3) {
-            // Eliminada → No mostrar nada (o botón ver detalles)
-            botonesAccion = ``;
-        }
-        
-        // Botón Ver Detalles siempre visible para todos los estados
->>>>>>> 59ebc7f7848fe36d69c4e00fbdf9189d8bc47a08
         tabla.innerHTML += `
             <tr>
                 <td class="text-center">${venta.id}</td>
@@ -347,19 +310,15 @@ function renderizar(ventas) {
                 <td><span class="badge bg-info">${venta.modalidad_pago}</span></td>
                 <td>${estadoBadge}</td>
                 <td class="text-nowrap">
-<<<<<<< HEAD
-=======
                     <button class="btn btn-sm btn-warning btnVerVenta" data-id="${venta.id}" title="Ver Detalles">
                         <i class="bi bi-eye"></i>
                     </button>
->>>>>>> 59ebc7f7848fe36d69c4e00fbdf9189d8bc47a08
                     ${botonesAccion}
                 </td>
             </tr>
         `;
     });
 }
-
 
 // ============================================
 // CAMBIAR ESTADO
@@ -373,31 +332,19 @@ async function cambiarEstado(id, estado, mensajeExito, tipoToast) {
         });
         const data = await response.json();
         if (!response.ok) throw new Error(data.error);
-<<<<<<< HEAD
 
-        await cargarVentas();  // Esto ya recarga la tabla
+        await cargarVentas();
 
-=======
-        
-        await cargarVentas();  // Esto ya recarga la tabla
-        
->>>>>>> 59ebc7f7848fe36d69c4e00fbdf9189d8bc47a08
-        // Forzar re-renderizado del detalle si está abierto
         const modalDetalle = document.getElementById('modalDetalleVenta');
         if (modalDetalle && modalDetalle.classList.contains('show')) {
             await mostrarDetalleVenta(id);
         }
-<<<<<<< HEAD
 
-=======
-        
->>>>>>> 59ebc7f7848fe36d69c4e00fbdf9189d8bc47a08
         mostrarToast(mensajeExito, tipoToast);
     } catch (error) {
         mostrarToast(error.message, 'danger');
     }
 }
-
 
 // ============================================
 // ENVÍO DE RECORDATORIOS
@@ -453,15 +400,9 @@ async function registrarPagoAdicional() {
         if (!response.ok) throw new Error(data.error);
 
         mostrarToast('Pago registrado correctamente', 'success');
-<<<<<<< HEAD
 
         await mostrarDetalleVenta(idVenta);
 
-=======
-        
-        await mostrarDetalleVenta(idVenta);
-        
->>>>>>> 59ebc7f7848fe36d69c4e00fbdf9189d8bc47a08
         document.getElementById('montoPagoAdicional').value = '0';
         document.getElementById('metodoPagoAdicional').value = '';
 
@@ -503,8 +444,6 @@ function ocultarFormularioPagoCuota() {
     cuotaSeleccionada = null;
 }
 
-
-// Confirmar pago cuota
 async function confirmarPagoCuotaIntegrado() {
     if (!cuotaSeleccionada) {
         mostrarToast('No hay una cuota seleccionada', 'warning');
@@ -550,32 +489,16 @@ async function confirmarPagoCuotaIntegrado() {
 
         mostrarToast('Pago registrado correctamente', 'success');
         ocultarFormularioPagoCuota();
-<<<<<<< HEAD
 
-=======
-        
->>>>>>> 59ebc7f7848fe36d69c4e00fbdf9189d8bc47a08
-        // ============================================
-        // RECARGAR LOS DATOS SIN CERRAR EL MODAL
-        // ============================================
         await mostrarDetalleVenta(parseInt(idVenta));
-<<<<<<< HEAD
 
-        // Actualizar la tabla principal
         await cargarVentas();
 
-=======
-        
-        // Actualizar la tabla principal
-        await cargarVentas();
-        
->>>>>>> 59ebc7f7848fe36d69c4e00fbdf9189d8bc47a08
     } catch (error) {
         console.error('Error en pago:', error);
         mostrarToast(error.message, 'danger');
     }
 }
-
 
 // ============================================
 // MOSTRAR DETALLE DE VENTA
@@ -587,19 +510,10 @@ async function mostrarDetalleVenta(id) {
         const response = await fetch(`/api/ventas/${id}`);
         if (!response.ok) throw new Error('Error al obtener detalles');
         const venta = await response.json();
-<<<<<<< HEAD
 
-        // Calcular saldo pendiente dinámicamente desde los pagos
         const totalPagado = venta.pagos?.reduce((sum, p) => sum + parseFloat(p.monto), 0) || 0;
         const saldoPendiente = venta.total_venta - totalPagado;
 
-=======
-        
-        // Calcular saldo pendiente dinámicamente desde los pagos
-        const totalPagado = venta.pagos?.reduce((sum, p) => sum + parseFloat(p.monto), 0) || 0;
-        const saldoPendiente = venta.total_venta - totalPagado;
-        
->>>>>>> 59ebc7f7848fe36d69c4e00fbdf9189d8bc47a08
         limpiarBackdrops();
 
         const setText = (idEl, value) => {
@@ -615,12 +529,7 @@ async function mostrarDetalleVenta(id) {
         const tbodyProductos = document.getElementById('detalleProductos');
         const tbodyPagos = document.getElementById('detallePagos');
         const tbodyCuotas = document.getElementById('detalleCuotas');
-<<<<<<< HEAD
 
-=======
-        
->>>>>>> 59ebc7f7848fe36d69c4e00fbdf9189d8bc47a08
-        // Origen de la venta
         const origenRow = document.getElementById('detalleOrigenRow');
         const origenText = document.getElementById('detalleOrigen');
         const verPedidoBtn = document.getElementById('btnVerPedidoOrigen');
@@ -637,12 +546,7 @@ async function mostrarDetalleVenta(id) {
             if (origenText) origenText.innerHTML = `<i class="bi bi-cart-check me-1"></i> Venta directa`;
             if (verPedidoBtn) verPedidoBtn.style.display = 'none';
         }
-<<<<<<< HEAD
 
-=======
-        
->>>>>>> 59ebc7f7848fe36d69c4e00fbdf9189d8bc47a08
-        // Mostrar sección de pago adicional solo para crédito con saldo pendiente
         const pagoAdicionalRow = document.getElementById('detallePagoAdicionalRow');
         const tienePedido = venta.id_pedido !== null && venta.id_pedido !== undefined;
 
@@ -668,11 +572,7 @@ async function mostrarDetalleVenta(id) {
         }
 
         setHtml('detalleTotal', `S/ ${parseFloat(venta.total_venta).toFixed(2)}`);
-<<<<<<< HEAD
 
-=======
-        
->>>>>>> 59ebc7f7848fe36d69c4e00fbdf9189d8bc47a08
         const saldoRow = document.getElementById('detalleSaldoRow');
         if (venta.modalidad_pago === 'CREDITO' && saldoPendiente > 0) {
             if (saldoRow) saldoRow.style.display = 'flex';
@@ -694,11 +594,7 @@ async function mostrarDetalleVenta(id) {
                 estadoBadge.className = 'badge bg-secondary';
             }
         }
-<<<<<<< HEAD
 
-=======
-        
->>>>>>> 59ebc7f7848fe36d69c4e00fbdf9189d8bc47a08
         let totalProductos = 0;
         if (tbodyProductos && venta.detalles && venta.detalles.length > 0) {
             venta.detalles.forEach(det => {
@@ -739,11 +635,7 @@ async function mostrarDetalleVenta(id) {
                 const estadoCuota = cuota.estado === 1
                     ? '<span class="badge bg-success">Pagada</span>'
                     : '<span class="badge bg-warning">Pendiente</span>';
-<<<<<<< HEAD
 
-=======
-                
->>>>>>> 59ebc7f7848fe36d69c4e00fbdf9189d8bc47a08
                 const botonPagar = (cuota.estado === 0 && venta.estado === 0)
                     ? `<button class="btn btn-sm btn-primary btnPagarCuota ms-1" 
                                data-id-cuota="${cuota.id}" 
@@ -753,11 +645,7 @@ async function mostrarDetalleVenta(id) {
                             <i class="bi bi-credit-card"></i> Pagar
                         </button>`
                     : '';
-<<<<<<< HEAD
 
-=======
-                
->>>>>>> 59ebc7f7848fe36d69c4e00fbdf9189d8bc47a08
                 const botonCorreo = (cuota.estado === 0 && venta.estado === 0)
                     ? `<button class="btn btn-sm btn-outline-info btnEnviarCorreoCuota ms-1" 
                                data-id-cuota="${cuota.id}" 
@@ -766,11 +654,7 @@ async function mostrarDetalleVenta(id) {
                             <i class="bi bi-envelope"></i>
                         </button>`
                     : '';
-<<<<<<< HEAD
 
-=======
-                
->>>>>>> 59ebc7f7848fe36d69c4e00fbdf9189d8bc47a08
                 const botonWhatsApp = (cuota.estado === 0 && venta.estado === 0)
                     ? `<button class="btn btn-sm btn-outline-success btnEnviarWhatsAppCuota ms-1" 
                                data-id-cuota="${cuota.id}" 
@@ -811,11 +695,7 @@ async function mostrarDetalleVenta(id) {
         }
 
         ocultarFormularioPagoCuota();
-<<<<<<< HEAD
 
-        // ============================================
-        // FOOTER SIMPLIFICADO - USANDO mostrarModalOpcionesImpresion
-        // ============================================
         const modalElement = document.getElementById('modalDetalleVenta');
         const modalFooter = modalElement.querySelector('.modal-footer');
 
@@ -843,7 +723,6 @@ async function mostrarDetalleVenta(id) {
             `;
         }
 
-        // Configurar eventos
         const btnImprimirModal = document.getElementById('btnImprimirVentaModal');
         if (btnImprimirModal) {
             const newBtn = btnImprimirModal.cloneNode(true);
@@ -853,7 +732,6 @@ async function mostrarDetalleVenta(id) {
             });
         }
 
-        // Reconfigurar los botones existentes (Correo, WhatsApp, Ver Pedido)
         const btnReenviarCorreo = document.getElementById('btnReenviarNotaCorreo');
         if (btnReenviarCorreo) {
             const newBtn = btnReenviarCorreo.cloneNode(true);
@@ -892,14 +770,6 @@ async function mostrarDetalleVenta(id) {
             });
         }
 
-        // Mostrar el modal
-=======
-        
-        // ============================================
-        // REUTILIZAR MODAL EN VEZ DE CREAR UNO NUEVO
-        // ============================================
-        const modalElement = document.getElementById('modalDetalleVenta');
->>>>>>> 59ebc7f7848fe36d69c4e00fbdf9189d8bc47a08
         let modal = bootstrap.Modal.getInstance(modalElement);
         if (!modal) {
             modal = new bootstrap.Modal(modalElement);
@@ -911,7 +781,6 @@ async function mostrarDetalleVenta(id) {
         mostrarToast('Error al cargar detalles', 'danger');
     }
 }
-
 
 // ============================================
 // MANEJADORES DE EVENTOS
@@ -1104,7 +973,6 @@ async function imprimirNotaVentaPDF(idVenta, tipo = 'A4') {
     mostrarToast(`Generando PDF (${tipoTexto})...`, 'info');
 
     try {
-        // Abrir el PDF en una nueva pestaña
         const response = await fetch(`/api/reportes/venta/${idVenta}/pdf?tipo=${tipo}`);
 
         if (!response.ok) {
@@ -1112,29 +980,23 @@ async function imprimirNotaVentaPDF(idVenta, tipo = 'A4') {
             throw new Error(error.error || 'Error al generar el PDF');
         }
 
-        // Obtener el blob del PDF
         const blob = await response.blob();
 
-        // Verificar que sea un PDF válido
         if (blob.type !== 'application/pdf') {
             throw new Error('El archivo generado no es un PDF válido');
         }
 
-        // Crear URL del blob y abrir en nueva pestaña
         const url = window.URL.createObjectURL(blob);
         const nuevaVentana = window.open(url, '_blank');
 
-        // Si el popup fue bloqueado, mostrar mensaje alternativo
         if (!nuevaVentana) {
             mostrarToast('El navegador bloqueó la ventana emergente. Permita popups para esta página.', 'warning');
-            // Alternativa: crear un enlace temporal
             const link = document.createElement('a');
             link.href = url;
             link.download = `nota_venta_${idVenta}_${tipo}.pdf`;
             link.click();
         }
 
-        // Limpiar la URL después de 2 segundos
         setTimeout(() => {
             window.URL.revokeObjectURL(url);
         }, 2000);
@@ -1151,7 +1013,6 @@ async function imprimirNotaVentaPDF(idVenta, tipo = 'A4') {
 // MODAL DE OPCIONES DE IMPRESIÓN
 // ============================================
 function mostrarModalOpcionesImpresion(idVenta) {
-    // Crear modal dinámico si no existe
     let modalElement = document.getElementById('modalOpcionesImpresion');
 
     if (!modalElement) {
@@ -1200,7 +1061,6 @@ function mostrarModalOpcionesImpresion(idVenta) {
         document.body.appendChild(modalElement);
     }
 
-    // Limpiar eventos anteriores
     const optA4 = document.getElementById('optImprimirA4');
     const optTicket = document.getElementById('optImprimirTicket');
 
@@ -1455,12 +1315,7 @@ function setupGuardarVenta() {
         }
 
         const total_venta = totalVenta;
-<<<<<<< HEAD
 
-=======
-        
->>>>>>> 59ebc7f7848fe36d69c4e00fbdf9189d8bc47a08
-        // Validaciones para crédito
         if (modalidad_pago === 'CREDITO') {
             const deudaCalculada = total_venta - pago_inicial;
             if (deudaCalculada <= 0) {
@@ -1474,7 +1329,6 @@ function setupGuardarVenta() {
         }
 
         try {
-            // Ya no enviamos deuda en el body
             const response = await fetch(id ? `/api/ventas/${id}` : '/api/ventas', {
                 method: id ? 'PUT' : 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -1628,15 +1482,13 @@ function setupEventListeners() {
                     mostrarToast(error.message, 'danger');
                 }
             }, 'danger');
-<<<<<<< HEAD
             return;
         }
+
         const btnImprimirDirecto = e.target.closest('.btnImprimirVentaDirecto');
         if (btnImprimirDirecto) {
             const id = parseInt(btnImprimirDirecto.dataset.id);
             mostrarModalOpcionesImpresion(id);
-=======
->>>>>>> 59ebc7f7848fe36d69c4e00fbdf9189d8bc47a08
             return;
         }
     });
@@ -1694,11 +1546,7 @@ async function mostrarDetallePedidoDesdeVenta(idPedido) {
         const response = await fetch(`/api/pedidos/${idPedido}`);
         if (!response.ok) throw new Error('Error al obtener detalles del pedido');
         const pedido = await response.json();
-<<<<<<< HEAD
 
-=======
-        
->>>>>>> 59ebc7f7848fe36d69c4e00fbdf9189d8bc47a08
         const setText = (idEl, value) => {
             const el = document.getElementById(idEl);
             if (el) el.textContent = value || '-';
@@ -1708,28 +1556,17 @@ async function mostrarDetallePedidoDesdeVenta(idPedido) {
             const el = document.getElementById(idEl);
             if (el) el.innerHTML = value;
         };
-<<<<<<< HEAD
 
         const tbodyProductos = document.getElementById('detallePedidoProductos');
         if (tbodyProductos) tbodyProductos.innerHTML = '';
 
-=======
-        
-        const tbodyProductos = document.getElementById('detallePedidoProductos');
-        if (tbodyProductos) tbodyProductos.innerHTML = '';
-        
->>>>>>> 59ebc7f7848fe36d69c4e00fbdf9189d8bc47a08
         setText('detallePedidoNumero', pedido.numero_pedido);
         setText('detallePedidoCliente', pedido.cliente);
         setText('detallePedidoFecha', formatearFecha(pedido.fecha_pedido));
         setText('detallePedidoUsuario', pedido.usuario);
         setText('detallePedidoObservacion', pedido.observacion);
         setHtml('detallePedidoTotal', `S/ ${parseFloat(pedido.total_pedido).toFixed(2)}`);
-<<<<<<< HEAD
 
-=======
-        
->>>>>>> 59ebc7f7848fe36d69c4e00fbdf9189d8bc47a08
         const estadoBadge = document.getElementById('detallePedidoEstado');
         if (estadoBadge) {
             if (pedido.estado === 0) {
@@ -1749,11 +1586,7 @@ async function mostrarDetallePedidoDesdeVenta(idPedido) {
                 estadoBadge.className = 'badge bg-secondary';
             }
         }
-<<<<<<< HEAD
 
-=======
-        
->>>>>>> 59ebc7f7848fe36d69c4e00fbdf9189d8bc47a08
         const tieneRecojo = pedido.fecha_recojo;
         const tieneEnvio = pedido.fecha_envio || pedido.direccion_envio;
 
@@ -1779,11 +1612,7 @@ async function mostrarDetallePedidoDesdeVenta(idPedido) {
             if (seccionEnvio) seccionEnvio.style.display = 'none';
             setText('detallePedidoFechaRecojo', 'No especificada');
         }
-<<<<<<< HEAD
 
-=======
-        
->>>>>>> 59ebc7f7848fe36d69c4e00fbdf9189d8bc47a08
         let totalProductos = 0;
         if (pedido.detalles && pedido.detalles.length > 0) {
             pedido.detalles.forEach(det => {
@@ -1800,11 +1629,7 @@ async function mostrarDetallePedidoDesdeVenta(idPedido) {
             });
         }
         setHtml('detallePedidoProductosTotal', `S/ ${totalProductos.toFixed(2)}`);
-<<<<<<< HEAD
 
-=======
-        
->>>>>>> 59ebc7f7848fe36d69c4e00fbdf9189d8bc47a08
         const modalElement = document.getElementById('modalDetallePedidoVenta');
         const modal = new bootstrap.Modal(modalElement);
         modal.show();
@@ -1874,5 +1699,3 @@ export function destroy() {
     productosSeleccionados = [];
     totalVenta = 0;
 }
-
-
