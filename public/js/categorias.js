@@ -57,7 +57,7 @@ function aplicarFiltros() {
             categoria.nombre.toLowerCase().includes(textoBusqueda) ||
             (categoria.descripcion && categoria.descripcion.toLowerCase().includes(textoBusqueda))
         )
-        .reverse()
+        .sort((a, b) => b.id - a.id)
         .slice(0, cantidadMostrar);
     
     renderizar(categoriasFiltradas);

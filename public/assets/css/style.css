@@ -895,5 +895,41 @@ body {
 }
 
 
+/* Centrar columnas específicas en tablas */
+.table th.text-center,
+.table td.text-center {
+    text-align: center;
+    vertical-align: middle;
+}
+
+.table th.text-end,
+.table td.text-end {
+    text-align: right;
+    vertical-align: middle;
+}
+
+.table th.text-start,
+.table td.text-start {
+    text-align: left;
+    vertical-align: middle;
+}
+
+/* Para IDs y números */
+.table .col-id {
+    text-align: center;
+    width: 60px;
+}
+
+/* Para montos y totales */
+.table .col-monto {
+    text-align: right;
+}
+
+/* Para nombres de productos y clientes (alineados a la izquierda) */
+.table .col-nombre {
+    text-align: left;
+}
+
+
 
 

@@ -1,42 +1,56 @@
 const db = require('../../config/db');
 
+// ============================================
 // LISTAR VENTAS
+// ============================================
 exports.getVentas = async () => {
     const [rows] = await db.query('CALL sp_listar_ventas()');
     return rows[0];
 };
 
+// ============================================
 // OBTENER VENTA POR ID
+// ============================================
 exports.getVentaById = async (id) => {
     const [rows] = await db.query('CALL sp_obtener_venta(?)', [id]);
     return rows[0][0];
 };
 
+// ============================================
 // OBTENER DETALLES DE VENTA
+// ============================================
 exports.getDetallesVenta = async (idVenta) => {
     const [rows] = await db.query('CALL sp_detalle_venta_listar_por_venta(?)', [idVenta]);
     return rows[0];
 };
 
+// ============================================
 // OBTENER CUOTAS DE VENTA
+// ============================================
 exports.getCuotasVenta = async (idVenta) => {
     const [rows] = await db.query('CALL sp_cuota_venta_listar_por_venta(?)', [idVenta]);
     return rows[0];
 };
 
+// ============================================
 // OBTENER CUOTA POR ID
+// ============================================
 exports.getCuotaById = async (idCuota) => {
-    const [rows] = await db.query('SELECT id, monto, numero_cuota, fecha_vencimiento, estado FROM cuota_venta WHERE id = ?', [idCuota]);
-    return rows[0];
+    const [rows] = await db.query('CALL sp_obtener_cuota_venta_por_id(?)', [idCuota]);
+    return rows[0][0];
 };
 
+// ============================================
 // OBTENER PAGOS DE VENTA
+// ============================================
 exports.getPagosVenta = async (idVenta) => {
     const [rows] = await db.query('CALL sp_pago_venta_listar_por_venta(?)', [idVenta]);
     return rows[0];
 };
 
-// CREAR VENTA
+// ============================================
+// CREAR VENTA (SIN DEUDA)
+// ============================================
 exports.createVenta = async (body) => {
     const {
         numero_nota_venta,
@@ -48,7 +62,6 @@ exports.createVenta = async (body) => {
         cantidad_cuotas,
         intervalo_dias,
         total_venta,
-        deuda,
         observacion,
         productos
     } = body;
@@ -76,7 +89,7 @@ exports.createVenta = async (body) => {
 
     try {
         const [result] = await connection.query(
-            'CALL sp_registrar_venta(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, @venta_id)',
+            'CALL sp_registrar_venta(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, @venta_id)',
             [
                 numero_nota_venta.trim(),
                 id_pedido || null,
@@ -87,7 +100,6 @@ exports.createVenta = async (body) => {
                 cantidad_cuotas || 0,
                 intervalo_dias || 0,
                 total_venta,
-                deuda || 0,
                 observacion || null
             ]
         );
@@ -99,6 +111,7 @@ exports.createVenta = async (body) => {
             throw new Error('No se pudo obtener el ID de la venta');
         }
 
+        // Registrar detalles
         for (const item of productos) {
             await connection.query(
                 'CALL sp_detalle_venta_registrar(?, ?, ?, ?)',
@@ -106,21 +119,27 @@ exports.createVenta = async (body) => {
             );
         }
 
-        if (modalidad_pago === 'CREDITO' && cantidad_cuotas > 0 && deuda > 0) {
-            const montoCuota = deuda / cantidad_cuotas;
-            const fechaVencimiento = new Date();
-            
-            for (let i = 1; i <= cantidad_cuotas; i++) {
-                fechaVencimiento.setDate(fechaVencimiento.getDate() + intervalo_dias);
-                const fechaVencimientoStr = fechaVencimiento.toISOString().split('T')[0];
+        // Registrar cuotas para crédito
+        if (modalidad_pago === 'CREDITO' && cantidad_cuotas > 0) {
+            const deudaCalculada = total_venta - (pago_inicial || 0);
+            if (deudaCalculada > 0) {
+                const montoPorCuota = deudaCalculada / cantidad_cuotas;
+                const fechaVenta = new Date();
                 
-                await connection.query(
-                    'CALL sp_registrar_cuota_venta(?, ?, ?, ?, ?)',
-                    [ventaId, montoCuota, i, fechaVencimientoStr, 0]
-                );
+                for (let i = 1; i <= cantidad_cuotas; i++) {
+                    const fechaVencimiento = new Date(fechaVenta);
+                    fechaVencimiento.setDate(fechaVencimiento.getDate() + (intervalo_dias * i));
+                    const fechaVencimientoStr = fechaVencimiento.toISOString().split('T')[0];
+                    
+                    await connection.query(
+                        'CALL sp_registrar_cuota_venta(?, ?, ?, ?, ?)',
+                        [ventaId, montoPorCuota, i, fechaVencimientoStr, 0]
+                    );
+                }
             }
         }
 
+        // Registrar pago inicial
         if (pago_inicial && pago_inicial > 0) {
             await connection.query(
                 'CALL sp_pago_venta_registrar(?, ?, ?)',
@@ -143,7 +162,9 @@ exports.createVenta = async (body) => {
     }
 };
 
-// ACTUALIZAR VENTA
+// ============================================
+// ACTUALIZAR VENTA (SIN DEUDA) - CORREGIDO
+// ============================================
 exports.updateVenta = async (id, body) => {
     const {
         numero_nota_venta,
@@ -155,20 +176,22 @@ exports.updateVenta = async (id, body) => {
         cantidad_cuotas,
         intervalo_dias,
         total_venta,
-        deuda,
         observacion,
         estado
     } = body;
 
+    // Si solo cambia estado
     if (estado !== undefined && Object.keys(body).length === 1) {
         await db.query('CALL sp_cambiar_estado_venta(?, ?)', [id, estado]);
         let mensaje = '';
-        if (estado === 0) mensaje = 'Venta anulada correctamente';
-        if (estado === 1) mensaje = 'Venta reactivada correctamente';
-        if (estado === 2) mensaje = 'Venta eliminada correctamente';
+        // Estados: 0=Pago Parcial, 1=Pagada, 2=Anulada
+        if (estado === 0) mensaje = 'Venta marcada como Pago Parcial';
+        if (estado === 1) mensaje = 'Venta marcada como Pagada';
+        if (estado === 2) mensaje = 'Venta anulada correctamente';
         return { message: mensaje };
     }
 
+    // Validaciones para actualización completa
     if (!numero_nota_venta || numero_nota_venta.trim() === '') {
         throw new Error('El número de nota de venta es obligatorio');
     }
@@ -186,7 +209,7 @@ exports.updateVenta = async (id, body) => {
     }
 
     await db.query(
-        'CALL sp_actualizar_venta(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        'CALL sp_actualizar_venta(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
         [
             id,
             numero_nota_venta.trim(),
@@ -198,7 +221,6 @@ exports.updateVenta = async (id, body) => {
             cantidad_cuotas || 0,
             intervalo_dias || 0,
             total_venta,
-            deuda || 0,
             observacion || null
         ]
     );
@@ -206,10 +228,42 @@ exports.updateVenta = async (id, body) => {
     return { message: 'Venta actualizada correctamente' };
 };
 
-// CAMBIAR ESTADO VENTA
+// ============================================
+// CAMBIAR ESTADO VENTA - CORREGIDO
+// ============================================
 exports.cambiarEstado = async (id, estado) => {
+    // Validar que el estado sea válido: 0=Pago Parcial, 1=Pagada, 2=Anulada
+    if (![0, 1, 2].includes(estado)) {
+        throw new Error('Estado inválido. Use 0=Pago Parcial, 1=Pagada, 2=Anulada');
+    }
+    
     await db.query('CALL sp_cambiar_estado_venta(?, ?)', [id, estado]);
-    return { message: 'Estado de venta actualizado' };
+    
+    let mensaje = '';
+    if (estado === 0) mensaje = 'Venta marcada como Pago Parcial';
+    if (estado === 1) mensaje = 'Venta marcada como Pagada';
+    if (estado === 2) mensaje = 'Venta anulada correctamente';
+    
+    return { message: mensaje };
 };
+
+
+// ============================================
+// ELIMINAR VENTA (ELIMINACIÓN LÓGICA)
+// ============================================
+exports.deleteVenta = async (id) => {
+    // Verificar que la venta existe y está anulada
+    const venta = await exports.getVentaById(id);
+    if (!venta) {
+        throw new Error('Venta no encontrada');
+    }
+    if (venta.estado !== 2) {
+        throw new Error('Solo se pueden eliminar ventas que están anuladas');
+    }
+    
+    await db.query('CALL sp_eliminar_venta_logico(?)', [id]);
+    return { message: 'Venta eliminada correctamente' };
+};
+
 
 

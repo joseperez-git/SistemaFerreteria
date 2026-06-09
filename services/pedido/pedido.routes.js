@@ -8,7 +8,7 @@ router.post('/', controller.create);
 router.put('/:id', controller.update);
 router.put('/:id/estado', controller.cambiarEstado);
 router.get('/:id/venta', controller.getVentaByPedido);
-router.post('/:id/convertir-venta', controller.convertirAVenta);
+router.get('/:id/saldo', controller.calcularSaldo);
 
 module.exports = router;
 
