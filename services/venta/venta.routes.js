@@ -7,6 +7,7 @@ router.get('/:id', controller.getById);
 router.post('/', controller.create);
 router.put('/:id', controller.update);
 router.put('/:id/estado', controller.cambiarEstado);
+router.delete('/:id', controller.delete);
 router.post('/:idVenta/reenviar-nota', controller.reenviarNota);
 router.post('/:idVenta/cuotas/:idCuota/recordatorio', controller.enviarRecordatorio);
 

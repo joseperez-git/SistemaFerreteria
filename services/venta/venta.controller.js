@@ -166,3 +166,20 @@ exports.reenviarNota = async (req, res) => {
 };
 
 
+exports.delete = async (req, res) => {
+    try {
+        const id = parseInt(req.params.id);
+        if (isNaN(id)) {
+            return res.status(400).json({ error: "ID inválido" });
+        }
+        
+        const resultado = await service.deleteVenta(id);
+        res.json(resultado);
+    } catch (error) {
+        console.error('Error al eliminar venta:', error);
+        res.status(400).json({ error: error.message });
+    }
+};
+
+
+

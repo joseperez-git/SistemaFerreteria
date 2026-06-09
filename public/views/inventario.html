@@ -1,31 +1,234 @@
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
         <h2 class="mb-2">Inventario</h2>
-        <p>Control de inventario: movimientos de entrada, salida y ajustes de productos.</p>
-        <div class="d-flex gap-2">
-            <select id="filtroTipoMovimiento" class="form-select" style="width: 140px;">
-                <option value="">Todos</option>
-                <option value="ENTRADA">Entradas</option>
-                <option value="SALIDA">Salidas</option>
-                <option value="AJUSTE">Ajustes</option>
-            </select>
-            <input type="text" id="buscarProductoInv" class="form-control" placeholder="Buscar producto...">
-        </div>
-    </div>
-    <button class="btn btn-dark" disabled>
-        <i class="bi bi-plus-circle"></i> Nuevo Movimiento
-    </button>
-</div>
-
-<div class="card shadow-sm">
-    <div class="card-body table-responsive">
-        <div class="alert alert-info text-center py-5">
-            <i class="bi bi-info-circle-fill fs-1"></i>
-            <h5 class="mt-3">Módulo en construcción</h5>
-            <p class="mb-0">Próximamente disponible</p>
-        </div>
+        <p class="text-muted">Gestión de inventario: control de stock, movimientos y preparación de pedidos.</p>
     </div>
 </div>
 
+<!-- Pestañas -->
+<ul class="nav nav-tabs mb-4" id="inventarioTab" role="tablist">
+    <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="pedidos-tab" data-bs-toggle="tab" data-bs-target="#pedidos" type="button" role="tab">
+            <i class="bi bi-truck me-1"></i> Pedidos Pendientes
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="movimientos-tab" data-bs-toggle="tab" data-bs-target="#movimientos" type="button" role="tab">
+            <i class="bi bi-arrow-left-right me-1"></i> Movimientos de Stock
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="stock-tab" data-bs-toggle="tab" data-bs-target="#stock" type="button" role="tab">
+            <i class="bi bi-box-seam me-1"></i> Stock Actual
+        </button>
+    </li>
+</ul>
+
+<div class="tab-content">
+    <!-- TABLA DE PEDIDOS PENDIENTES -->
+    <div class="tab-pane fade show active" id="pedidos" role="tabpanel">
+        <!-- Filtros -->
+        <div class="card shadow-sm mb-4">
+            <div class="card-body">
+                <div class="row g-3 align-items-end">
+                    <div class="col-md-3">
+                        <label class="form-label text-muted small">Mostrar</label>
+                        <select id="filtroCantidad" class="form-select">
+                            <option value="5" selected>5 registros</option>
+                            <option value="10">10 registros</option>
+                            <option value="15">15 registros</option>
+                            <option value="20">20 registros</option>
+                        </select>
+                    </div>
+                    <div class="col-md-5">
+                        <label class="form-label text-muted small">Buscar</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
+                            <input type="text" id="buscarPedido" class="form-control border-start-0" placeholder="Número de pedido o cliente...">
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label text-muted small">Estado</label>
+                        <select id="filtroEstado" class="form-select">
+                            <option value="">Todos</option>
+                            <option value="0">Registrado</option>
+                            <option value="1">En Preparación</option>
+                            <option value="2">Parcialmente Entregado</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tabla de pedidos pendientes -->
+        <div class="card shadow-sm">
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-dark">
+                            <tr>
+                                <th class="col-id text-center" style="width: 50px;">ID</th>
+                                <th class="text-start">N° Pedido</th>
+                                <th class="text-start">Cliente</th>
+                                <th class="text-center">Fecha</th>
+                                <th class="col-monto text-end">Total</th>
+                                <th class="text-center">Estado</th>
+                                <th class="text-center" style="width: 280px;">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tablaPedidosPendientes"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TABLA DE MOVIMIENTOS DE STOCK -->
+    <div class="tab-pane fade" id="movimientos" role="tabpanel">
+        <div class="card shadow-sm mb-4">
+            <div class="card-body">
+                <div class="row g-3 align-items-end">
+                    <div class="col-md-3">
+                        <label class="form-label text-muted small">Mostrar</label>
+                        <select id="filtroCantidadMov" class="form-select">
+                            <option value="20" selected>20 registros</option>
+                            <option value="50">50 registros</option>
+                            <option value="100">100 registros</option>
+                        </select>
+                    </div>
+                    <div class="col-md-5">
+                        <label class="form-label text-muted small">Buscar</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
+                            <input type="text" id="buscarMovimiento" class="form-control border-start-0" placeholder="Producto o motivo...">
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label text-muted small">Tipo</label>
+                        <select id="filtroTipoMov" class="form-select">
+                            <option value="">Todos</option>
+                            <option value="ENTRADA">Entrada</option>
+                            <option value="SALIDA">Salida</option>
+                            <option value="RESERVA">Reserva</option>
+                            <option value="LIBERACION">Liberación</option>
+                            <option value="ENTREGA_PARCIAL">Entrega Parcial</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card shadow-sm">
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover mb-0">
+                        <thead class="table-dark">
+                            <tr>
+                                <th class="text-center">Fecha</th>
+                                <th class="text-start">Producto</th>
+                                <th class="text-center">Tipo</th>
+                                <th class="text-end">Cantidad</th>
+                                <th class="text-end">Stock Anterior</th>
+                                <th class="text-end">Stock Nuevo</th>
+                                <th class="text-start">Motivo</th>
+                                <th class="text-start">Usuario</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tablaMovimientos"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TABLA DE STOCK ACTUAL -->
+    <div class="tab-pane fade" id="stock" role="tabpanel">
+        <div class="card shadow-sm mb-4">
+            <div class="card-body">
+                <div class="row g-3 align-items-end">
+                    <div class="col-md-6">
+                        <label class="form-label text-muted small">Buscar Producto</label>
+                        <input type="text" id="buscarProductoStock" class="form-control" placeholder="Nombre o código...">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label text-muted small">Stock Mínimo</label>
+                        <select id="filtroStockMinimo" class="form-select">
+                            <option value="">Todos</option>
+                            <option value="1">Solo productos con stock bajo</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label text-muted small">&nbsp;</label>
+                        <button class="btn btn-primary w-100" id="btnActualizarStock">
+                            <i class="bi bi-arrow-repeat me-1"></i> Actualizar
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card shadow-sm">
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-dark">
+                            <tr>
+                                <th class="text-center">ID</th>
+                                <th class="text-start">Producto</th>
+                                <th class="text-start">Categoría</th>
+                                <th class="text-end">Stock Físico</th>
+                                <th class="text-end">Reservado</th>
+                                <th class="text-end text-primary">Disponible</th>
+                                <th class="text-end">Precio</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tablaStockActual"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para confirmar entrega parcial -->
+<div class="modal fade" id="modalEntregarProductos" tabindex="-1" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 20px;">
+            <div class="modal-header border-0 p-3" style="background: linear-gradient(135deg, #198754 0%, #0f5c3a 100%);">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="bi bi-box-seam text-white fs-5"></i>
+                    <h6 class="modal-title text-white fw-bold mb-0">Registrar Entrega de Productos</h6>
+                </div>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-3">
+                <div class="alert alert-info mb-3">
+                    <i class="bi bi-info-circle me-1"></i>
+                    Seleccione los productos que se están entregando y especifique las cantidades.
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Producto</th>
+                                <th>Cantidad Pendiente</th>
+                                <th class="text-center">Cantidad a Entregar</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tablaProductosEntrega"></tbody>
+                    </table>
+                </div>
+                <div class="alert alert-warning mt-2 small">
+                    <i class="bi bi-exclamation-triangle me-1"></i>
+                    La entrega parcial actualizará el stock en tiempo real.
+                </div>
+            </div>
+            <div class="modal-footer border-0 p-3 bg-light">
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-success btn-sm" id="btnConfirmarEntrega">Confirmar Entrega</button>
+            </div>
+        </div>
+    </div>
+</div>
 
 

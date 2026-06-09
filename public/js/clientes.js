@@ -122,7 +122,7 @@ function aplicarFiltros() {
             (cliente.apellido && cliente.apellido.toLowerCase().includes(textoBusqueda)) ||
             cliente.numero_documento.includes(textoBusqueda)
         )
-        .reverse()
+        .sort((a, b) => b.id - a.id)
         .slice(0, cantidadMostrar);
     
     renderizar(clientesFiltrados);

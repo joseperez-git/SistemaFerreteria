@@ -178,6 +178,8 @@ function obtenerImagenPrincipal(producto) {
     return '/assets/img/producto-default.png';
 }
 
+
+// Aplicar filtros
 function aplicarFiltros() {
     if (!isCurrentPage()) return;
     
@@ -198,12 +200,14 @@ function aplicarFiltros() {
             return producto.nombre.toLowerCase().includes(textoBusqueda) ||
                    (producto.codigo_barras && producto.codigo_barras.includes(textoBusqueda));
         })
-        .reverse();
+        .sort((a, b) => b.id - a.id) 
+        .slice(0, cantidadMostrar);
     
-    renderizar(productosFiltrados.slice(0, cantidadMostrar));
+    renderizar(productosFiltrados);
 }
 
 
+//Renderizar tabla de productos
 function renderizar(productos) {
     const tabla = getElement('tablaProductos');
     if (!tabla) return;
@@ -211,42 +215,48 @@ function renderizar(productos) {
     tabla.innerHTML = '';
     
     if (productos.length === 0) {
-        tabla.innerHTML = `<tr><td colspan="9" class="text-center text-muted py-4">No hay productos registrados</td></tr>`;
+        tabla.innerHTML = `<tr><td colspan="11" class="text-center text-muted py-4">No hay productos registrados</td></tr>`;
         return;
     }
     
     productos.forEach(producto => {
-        const stockActual = parseFloat(producto.stock);
-        const stockMinimoFijo = parseFloat(producto.stock_minimo);
+        const stockFisico = parseFloat(producto.stock) || 0;
+        const stockReservado = parseFloat(producto.stock_reservado) || 0;
+        const stockDisponible = stockFisico - stockReservado;
+        const stockMinimoFijo = parseFloat(producto.stock_minimo) || 0;
         const unidadAbreviatura = producto.unidad_abreviatura || 'und';
         const esFraccionable = producto.unidad_tipo === 'DECIMAL';
         
-        let stockStatus = '';
-        let stockBadge = '';
-        let stockClass = 'fw-bold';
-
+        // Determinar color del stock disponible
+        let stockDisponibleClass = 'fw-bold';
+        if (stockDisponible <= 0) {
+            stockDisponibleClass += ' text-danger';
+        } else if (stockDisponible < stockMinimoFijo) {
+            stockDisponibleClass += ' text-warning';
+        } else {
+            stockDisponibleClass += ' text-success';
+        }
+        
+        // Stock Físico status
+        let stockFisicoStatus = '';
+        let stockFisicoBadge = '';
         if (producto.estado === 1) {
-            if (stockActual <= 0) {
-                stockStatus = 'Sin Stock';
-                stockBadge = 'danger';
-                stockClass += ' text-danger';
-            } else if (stockActual < stockMinimoFijo) {
-                stockStatus = 'Stock Crítico';
-                stockBadge = 'danger';
-                stockClass += ' text-danger';
-            } else if (stockActual === stockMinimoFijo) {
-                stockStatus = 'Stock Mínimo';
-                stockBadge = 'warning text-dark';
-                stockClass += ' text-warning';
+            if (stockFisico <= 0) {
+                stockFisicoStatus = 'Sin Stock';
+                stockFisicoBadge = 'danger';
+            } else if (stockFisico < stockMinimoFijo) {
+                stockFisicoStatus = 'Stock Crítico';
+                stockFisicoBadge = 'danger';
+            } else if (stockFisico === stockMinimoFijo) {
+                stockFisicoStatus = 'Stock Mínimo';
+                stockFisicoBadge = 'warning text-dark';
             } else {
-                stockStatus = 'Disponible';
-                stockBadge = 'success';
-                stockClass += ' text-success';
+                stockFisicoStatus = 'Disponible';
+                stockFisicoBadge = 'success';
             }
         } else {
-            stockStatus = 'Inactivo';
-            stockBadge = 'secondary';
-            stockClass += ' text-secondary';
+            stockFisicoStatus = 'Inactivo';
+            stockFisicoBadge = 'secondary';
         }
 
         const imagenUrl = obtenerImagenPrincipal(producto);
@@ -259,12 +269,14 @@ function renderizar(productos) {
                          class="img-preview" data-id="${producto.id}">
                 </td>
                 <td><strong>${producto.nombre}</strong><br><small class="text-muted">${producto.descripcion?.substring(0, 60) || ''}</small></td>
-                <td><span class="badge bg-secondary">${producto.categoria}</span></td>
+                <td><span class="badge bg-secondary">${producto.categoria_nombre}</span></td>
                 <td>S/ ${parseFloat(producto.precio).toFixed(2)}</td>
                 <td class="text-center">
-                    <span class="${stockClass}">${stockActual.toFixed(2)} ${unidadAbreviatura}</span>
-                    <br><span class="badge bg-${stockBadge.split(' ')[0]}">${stockStatus}</span>
+                    <span class="fw-bold">${stockFisico.toFixed(2)} ${unidadAbreviatura}</span>
+                    <br><span class="badge bg-${stockFisicoBadge.split(' ')[0]}">${stockFisicoStatus}</span>
                 </td>
+                <td class="text-center text-warning fw-bold">${stockReservado.toFixed(2)} ${unidadAbreviatura}</td>
+                <td class="text-center ${stockDisponibleClass}">${stockDisponible.toFixed(2)} ${unidadAbreviatura}</td>
                 <td class="text-center">${stockMinimoFijo.toFixed(2)} ${unidadAbreviatura}</td>
                 <td class="text-center">
                     ${producto.estado === 1 ? '<span class="badge bg-success">Activo</span>' : '<span class="badge bg-secondary">Inactivo</span>'}
@@ -278,12 +290,13 @@ function renderizar(productos) {
                     }
                     <button class="btn btn-sm btn-danger btnEliminarProducto" data-id="${producto.id}" title="Eliminar"><i class="bi bi-trash"></i></button>
                 </td>
-            </table>
+            </tr>
         `;
     });
 }
 
 
+//Cargar categorias
 async function cargarCategorias() {
     if (!isCurrentPage()) return;
     try {

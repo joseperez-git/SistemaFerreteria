@@ -176,7 +176,7 @@ export function mostrarModalConfirmacionProfesional(titulo, mensaje, onConfirm, 
             iconColor: 'text-warning',
             btnClass: 'btn-warning',
             btnIcon: 'bi-shield-exclamation',
-            btnText: 'Desactivar'
+            btnText: 'Anular'
         },
         success: {
             icon: 'bi-check-circle-fill',

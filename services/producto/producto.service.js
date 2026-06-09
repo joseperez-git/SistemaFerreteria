@@ -9,6 +9,9 @@ exports.getProductos = async () => {
     const productos = rows[0];
     
     for (const producto of productos) {
+        // Asegurar que stock_reservado tenga un valor por defecto
+        producto.stock_reservado = producto.stock_reservado || 0;
+        
         const [imagenes] = await db.query('CALL sp_producto_imagen_listar_por_producto(?)', [producto.id]);
         producto.imagenes = imagenes[0] || [];
     }

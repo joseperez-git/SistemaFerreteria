@@ -55,7 +55,7 @@ function aplicarFiltros() {
             perfil.nombre.toLowerCase().includes(textoBusqueda) ||
             (perfil.descripcion && perfil.descripcion.toLowerCase().includes(textoBusqueda))
         )
-        .reverse()
+        .sort((a, b) => b.id - a.id)
         .slice(0, cantidadMostrar);
     
     renderizar(perfilesFiltrados);

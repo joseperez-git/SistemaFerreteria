@@ -25,10 +25,14 @@ exports.getById = async (req, res) => {
 
         const pedido = await service.getPedidoById(id);
         const detalles = await service.getDetallesPedido(id);
+        const entregas = await service.getEntregasPedido(id);
+        const saldo = await service.calcularSaldoPedido(id);
 
         res.json({
             ...pedido,
-            detalles
+            detalles,
+            entregas,
+            saldo_pendiente: saldo
         });
     } catch (error) {
         console.error('Error al obtener pedido:', error);
@@ -89,7 +93,7 @@ exports.cambiarEstado = async (req, res) => {
         if (isNaN(id)) {
             return res.status(400).json({ error: "ID inválido" });
         }
-        if (estado === undefined || ![0, 1, 2].includes(Number(estado))) {
+        if (estado === undefined || ![0, 1, 2, 3, 4].includes(Number(estado))) {
             return res.status(400).json({ error: "Estado inválido" });
         }
 
@@ -102,7 +106,7 @@ exports.cambiarEstado = async (req, res) => {
 };
 
 // ============================================
-// OBTENER VENTA ASOCIADA A UN PEDIDO
+// OBTENER VENTA ASOCIADA
 // ============================================
 exports.getVentaByPedido = async (req, res) => {
     try {
@@ -119,30 +123,19 @@ exports.getVentaByPedido = async (req, res) => {
 };
 
 // ============================================
-// CONVERTIR PEDIDO A VENTA
+// CALCULAR SALDO PENDIENTE
 // ============================================
-exports.convertirAVenta = async (req, res) => {
+exports.calcularSaldo = async (req, res) => {
     try {
         const idPedido = parseInt(req.params.id);
-        const { monto_pago, metodo_pago } = req.body;
-        
         if (isNaN(idPedido)) {
-            return res.status(400).json({ error: 'ID de pedido inválido' });
+            return res.status(400).json({ error: "ID inválido" });
         }
-        
-        if (!metodo_pago) {
-            return res.status(400).json({ error: 'Método de pago requerido' });
-        }
-        
-        if (monto_pago === undefined || monto_pago < 0) {
-            return res.status(400).json({ error: 'Monto de pago inválido' });
-        }
-        
-        const resultado = await service.convertirAVenta(idPedido, monto_pago, metodo_pago);
-        res.json(resultado);
+        const saldo = await service.calcularSaldoPedido(idPedido);
+        res.json({ saldo_pendiente: saldo });
     } catch (error) {
-        console.error('Error al convertir pedido:', error);
-        res.status(400).json({ error: error.message });
+        console.error('Error al calcular saldo:', error);
+        res.status(500).json({ error: error.message });
     }
 };
 
