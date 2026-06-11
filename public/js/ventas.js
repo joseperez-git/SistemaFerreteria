@@ -1457,14 +1457,14 @@ function setupEventListeners() {
         const btnAnular = e.target.closest('.btnAnularVenta');
         if (btnAnular) {
             const id = parseInt(btnAnular.dataset.id);
-            mostrarModalConfirmacionProfesional('Anular Venta', '¿Desea anular esta venta? Se liberará el stock y se anularán las cuotas pendientes.', () => cambiarEstado(id, 2, 'Venta anulada correctamente', 'warning'), 'warning');
+            mostrarModalConfirmacionProfesional('Anular Venta', '¿Desea anular esta venta? Se liberará el stock y se anularán las cuotas pendientes.', () => cambiarEstado(id, 2, 'Venta anulada correctamente', 'warning'), 'warning', 'Anular');
             return;
         }
 
         const btnActivar = e.target.closest('.btnActivarVenta');
         if (btnActivar) {
             const id = parseInt(btnActivar.dataset.id);
-            mostrarModalConfirmacionProfesional('Reactivar Venta', '¿Desea reactivar esta venta? Volverá a estado Pago Parcial.', () => cambiarEstado(id, 0, 'Venta reactivada como Pago Parcial', 'success'), 'success');
+            mostrarModalConfirmacionProfesional('Reactivar Venta', '¿Desea reactivar esta venta? Volverá a estado Pago Parcial.', () => cambiarEstado(id, 0, 'Venta reactivada como Pago Parcial', 'success'), 'success', 'Reactivar');
             return;
         }
 

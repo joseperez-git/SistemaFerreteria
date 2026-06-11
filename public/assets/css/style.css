@@ -933,3 +933,46 @@ body {
 
 
 
+/* Estilos para tooltips en botones deshabilitados */
+button[disabled] {
+    pointer-events: auto !important;
+}
+
+.btn[disabled] {
+    pointer-events: auto !important;
+    position: relative;
+}
+
+/* Tooltip personalizado como respaldo */
+button[disabled]:hover::after {
+    content: attr(title);
+    position: absolute;
+    background: #333;
+    color: #fff;
+    padding: 5px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    white-space: nowrap;
+    z-index: 9999;
+    bottom: 120%;
+    left: 50%;
+    transform: translateX(-50%);
+    pointer-events: none;
+}
+
+button[disabled]:hover::before {
+    content: '';
+    position: absolute;
+    bottom: 105%;
+    left: 50%;
+    transform: translateX(-50%);
+    border-width: 5px;
+    border-style: solid;
+    border-color: #333 transparent transparent transparent;
+    z-index: 9999;
+}
+
+
+
+
+

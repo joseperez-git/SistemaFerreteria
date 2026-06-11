@@ -7,6 +7,39 @@ let eventosInicializados = false;
 let elementos = {};
 
 
+// validacion en tiempo real
+function validarSoloLetrasFrontend(event) {
+    const regex = /^[a-zA-ZáéíóúñÁÉÍÓÚÑüÜ\s]*$/;
+    const valor = event.target.value;
+    if (!regex.test(valor)) {
+        event.target.value = valor.slice(0, -1);
+        mostrarToast('Solo se permiten letras y espacios', 'warning');
+    }
+}
+
+
+// Inicializar Tooltips
+function inicializarTooltips() {
+    // Limpiar tooltips existentes para evitar duplicados
+    const existingTooltips = document.querySelectorAll('.tooltip');
+    existingTooltips.forEach(tooltip => tooltip.remove());
+    
+    // Inicializar nuevos tooltips
+    const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    tooltipTriggerList.forEach(function (tooltipTriggerEl) {
+        // Destruir tooltip existente si lo hay
+        if (tooltipTriggerEl._tooltip) {
+            tooltipTriggerEl._tooltip.dispose();
+        }
+        new bootstrap.Tooltip(tooltipTriggerEl, {
+            placement: 'top',
+            trigger: 'hover',
+            delay: { show: 300, hide: 100 }
+        });
+    });
+}
+
+
 // FUNCIONES DE UTILIDAD
 function isCurrentPage() {
     const tabla = document.getElementById('tablaUsuarios');
@@ -65,12 +98,20 @@ function renderizar(usuarios) {
     }
     
     const sesion = JSON.parse(localStorage.getItem('sesion') || '{}');
+    const esAdminSesion = sesion?.usuario?.id_perfil === 1;
+    const usuarioLogueadoId = sesion?.usuario?.id;
     
     usuarios.forEach(usuario => {
-        const esUsuarioLogueado = sesion?.usuario?.id === usuario.id;
+        const esUsuarioLogueado = usuarioLogueadoId === usuario.id;
         const esAdminObjetivo = usuario.id_perfil === 1;
-        const esAdminSesion = sesion?.usuario?.id_perfil === 1;
-        const bloquearAdmin = esAdminObjetivo && !esAdminSesion;
+        const bloquearAcciones = !esAdminSesion && !esUsuarioLogueado;
+        const bloquearAdminObjetivo = esAdminObjetivo && !esAdminSesion;
+        
+        // Determinar si el botón editar está deshabilitado
+        const editarDeshabilitado = bloquearAcciones || bloquearAdminObjetivo;
+        
+        // Determinar si botones de estado están deshabilitados
+        const estadoDeshabilitado = esUsuarioLogueado || bloquearAcciones || bloquearAdminObjetivo;
         
         tabla.innerHTML += `
             <tr>
@@ -82,24 +123,39 @@ function renderizar(usuarios) {
                 <td>${usuario.estado === 1 ? '<span class="badge bg-success">Activo</span>' : '<span class="badge bg-secondary">Inactivo</span>'}</td>
                 <td class="text-center">${usuario.fecha_creacion || '-'}</td>
                 <td class="text-center">
-                    <button class="btn btn-sm btn-warning btnEditar" data-id="${usuario.id}" ${bloquearAdmin ? 'disabled' : ''}>
+                    <button class="btn btn-sm btn-warning btnEditar" 
+                            data-id="${usuario.id}"
+                            ${editarDeshabilitado ? 'disabled' : ''}
+                            ${editarDeshabilitado ? 'title="Solo administradores pueden editar usuarios" data-bs-toggle="tooltip"' : ''}>
                         <i class="bi bi-pencil-square"></i>
                     </button>
                     ${usuario.estado === 1 
-                        ? `<button class="btn btn-sm btn-secondary btnDesactivar" data-id="${usuario.id}" ${esUsuarioLogueado || bloquearAdmin ? 'disabled' : ''}>
+                        ? `<button class="btn btn-sm btn-secondary btnDesactivar" 
+                                   data-id="${usuario.id}"
+                                   ${estadoDeshabilitado ? 'disabled' : ''}
+                                   ${estadoDeshabilitado ? 'title="No puedes desactivar este usuario" data-bs-toggle="tooltip"' : ''}>
                             <i class="bi bi-slash-circle"></i>
-                        </button>`
-                        : `<button class="btn btn-sm btn-success btnActivar" data-id="${usuario.id}">
+                           </button>`
+                        : `<button class="btn btn-sm btn-success btnActivar" 
+                                   data-id="${usuario.id}"
+                                   ${estadoDeshabilitado ? 'disabled' : ''}
+                                   ${estadoDeshabilitado ? 'title="No puedes activar este usuario" data-bs-toggle="tooltip"' : ''}>
                             <i class="bi bi-check-circle"></i>
-                        </button>`
+                           </button>`
                     }
-                    <button class="btn btn-sm btn-danger btnEliminar" data-id="${usuario.id}" ${esUsuarioLogueado || bloquearAdmin ? 'disabled' : ''}>
+                    <button class="btn btn-sm btn-danger btnEliminar" 
+                            data-id="${usuario.id}"
+                            ${estadoDeshabilitado ? 'disabled' : ''}
+                            ${estadoDeshabilitado ? 'title="No puedes eliminar este usuario" data-bs-toggle="tooltip"' : ''}>
                         <i class="bi bi-trash"></i>
                     </button>
                 </td>
             </tr>
         `;
     });
+    
+    // Inicializar tooltips después de renderizar
+    inicializarTooltips();
 }
 
 
@@ -188,6 +244,24 @@ async function cambiarEstado(id, estado, mensajeExito, tipoToast) {
 function initFormUsuario() {
     const btnGuardar = getElement('btnGuardarUsuario');
     if (!btnGuardar) return;
+
+    //Validaciones
+    const inputNombre = getElement('nombre');
+    const inputApellido = getElement('apellido');
+    
+    if (inputNombre) {
+        const nuevoNombre = inputNombre.cloneNode(true);
+        inputNombre.parentNode.replaceChild(nuevoNombre, inputNombre);
+        nuevoNombre.addEventListener('input', validarSoloLetrasFrontend);
+        elementos['nombre'] = nuevoNombre;
+    }
+    
+    if (inputApellido) {
+        const nuevoApellido = inputApellido.cloneNode(true);
+        inputApellido.parentNode.replaceChild(nuevoApellido, inputApellido);
+        nuevoApellido.addEventListener('input', validarSoloLetrasFrontend);
+        elementos['apellido'] = nuevoApellido;
+    }
     
     if (btnGuardar.parentNode) {
         const newBtn = btnGuardar.cloneNode(true);
@@ -342,16 +416,35 @@ function initNuevoUsuario() {
 }
 
 
-// EVENTOS GLOBALES (DELEGACIÓN)
+// EVENTOS GLOBALES
 function setupEventListeners() {
     document.body.addEventListener('click', async (e) => {
         if (!isCurrentPage()) return;
         
-        // Editar
+        // Obtener usuario en sesión
+        const sesion = JSON.parse(localStorage.getItem('sesion') || '{}');
+        const esAdminSesion = sesion?.usuario?.id_perfil === 1;
+        const usuarioLogueadoId = sesion?.usuario?.id;
+        
+        // EDITAR
         const btnEditar = e.target.closest('.btnEditar');
-        if (btnEditar && !btnEditar.disabled) {
+        if (btnEditar) {
+            // Si está deshabilitado, no hacer nada 
+            if (btnEditar.disabled) return;
+            
             const id = parseInt(btnEditar.dataset.id);
             const usuario = usuariosGlobal.find(u => u.id === id);
+            
+            // Validación de seguridad 
+            if (!esAdminSesion && usuarioLogueadoId !== id) {
+                mostrarToast('No tiene permisos para editar otros usuarios', 'warning');
+                return;
+            }
+            
+            if (usuario && usuario.id_perfil === 1 && !esAdminSesion) {
+                mostrarToast('No tiene permisos para modificar administradores', 'warning');
+                return;
+            }
             
             if (usuario) {
                 const usuarioId = getElement('usuarioId');
@@ -387,41 +480,78 @@ function setupEventListeners() {
             return;
         }
         
-        // Desactivar
+        // DESACTIVAR 
         const btnDesactivar = e.target.closest('.btnDesactivar');
-        if (btnDesactivar && !btnDesactivar.disabled) {
+        if (btnDesactivar) {
+            if (btnDesactivar.disabled) return;
+            
             const id = parseInt(btnDesactivar.dataset.id);
+            
+            if (!esAdminSesion) {
+                mostrarToast('No tiene permisos para desactivar usuarios', 'warning');
+                return;
+            }
+            
+            if (usuarioLogueadoId === id) {
+                mostrarToast('No puede desactivar su propio usuario', 'warning');
+                return;
+            }
+            
             mostrarModalConfirmacionProfesional(
                 'Desactivar Usuario',
                 '¿Desea desactivar este usuario?',
                 () => cambiarEstado(id, 0, 'Usuario desactivado', 'warning'),
-                'warning'
+                'warning',
+                'Desactivar'
             );
             return;
         }
         
-        // Activar
+        // ACTIVAR 
         const btnActivar = e.target.closest('.btnActivar');
         if (btnActivar) {
+            if (btnActivar.disabled) return;
+            
             const id = parseInt(btnActivar.dataset.id);
+            
+            if (!esAdminSesion) {
+                mostrarToast('No tiene permisos para activar usuarios', 'warning');
+                return;
+            }
+            
             mostrarModalConfirmacionProfesional(
                 'Activar Usuario',
                 '¿Desea activar este usuario?',
                 () => cambiarEstado(id, 1, 'Usuario activado', 'success'),
-                'success'
+                'success',
+                'Activar'
             );
             return;
         }
         
-        // Eliminar
+        // ELIMINAR 
         const btnEliminar = e.target.closest('.btnEliminar');
-        if (btnEliminar && !btnEliminar.disabled) {
+        if (btnEliminar) {
+            if (btnEliminar.disabled) return;
+            
             const id = parseInt(btnEliminar.dataset.id);
+            
+            if (!esAdminSesion) {
+                mostrarToast('No tiene permisos para eliminar usuarios', 'warning');
+                return;
+            }
+            
+            if (usuarioLogueadoId === id) {
+                mostrarToast('No puede eliminar su propio usuario', 'warning');
+                return;
+            }
+            
             mostrarModalConfirmacionProfesional(
                 'Eliminar Usuario',
                 '¿Desea eliminar este usuario?',
                 () => cambiarEstado(id, 2, 'Usuario eliminado', 'danger'),
-                'danger'
+                'danger',
+                'Eliminar'
             );
             return;
         }
@@ -450,6 +580,7 @@ export async function init() {
     if (eventosInicializados) {
         await cargarUsuarios();
         await cargarPerfiles();
+        inicializarTooltips();
         return;
     }
     
@@ -463,11 +594,9 @@ export async function init() {
     
     await cargarUsuarios();
     await cargarPerfiles();
+    inicializarTooltips();
 }
 
 export { destroy };
-
-
-
 
 

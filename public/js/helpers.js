@@ -122,118 +122,154 @@ export function cerrarModal(modalElement) {
 }
 
 
-
 // MODAL DE CONFIRMACIÓN
-export function mostrarModalConfirmacionProfesional(titulo, mensaje, onConfirm, tipo = 'warning') {
-    // Buscar o crear el modal global
-    let modalElement = document.getElementById('modalConfirmacionGlobal');
-    
-    if (!modalElement) {
-        // Crear modal si no existe
-        modalElement = document.createElement('div');
-        modalElement.className = 'modal fade';
-        modalElement.id = 'modalConfirmacionGlobal';
-        modalElement.tabIndex = '-1';
-        modalElement.setAttribute('data-bs-backdrop', 'static');
-        modalElement.innerHTML = `
-            <div class="modal-dialog modal-dialog-centered">
-                <div class="modal-content shadow-lg border-0" style="border-radius: 20px; overflow: hidden;">
-                    <div class="modal-header border-0 pt-4 pb-0" style="background: white;">
-                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                    </div>
-                    <div class="modal-body text-center p-4">
-                        <div class="modal-icon mb-3">
-                            <i class="bi bi-exclamation-triangle-fill fs-1 text-warning"></i>
-                        </div>
-                        <h5 class="modal-title fw-bold mb-3"></h5>
-                        <p class="text-muted modal-mensaje"></p>
-                    </div>
-                    <div class="modal-footer border-0 justify-content-center gap-3 pb-4">
-                        <button type="button" class="btn btn-outline-secondary px-4" data-bs-dismiss="modal">
-                            <i class="bi bi-x-circle me-1"></i> Cancelar
-                        </button>
-                        <button type="button" class="btn btn-warning px-4 btn-confirmar">
-                            <i class="bi bi-check-circle me-1"></i> Confirmar
-                        </button>
-                    </div>
-                </div>
-            </div>
-        `;
-        document.body.appendChild(modalElement);
+export function mostrarModalConfirmacionProfesional(titulo, mensaje, onConfirm, tipo = 'warning', textoBoton = 'Confirmar') {
+
+    const modalExistente = document.getElementById('modalConfirmacionProfesional');
+    if (modalExistente) {
+        modalExistente.remove();
     }
     
-    // Configuración según tipo
+    // Configuración según el tipo de acción 
     const config = {
-        danger: {
-            icon: 'bi-exclamation-octagon-fill',
-            iconColor: 'text-danger',
-            btnClass: 'btn-danger',
-            btnIcon: 'bi-trash',
-            btnText: 'Eliminar'
-        },
         warning: {
-            icon: 'bi-exclamation-triangle-fill',
-            iconColor: 'text-warning',
-            btnClass: 'btn-warning',
-            btnIcon: 'bi-shield-exclamation',
-            btnText: 'Anular'
+            color: '#f59e0b',
+            colorHover: '#d97706',
+            icono: 'bi-exclamation-triangle-fill',
+            iconoBoton: 'bi-slash-circle',
+            bgLight: '#fef3c7'
         },
         success: {
-            icon: 'bi-check-circle-fill',
-            iconColor: 'text-success',
-            btnClass: 'btn-success',
-            btnIcon: 'bi-check-lg',
-            btnText: 'Activar'
+            color: '#10b981',
+            colorHover: '#059669',
+            icono: 'bi-check-circle-fill',
+            iconoBoton: 'bi-check-circle',
+            bgLight: '#d1fae5'
+        },
+        danger: {
+            color: '#ef4444',
+            colorHover: '#dc2626',
+            icono: 'bi-trash-fill',
+            iconoBoton: 'bi-trash',
+            bgLight: '#fee2e2'
         },
         info: {
-            icon: 'bi-info-circle-fill',
-            iconColor: 'text-info',
-            btnClass: 'btn-info',
-            btnIcon: 'bi-info-lg',
-            btnText: 'Confirmar'
+            color: '#3b82f6',
+            colorHover: '#2563eb',
+            icono: 'bi-info-circle-fill',
+            iconoBoton: 'bi-info-circle',
+            bgLight: '#dbeafe'
         }
     };
     
-    const cfg = config[tipo] || config.warning;
+    const conf = config[tipo] || config.warning;
     
-    // Aplicar configuración
-    const iconEl = modalElement.querySelector('.modal-icon i');
-    const titleEl = modalElement.querySelector('.modal-title');
-    const messageEl = modalElement.querySelector('.modal-mensaje');
-    const confirmBtn = modalElement.querySelector('.btn-confirmar');
+    const modalHTML = `
+        <div class="modal fade" id="modalConfirmacionProfesional" tabindex="-1" data-bs-backdrop="false" data-bs-keyboard="true">
+            <div class="modal-dialog modal-dialog-centered" style="max-width: 420px;">
+                <div class="modal-content" style="border: none; border-radius: 28px; overflow: hidden; background: white; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);">
+                    
+                    <!-- Botón cerrar (esquina superior derecha) -->
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" style="position: absolute; top: 20px; right: 20px; z-index: 10; opacity: 0.5; transition: opacity 0.2s;" aria-label="Cerrar"></button>
+                    
+                    <!-- Contenido principal -->
+                    <div style="padding: 40px 32px 32px 32px; text-align: center;">
+                        
+                        <!-- Icono circular animado -->
+                        <div style="background: ${conf.bgLight}; width: 80px; height: 80px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 24px; animation: fadeInScale 0.3s ease-out;">
+                            <i class="bi ${conf.icono}" style="font-size: 42px; color: ${conf.color};"></i>
+                        </div>
+                        
+                        <!-- Título -->
+                        <h5 style="color: #111827; font-weight: 700; font-size: 1.35rem; margin-bottom: 12px; letter-spacing: -0.3px;">
+                            ${titulo}
+                        </h5>
+                        
+                        <!-- Mensaje -->
+                        <p style="color: #6b7280; font-size: 0.9rem; line-height: 1.5; margin-bottom: 28px; max-width: 320px; margin-left: auto; margin-right: auto;">
+                            ${mensaje}
+                        </p>
+                        
+                        <!-- Botones -->
+                        <div style="display: flex; gap: 12px; justify-content: center;">
+                            <button type="button" class="btn-cancelar-modal" data-bs-dismiss="modal" style="flex: 1; padding: 10px 20px; border-radius: 60px; border: 1px solid #e5e7eb; background: white; color: #6b7280; font-weight: 500; font-size: 0.875rem; transition: all 0.2s; cursor: pointer;">
+                                <i class="bi bi-x-circle me-1"></i> Cancelar
+                            </button>
+                            <button type="button" class="btn-confirmar-modal" id="btnConfirmarAccionProfesional" style="flex: 1; padding: 10px 20px; border-radius: 60px; border: none; background: ${conf.color}; color: white; font-weight: 600; font-size: 0.875rem; transition: all 0.2s; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
+                                <i class="bi ${conf.iconoBoton}"></i> ${textoBoton}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
     
-    if (iconEl) {
-        iconEl.className = `bi ${cfg.icon} fs-1 ${cfg.iconColor}`;
-    }
-    if (titleEl) titleEl.textContent = titulo;
-    if (messageEl) messageEl.innerHTML = mensaje;
-    if (confirmBtn) {
-        confirmBtn.className = `btn ${cfg.btnClass} px-4 btn-confirmar`;
-        confirmBtn.innerHTML = `<i class="bi ${cfg.btnIcon} me-1"></i> ${cfg.btnText}`;
-        
-        // Remover eventos anteriores
-        const newBtn = confirmBtn.cloneNode(true);
-        confirmBtn.parentNode.replaceChild(newBtn, confirmBtn);
-        
-        newBtn.onclick = async () => {
-            const modal = bootstrap.Modal.getInstance(modalElement);
-            if (modal) modal.hide();
-            limpiarBackdrops();
-            await onConfirm();
-        };
-    }
+    // Agregar modal al body
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
     
-    // Limpiar backdrops antes de abrir
-    limpiarBackdrops();
+    const style = document.createElement('style');
+    style.textContent = `
+        @keyframes fadeInScale {
+            from {
+                opacity: 0;
+                transform: scale(0.8);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+        .btn-cancelar-modal:hover {
+            background: #f9fafb !important;
+            border-color: #d1d5db !important;
+            transform: translateY(-1px);
+        }
+        .btn-confirmar-modal:hover {
+            transform: translateY(-2px);
+            filter: brightness(1.05);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+        }
+        .btn-cancelar-modal:active, .btn-confirmar-modal:active {
+            transform: translateY(0px);
+        }
+        .btn-close:hover {
+            opacity: 0.8 !important;
+            background-color: rgba(0, 0, 0, 0.05);
+            border-radius: 50%;
+        }
+    `;
+    document.head.appendChild(style);
     
-    const modal = new bootstrap.Modal(modalElement);
+    // Mostrar modal
+    const modalElement = document.getElementById('modalConfirmacionProfesional');
+    const modal = new bootstrap.Modal(modalElement, {
+        backdrop: false,
+        keyboard: true
+    });
     modal.show();
+    
+    // Evento del botón confirmar
+    const btnConfirmar = document.getElementById('btnConfirmarAccionProfesional');
+    btnConfirmar.onclick = () => {
+        onConfirm();
+        modal.hide();
+        setTimeout(() => {
+            modalElement.remove();
+            limpiarBackdrops();
+        }, 300);
+    };
+    
+    // Limpiar al cerrar
+    modalElement.addEventListener('hidden.bs.modal', function() {
+        modalElement.remove();
+        limpiarBackdrops();
+    });
 }
 
 
-// MOSTRAR MODAL DE ADVERTENCIA (para errores de permisos)
+// MOSTRAR MODAL DE ADVERTENCIA
 export function mostrarModalAdvertencia(mensaje) {
-    // Verificar si el modal existe en el DOM
     let modalElement = document.getElementById('modalAdvertencia');
     
     // Si no existe, no hacer nada
@@ -247,7 +283,6 @@ export function mostrarModalAdvertencia(mensaje) {
     const modal = new bootstrap.Modal(modalElement);
     modal.show();
 }
-
 
 
 
