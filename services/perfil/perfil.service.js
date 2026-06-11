@@ -2,6 +2,16 @@ const db = require('../../config/db');
 const permisoService = require('../permiso/permiso.service');
 
 
+// VALIDACIÓN DE NOMBRE
+function validarNombrePerfil(nombre) {
+    const regex = /^[a-zA-Z0-9\s]{3,50}$/;
+    if (!regex.test(nombre)) {
+        throw new Error('El nombre del perfil solo puede contener letras, números y espacios');
+    }
+    return true;
+}
+
+
 // LISTAR PERFILES
 exports.getPerfiles = async () => {
     const [rows] = await db.query('CALL sp_perfil_listar()');
@@ -23,6 +33,8 @@ exports.createPerfil = async (body, idUsuarioSesion) => {
     if (!nombre || nombre.trim() === '') {
         throw new Error('El nombre del perfil es obligatorio');
     }
+
+    validarNombrePerfil(nombre.trim());
 
     await db.query('CALL sp_perfil_insertar(?, ?, ?)', [
         nombre.trim(),
@@ -92,6 +104,11 @@ exports.updatePerfil = async (id, body, idUsuarioSesion) => {
     // EDITAR (nombre, descripción)
     if (nombre !== undefined || descripcion !== undefined) {
         await exports.validarPermisosPerfil(id, idUsuarioSesion, 'EDITAR');
+
+        if (nombre !== undefined && nombre.trim() !== '') {
+            validarNombrePerfil(nombre.trim());
+        }
+        
         await db.query('CALL sp_perfil_actualizar(?, ?, ?, ?)', [
             id,
             nombre?.trim() || null,

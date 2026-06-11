@@ -268,21 +268,3 @@ export function mostrarModalConfirmacionProfesional(titulo, mensaje, onConfirm, 
 }
 
 
-// MOSTRAR MODAL DE ADVERTENCIA
-export function mostrarModalAdvertencia(mensaje) {
-    let modalElement = document.getElementById('modalAdvertencia');
-    
-    // Si no existe, no hacer nada
-    if (!modalElement) return;
-    
-    // Actualizar mensaje
-    const mensajeElement = document.getElementById('mensajeAdvertencia');
-    if (mensajeElement) mensajeElement.textContent = mensaje;
-    
-    // Crear instancia del modal
-    const modal = new bootstrap.Modal(modalElement);
-    modal.show();
-}
-
-
-
