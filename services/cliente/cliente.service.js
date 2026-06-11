@@ -1,5 +1,5 @@
 const db = require('../../config/db');
-
+const { consultarAplicloud } = require('../consultas-externas/consulta.service');
 
 // LISTAR CLIENTES
 exports.getClientes = async () => {
@@ -7,19 +7,25 @@ exports.getClientes = async () => {
     return rows[0];
 };
 
-
-//OBTENER CLIENTE POR ID
+// OBTENER CLIENTE POR ID
 exports.getClienteById = async (id) => {
     const [rows] = await db.query('CALL sp_obtener_cliente(?)', [id]);
     return rows[0][0];
 };
 
+// BUSCAR CLIENTE POR NÚMERO DE DOCUMENTO (LOCAL)
+exports.buscarClientePorDocumento = async (numero_documento) => {
+    const [rows] = await db.query(
+        'SELECT * FROM cliente WHERE numero_documento = ? AND estado = 1 LIMIT 1',
+        [numero_documento]
+    );
+    return rows[0] || null;
+};
 
 // CREAR CLIENTE
 exports.createCliente = async (body) => {
     const { tipo_documento, numero_documento, nombre, apellido, telefono, correo } = body;
 
-    // Validar campos obligatorios
     if (!tipo_documento || tipo_documento.trim() === '') {
         throw new Error('El tipo de documento es obligatorio');
     }
@@ -32,7 +38,6 @@ exports.createCliente = async (body) => {
         throw new Error('El nombre es obligatorio');
     }
 
-    // Ejecutar procedimiento
     await db.query(
         'CALL sp_registrar_cliente(?, ?, ?, ?, ?, ?)',
         [
@@ -50,12 +55,10 @@ exports.createCliente = async (body) => {
     };
 };
 
-
 // ACTUALIZAR CLIENTE
 exports.updateCliente = async (id, body) => {
     const { tipo_documento, numero_documento, nombre, apellido, telefono, correo, estado } = body;
 
-    // Validar estado si viene
     if (estado !== undefined && ![0, 1, 2].includes(Number(estado))) {
         throw new Error('Estado inválido');
     }
@@ -66,7 +69,6 @@ exports.updateCliente = async (id, body) => {
         return { message: 'Estado del cliente actualizado correctamente' };
     }
 
-    // Validar campos obligatorios para actualización completa
     if (!tipo_documento || tipo_documento.trim() === '') {
         throw new Error('El tipo de documento es obligatorio');
     }
@@ -79,7 +81,6 @@ exports.updateCliente = async (id, body) => {
         throw new Error('El nombre es obligatorio');
     }
 
-    // Ejecutar actualización
     await db.query(
         'CALL sp_actualizar_cliente(?, ?, ?, ?, ?, ?, ?)',
         [
@@ -98,10 +99,8 @@ exports.updateCliente = async (id, body) => {
     };
 };
 
-
 // ELIMINAR CLIENTE (LÓGICO)
 exports.deleteCliente = async (id) => {
-    // Verificar si existe
     const [rows] = await db.query('CALL sp_obtener_cliente(?)', [id]);
     const cliente = rows[0][0];
 
@@ -109,13 +108,9 @@ exports.deleteCliente = async (id) => {
         throw new Error('Cliente no encontrado');
     }
 
-    // Eliminación lógica (estado = 2)
     await db.query('CALL sp_cambiar_estado_cliente(?, ?)', [id, 2]);
 
     return {
         message: 'Cliente eliminado correctamente'
     };
 };
-
-
-
