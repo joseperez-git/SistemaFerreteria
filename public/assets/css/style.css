@@ -943,6 +943,10 @@ button[disabled] {
     position: relative;
 }
 
+.tooltip {
+    pointer-events: none !important;
+}
+
 /* Tooltip personalizado como respaldo */
 button[disabled]:hover::after {
     content: attr(title);

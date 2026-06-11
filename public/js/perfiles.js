@@ -1,10 +1,43 @@
-import { mostrarToast, limpiarBackdrops, prepararModal, cerrarModal, mostrarModalConfirmacionProfesional, mostrarModalAdvertencia } from './helpers.js';
-
+import { mostrarToast, limpiarBackdrops, prepararModal, cerrarModal, mostrarModalConfirmacionProfesional } from './helpers.js';
 
 // VARIABLES GLOBALES
 let perfilesGlobal = [];
 let eventosInicializados = false;
 let elementos = {};
+
+
+// ID del perfil Administrador
+const PERFIL_ADMIN_ID = 1;
+const OPCIONES_OBLIGATORIAS = [1, 3]; // Dashboard (1) y Perfiles (3)
+
+
+// VALIDACIÓN NOMBRE: solo letras, números y espacios 
+function validarNombrePerfilFrontend(event) {
+    const regex = /^[a-zA-Z0-9\s]*$/;
+    const valor = event.target.value;
+    if (!regex.test(valor)) {
+        event.target.value = valor.slice(0, -1);
+        mostrarToast('Solo se permiten letras, números y espacios', 'warning');
+    }
+}
+
+
+// INICIALIZAR TOOLTIPS 
+function inicializarTooltips() {
+    setTimeout(function() {
+        const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+        tooltipTriggerList.forEach(function(tooltipTriggerEl) {
+            if (tooltipTriggerEl._tooltip) {
+                tooltipTriggerEl._tooltip.dispose();
+            }
+            new bootstrap.Tooltip(tooltipTriggerEl, {
+                placement: 'top',
+                trigger: 'hover',
+                delay: { show: 300, hide: 100 }
+            });
+        });
+    }, 100);
+}
 
 
 // FUNCIONES DE UTILIDAD
@@ -13,12 +46,14 @@ function isCurrentPage() {
     return tabla !== null;
 }
 
+
 function getElement(id) {
     if (!elementos[id] || !document.body.contains(elementos[id])) {
         elementos[id] = document.getElementById(id);
     }
     return elementos[id];
 }
+
 
 function limpiarFormularioPerfil() {
     const form = getElement('formPerfil');
@@ -31,9 +66,11 @@ function limpiarFormularioPerfil() {
     if (titulo) titulo.textContent = 'Nuevo Perfil';
     
     const btnGuardar = getElement('btnGuardarPerfil');
-    btnGuardar.textContent = 'Guardar Perfil';
-    btnGuardar.style.background = 'linear-gradient(135deg, #198754 0%, #0f5c3a 100%)';
-    btnGuardar.style.border = 'none';
+    if (btnGuardar) {
+        btnGuardar.textContent = 'Guardar Perfil';
+        btnGuardar.style.background = 'linear-gradient(135deg, #198754 0%, #0f5c3a 100%)';
+        btnGuardar.style.border = 'none';
+    }
 }
 
 
@@ -61,6 +98,7 @@ function aplicarFiltros() {
     renderizar(perfilesFiltrados);
 }
 
+
 function renderizar(perfiles) {
     const tabla = getElement('tablaPerfiles');
     if (!tabla) return;
@@ -72,7 +110,25 @@ function renderizar(perfiles) {
         return;
     }
     
+    // Obtener usuario en sesión
+    const sesion = JSON.parse(localStorage.getItem('sesion') || '{}');
+    const esAdminSesion = sesion?.usuario?.id_perfil === PERFIL_ADMIN_ID;
+    
     perfiles.forEach(perfil => {
+        const esPerfilAdmin = perfil.id === PERFIL_ADMIN_ID;
+        
+        // Determinar qué botones están deshabilitados
+        const editarDeshabilitado = !esAdminSesion || esPerfilAdmin;
+        const permisosDeshabilitado = !esAdminSesion;
+        const desactivarDeshabilitado = !esAdminSesion || esPerfilAdmin;
+        const eliminarDeshabilitado = !esAdminSesion || esPerfilAdmin;
+        
+        // Textos para tooltips
+        const tooltipEditar = !esAdminSesion ? 'Solo administradores pueden editar perfiles' : 'No se puede editar el perfil Administrador';
+        const tooltipPermisos = !esAdminSesion ? 'Solo administradores pueden gestionar permisos' : '';
+        const tooltipDesactivar = !esAdminSesion ? 'Solo administradores pueden desactivar perfiles' : 'No se puede desactivar el perfil Administrador';
+        const tooltipEliminar = !esAdminSesion ? 'Solo administradores pueden eliminar perfiles' : 'No se puede eliminar el perfil Administrador';
+        
         tabla.innerHTML += `
             <tr>
                 <td class="text-center">${perfil.id}</td>
@@ -82,21 +138,34 @@ function renderizar(perfiles) {
                 <td class="text-center">${perfil.fecha_creacion || '-'}</td>
                 <td class="text-nowrap text-center">
                     <div class="d-flex gap-1 justify-content-center">
-                        <button class="btn btn-sm btn-warning btnEditarPerfil" data-id="${perfil.id}" title="Editar">
+                        <button class="btn btn-sm btn-warning btnEditarPerfil" 
+                                data-id="${perfil.id}"
+                                ${editarDeshabilitado ? 'disabled' : ''}
+                                ${editarDeshabilitado ? `title="${tooltipEditar}" data-bs-toggle="tooltip"` : ''}>
                             <i class="bi bi-pencil-square"></i>
                         </button>
-                        <button class="btn btn-sm btn-permisos btnPermisos" data-id="${perfil.id}" title="Permisos">
+                        <button class="btn btn-sm btn-permisos btnPermisos" 
+                                data-id="${perfil.id}"
+                                ${permisosDeshabilitado ? 'disabled' : ''}
+                                ${permisosDeshabilitado ? `title="${tooltipPermisos}" data-bs-toggle="tooltip"` : ''}>
                             <i class="bi bi-shield-lock"></i>
                         </button>
                         ${perfil.estado === 1 
-                            ? `<button class="btn btn-sm btn-secondary btnDesactivarPerfil" data-id="${perfil.id}" title="Desactivar">
-                                <i class="bi bi-slash-circle"></i>
-                            </button>`
-                            : `<button class="btn btn-sm btn-success btnActivarPerfil" data-id="${perfil.id}" title="Activar">
-                                <i class="bi bi-check-circle"></i>
-                            </button>`
+                            ? `<button class="btn btn-sm btn-secondary btnDesactivarPerfil" 
+                                       data-id="${perfil.id}"
+                                       ${desactivarDeshabilitado ? 'disabled' : ''}
+                                       ${desactivarDeshabilitado ? `title="${tooltipDesactivar}" data-bs-toggle="tooltip"` : ''}>
+                                    <i class="bi bi-slash-circle"></i>
+                                </button>`
+                            : `<button class="btn btn-sm btn-success btnActivarPerfil" 
+                                       data-id="${perfil.id}">
+                                    <i class="bi bi-check-circle"></i>
+                                </button>`
                         }
-                        <button class="btn btn-sm btn-danger btnEliminarPerfil" data-id="${perfil.id}" title="Eliminar">
+                        <button class="btn btn-sm btn-danger btnEliminarPerfil" 
+                                data-id="${perfil.id}"
+                                ${eliminarDeshabilitado ? 'disabled' : ''}
+                                ${eliminarDeshabilitado ? `title="${tooltipEliminar}" data-bs-toggle="tooltip"` : ''}>
                             <i class="bi bi-trash"></i>
                         </button>
                     </div>
@@ -104,6 +173,8 @@ function renderizar(perfiles) {
             </tr>
         `;
     });
+    
+    inicializarTooltips();
 }
 
 
@@ -135,15 +206,14 @@ async function abrirModalPermisos(idPerfil) {
         ]);
         
         const opciones = await responseOpciones.json();
-        const permisos = await responsePermisos.json();
+        let permisos = await responsePermisos.json();
         
-        // Obtener nombre del perfil
         const perfil = perfilesGlobal.find(p => p.id === idPerfil);
         const nombrePerfil = perfil ? perfil.nombre : 'Seleccionado';
+        const esPerfilAdmin = idPerfil === PERFIL_ADMIN_ID;
         
-        const tituloModal = document.getElementById('tituloModalPermisos');
         const nombrePerfilSpan = document.getElementById('nombrePerfilPermisos');
-        if (tituloModal && nombrePerfilSpan) {
+        if (nombrePerfilSpan) {
             nombrePerfilSpan.textContent = nombrePerfil;
         }
         
@@ -152,7 +222,6 @@ async function abrirModalPermisos(idPerfil) {
         
         lista.innerHTML = '';
         
-        // Ordenar opciones alfabéticamente
         const opcionesOrdenadas = [...opciones].sort((a, b) => a.nombre.localeCompare(b.nombre));
         
         if (!opcionesOrdenadas || opcionesOrdenadas.length === 0) {
@@ -160,7 +229,6 @@ async function abrirModalPermisos(idPerfil) {
         } else {
             const permisosIds = permisos.map(p => p.id_opcion || p.id);
             
-            // Iconos mejorados y más visibles
             const iconosPorModulo = {
                 'Dashboard': 'bi bi-speedometer2',
                 'Usuarios': 'bi bi-people',
@@ -177,7 +245,6 @@ async function abrirModalPermisos(idPerfil) {
                 'Ayuda': 'bi bi-question-circle'
             };
             
-            // Colores para los iconos
             const coloresIconos = {
                 'Dashboard': 'text-primary',
                 'Usuarios': 'text-success',
@@ -192,19 +259,37 @@ async function abrirModalPermisos(idPerfil) {
             };
             
             opcionesOrdenadas.forEach(opcion => {
-                const checked = permisosIds.includes(opcion.id) ? 'checked' : '';
+                let checked = permisosIds.includes(opcion.id);
+                let disabled = false;
+                let tooltipTitle = '';
+                
+                // Permisos obligatorios para administrador
+                if (esPerfilAdmin && OPCIONES_OBLIGATORIAS.includes(opcion.id)) {
+                    checked = true;
+                    disabled = true;
+                    tooltipTitle = 'Este módulo es obligatorio para el perfil Administrador';
+                }
+                
                 let icono = iconosPorModulo[opcion.nombre] || 'bi bi-grid';
                 const colorIcono = coloresIconos[opcion.nombre] || 'text-primary';
                 
                 lista.innerHTML += `
                     <div class="permiso-item mb-2 p-2 rounded" style="background: white; border: 1px solid #e9ecef; border-radius: 12px;">
                         <div class="form-check d-flex align-items-center">
-                            <input class="form-check-input permisoCheck" type="checkbox" 
-                                   value="${opcion.id}" id="opcion_${opcion.id}" ${checked}
+                            <input class="form-check-input permisoCheck" 
+                                   type="checkbox" 
+                                   value="${opcion.id}" 
+                                   id="opcion_${opcion.id}" 
+                                   ${checked ? 'checked' : ''}
+                                   ${disabled ? 'disabled' : ''}
                                    style="transform: scale(1.1); margin-right: 12px;">
-                            <label class="form-check-label d-flex align-items-center cursor-pointer" for="opcion_${opcion.id}" style="cursor: pointer; width: 100%;">
+                            <label class="form-check-label d-flex align-items-center cursor-pointer" 
+                                   for="opcion_${opcion.id}" 
+                                   style="cursor: ${disabled ? 'not-allowed' : 'pointer'}; width: 100%;"
+                                   ${tooltipTitle ? `title="${tooltipTitle}" data-bs-toggle="tooltip"` : ''}>
                                 <i class="${icono} ${colorIcono} me-3" style="font-size: 1.2rem; width: 28px;"></i>
                                 <span class="fw-medium">${opcion.nombre}</span>
+                                ${disabled ? '<span class="ms-2 badge bg-secondary">Obligatorio</span>' : ''}
                             </label>
                         </div>
                     </div>
@@ -212,7 +297,7 @@ async function abrirModalPermisos(idPerfil) {
             });
         }
         
-        // Configurar "Seleccionar todos"
+        // Configurar "Seleccionar todos" (excluyendo los obligatorios deshabilitados)
         const selectAllCheckbox = document.getElementById('seleccionarTodosPermisos');
         if (selectAllCheckbox) {
             selectAllCheckbox.checked = false;
@@ -222,13 +307,13 @@ async function abrirModalPermisos(idPerfil) {
             
             newSelectAll.onclick = (e) => {
                 const isChecked = e.target.checked;
-                document.querySelectorAll('.permisoCheck').forEach(checkbox => {
+                document.querySelectorAll('.permisoCheck:not(:disabled)').forEach(checkbox => {
                     checkbox.checked = isChecked;
                 });
             };
             
             const actualizarSelectAll = () => {
-                const allCheckboxes = document.querySelectorAll('.permisoCheck');
+                const allCheckboxes = document.querySelectorAll('.permisoCheck:not(:disabled)');
                 const allChecked = allCheckboxes.length > 0 && [...allCheckboxes].every(cb => cb.checked);
                 newSelectAll.checked = allChecked;
             };
@@ -247,6 +332,16 @@ async function abrirModalPermisos(idPerfil) {
             newBtn.onclick = async () => {
                 const seleccionados = [...document.querySelectorAll('.permisoCheck:checked')]
                     .map(check => parseInt(check.value));
+                
+                // Validación para perfil Administrador
+                if (esPerfilAdmin) {
+                    const tieneDashboard = seleccionados.includes(1);
+                    const tienePerfiles = seleccionados.includes(3);
+                    if (!tieneDashboard || !tienePerfiles) {
+                        mostrarToast('El perfil Administrador debe tener acceso a Dashboard y Perfiles', 'warning');
+                        return;
+                    }
+                }
                 
                 try {
                     const response = await fetch(`/api/permisos/`, {
@@ -269,17 +364,9 @@ async function abrirModalPermisos(idPerfil) {
                         limpiarBackdrops();
                     }
                     
-                    // RECARGAR EL MENÚ DEL DASHBOARD
                     if (window.recargarMenuDashboard) {
                         await window.recargarMenuDashboard();
-                        mostrarToast('El menú se ha actualizado. Algunos cambios pueden requerir recargar la página.', 'info');
-                    } else {
-                        // Si no hay función global, recargar la página directamente
-                        setTimeout(() => {
-                            if (confirm('Los permisos se actualizaron. ¿Desea recargar la página para ver los cambios en el menú?')) {
-                                location.reload();
-                            }
-                        }, 500);
+                        mostrarToast('El menú se ha actualizado', 'info');
                     }
                     
                 } catch (error) {
@@ -295,17 +382,28 @@ async function abrirModalPermisos(idPerfil) {
             modal.show();
         }
         
+        inicializarTooltips();
+        
     } catch (error) {
         console.error('Error al cargar permisos:', error);
-        mostrarModalAdvertencia(error.message || 'Error al cargar los permisos');
+        mostrarToast(error.message || 'Error al cargar los permisos');
     }
 }
 
 
-// INICIALIZACIÓN DE COMPONENTES
+// INICIALIZACIÓN DE COMPONENTES 
 function initFormPerfil() {
     const btnGuardar = getElement('btnGuardarPerfil');
     if (!btnGuardar) return;
+    
+    // Validación en tiempo real para el campo nombre
+    const inputNombre = getElement('nombrePerfil');
+    if (inputNombre) {
+        const nuevoNombre = inputNombre.cloneNode(true);
+        inputNombre.parentNode.replaceChild(nuevoNombre, inputNombre);
+        nuevoNombre.addEventListener('input', validarNombrePerfilFrontend);
+        elementos['nombrePerfil'] = nuevoNombre;
+    }
     
     if (btnGuardar.parentNode) {
         const newBtn = btnGuardar.cloneNode(true);
@@ -326,6 +424,13 @@ function initFormPerfil() {
             
             if (!descripcion) {
                 mostrarToast('La descripción del perfil es obligatoria', 'warning');
+                return;
+            }
+            
+            // Validación del nombre
+            const nombreRegex = /^[a-zA-Z0-9\s]{3,50}$/;
+            if (!nombreRegex.test(nombre)) {
+                mostrarToast('El nombre solo puede contener letras, números y espacios (3-50 caracteres)', 'warning');
                 return;
             }
             
@@ -361,11 +466,12 @@ function initFormPerfil() {
                 limpiarFormularioPerfil();
                 
             } catch (error) {
-                mostrarModalAdvertencia(error.message);
+                mostrarToast(error.message);
             }
         };
     }
 }
+
 
 function initBuscadorFiltros() {
     const buscarInput = getElement('buscarPerfil');
@@ -385,6 +491,7 @@ function initBuscadorFiltros() {
     }
 }
 
+
 function initNuevoPerfil() {
     const nuevoBtn = document.querySelector('[data-bs-target="#modalPerfil"]');
     if (nuevoBtn) {
@@ -395,21 +502,21 @@ function initNuevoPerfil() {
 }
 
 
-// EVENTOS GLOBALES (DELEGACIÓN)
+// EVENTOS GLOBALES
 function setupEventListeners() {
     document.body.addEventListener('click', async (e) => {
         if (!isCurrentPage()) return;
         
+        const sesion = JSON.parse(localStorage.getItem('sesion') || '{}');
+        const esAdminSesion = sesion?.usuario?.id_perfil === PERFIL_ADMIN_ID;
+        
         // Editar
         const btnEditar = e.target.closest('.btnEditarPerfil');
         if (btnEditar) {
+            if (btnEditar.disabled) return;
+            
             const id = parseInt(btnEditar.dataset.id);
             const perfil = perfilesGlobal.find(p => p.id === id);
-
-            if (perfil && perfil.nombre.toUpperCase() === 'ADMINISTRADOR') {
-                mostrarModalAdvertencia('No puede editar el perfil Administrador. Este perfil está protegido.');
-                return;
-            }
             
             if (perfil) {
                 getElement('perfilId').value = perfil.id;
@@ -433,31 +540,21 @@ function setupEventListeners() {
         // Permisos
         const btnPermisos = e.target.closest('.btnPermisos');
         if (btnPermisos) {
+            if (btnPermisos.disabled) return;
+            
             const idPerfil = parseInt(btnPermisos.dataset.id);
-            const perfil = perfilesGlobal.find(p => p.id === idPerfil);
-
-            if (perfil && perfil.nombre.toUpperCase() === 'ADMINISTRADOR') {
-                mostrarModalAdvertencia('El perfil Administrador tiene todos los permisos por defecto. No puede modificar sus permisos.');
-                return;
-            }
-
             await abrirModalPermisos(idPerfil);
             return;
         }
         
-        // DESACTIVAR
+        // Desactivar
         const btnDesactivar = e.target.closest('.btnDesactivarPerfil');
         if (btnDesactivar) {
+            if (btnDesactivar.disabled) return;
+            
             const id = parseInt(btnDesactivar.dataset.id);
             const perfil = perfilesGlobal.find(p => p.id === id);
             
-            // Validar que no sea Administrador
-            if (perfil && perfil.nombre.toUpperCase() === 'ADMINISTRADOR') {
-                mostrarModalAdvertencia('No se puede desactivar el perfil Administrador.');
-                return;
-            }
-            
-            // Obtener cantidad de usuarios activos
             let totalUsuarios = 0;
             try {
                 const response = await fetch(`/api/perfiles/${id}/usuarios-activos`);
@@ -470,7 +567,7 @@ function setupEventListeners() {
             let mensaje = `¿Desea desactivar el perfil "${perfil?.nombre}"?`;
             
             if (totalUsuarios > 0) {
-                mensaje = `⚠️ ADVERTENCIA: Este perfil tiene ${totalUsuarios} usuario(s) activo(s).\n\nSi desactiva este perfil, estos usuarios NO podrán iniciar sesión hasta que el perfil sea reactivado.\n\n¿Desea continuar?`;
+                mensaje = `ADVERTENCIA: Este perfil tiene ${totalUsuarios} usuario(s) activo(s).\n\nSi desactiva este perfil, estos usuarios NO podrán iniciar sesión hasta que el perfil sea reactivado.\n\n¿Desea continuar?`;
             }
             
             mostrarModalConfirmacionProfesional(
@@ -491,7 +588,8 @@ function setupEventListeners() {
                         mostrarToast(error.message, 'danger');
                     }
                 },
-                'warning'
+                'warning',
+                'Desactivar'
             );
             return;
         }
@@ -514,7 +612,8 @@ function setupEventListeners() {
                     await cargarPerfiles();
                     mostrarToast(data.message, 'success');
                 },
-                'success'
+                'success',
+                'Activar'
             );
             return;
         }
@@ -522,14 +621,10 @@ function setupEventListeners() {
         // Eliminar
         const btnEliminar = e.target.closest('.btnEliminarPerfil');
         if (btnEliminar) {
+            if (btnEliminar.disabled) return;
+            
             const id = parseInt(btnEliminar.dataset.id);
             const perfil = perfilesGlobal.find(p => p.id === id);
-            
-            // Validar que no sea Administrador
-            if (perfil && perfil.nombre.toUpperCase() === 'ADMINISTRADOR') {
-                mostrarModalAdvertencia('No se puede eliminar el perfil Administrador.');
-                return;
-            }
             
             mostrarModalConfirmacionProfesional(
                 'Eliminar Perfil',
@@ -548,7 +643,8 @@ function setupEventListeners() {
                         mostrarToast(error.message, 'danger');
                     }
                 },
-                'danger'
+                'danger',
+                'Eliminar'
             );
             return;
         }
@@ -590,7 +686,5 @@ export async function init() {
 }
 
 export { destroy };
-
-
 
 
