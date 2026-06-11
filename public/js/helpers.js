@@ -2,19 +2,19 @@ export function mostrarToast(mensaje, tipo = 'success') {
     const toast = document.getElementById('toastMensaje');
     const body = document.getElementById('toastBody');
     const progress = document.getElementById('toastProgress');
-    
+
     if (!toast) {
         console.warn('Toast no encontrado en el DOM');
         return;
     }
-    
+
     if (!body) {
         console.warn('ToastBody no encontrado en el DOM');
         return;
     }
-    
+
     body.textContent = mensaje;
-    
+
     toast.classList.remove(
         'bg-success',
         'bg-warning',
@@ -23,7 +23,7 @@ export function mostrarToast(mensaje, tipo = 'success') {
         'text-white',
         'text-dark'
     );
-    
+
     switch (tipo) {
         case 'success':
             toast.classList.add('bg-success', 'text-white');
@@ -40,58 +40,55 @@ export function mostrarToast(mensaje, tipo = 'success') {
         default:
             toast.classList.add('bg-success', 'text-white');
     }
-    
+
     const bsToast = new bootstrap.Toast(toast, { delay: 3000 });
-    
+
     if (progress) {
         progress.style.transition = 'none';
         progress.style.width = '100%';
-        
+
         setTimeout(() => {
             progress.style.transition = 'width 3000ms linear';
             progress.style.width = '0%';
         }, 10);
     }
-    
+
     bsToast.show();
 }
 
 
 // FUNCIÓN PARA LIMPIAR BACKDROPS
-export function limpiarBackdrops() {
-    // Eliminar todos los backdrops existentes
-    document.querySelectorAll('.modal-backdrop').forEach(backdrop => {
-        backdrop.remove();
-    });
-    
-    // Eliminar cualquier backdrop con otras clases
-    document.querySelectorAll('[class*="backdrop"]').forEach(backdrop => {
-        if (backdrop.classList.contains('modal-backdrop')) {
-            backdrop.remove();
-        }
-    });
-    
-    // Restaurar el body correctamente
-    document.body.classList.remove('modal-open');
-    document.body.style.removeProperty('padding-right');
-    document.body.style.removeProperty('overflow');
-    document.body.style.removeProperty('padding-left');
-    
-    // Forzar reflow del body
-    void document.body.offsetHeight;
-}
 
+export function limpiarBackdrops() {
+    const backdrops = document.querySelectorAll('.modal-backdrop');
+    const modalesAbiertos = document.querySelectorAll('.modal.show');
+
+    if (modalesAbiertos.length > 0) {
+        // Mantener solo el último backdrop
+        if (backdrops.length > 1) {
+            for (let i = 0; i < backdrops.length - 1; i++) {
+                backdrops[i].remove();
+            }
+        }
+        document.body.classList.add('modal-open');
+    } else {
+        backdrops.forEach(b => b.remove());
+        document.body.classList.remove('modal-open');
+        document.body.style.removeProperty('padding-right');
+        document.body.style.removeProperty('overflow');
+    }
+}
 
 // FUNCIÓN PARA ARREGLAR MODALES ANTES DE ABRIR
 export function prepararModal(modalElement) {
     if (!modalElement) return;
-    
+
     // Limpiar backdrops antes de abrir un nuevo modal
     limpiarBackdrops();
-    
+
     // Asegurar que el modal tenga el z-index correcto
     modalElement.style.zIndex = '1050';
-    
+
     // Remover clases residuales del modal
     modalElement.classList.remove('show');
     modalElement.style.display = 'none';
@@ -103,7 +100,7 @@ export function prepararModal(modalElement) {
 // FUNCIÓN PARA CERRAR MODAL LIMPIAMENTE
 export function cerrarModal(modalElement) {
     if (!modalElement) return;
-    
+
     try {
         const modal = bootstrap.Modal.getInstance(modalElement);
         if (modal) {
@@ -114,7 +111,7 @@ export function cerrarModal(modalElement) {
         modalElement.classList.remove('show');
         modalElement.style.display = 'none';
     }
-    
+
     // Limpiar backdrops después de cerrar
     setTimeout(() => {
         limpiarBackdrops();
@@ -129,7 +126,7 @@ export function mostrarModalConfirmacionProfesional(titulo, mensaje, onConfirm, 
     if (modalExistente) {
         modalExistente.remove();
     }
-    
+
     // Configuración según el tipo de acción 
     const config = {
         warning: {
@@ -161,9 +158,9 @@ export function mostrarModalConfirmacionProfesional(titulo, mensaje, onConfirm, 
             bgLight: '#dbeafe'
         }
     };
-    
+
     const conf = config[tipo] || config.warning;
-    
+
     const modalHTML = `
         <div class="modal fade" id="modalConfirmacionProfesional" tabindex="-1" data-bs-backdrop="false" data-bs-keyboard="true">
             <div class="modal-dialog modal-dialog-centered" style="max-width: 420px;">
@@ -204,10 +201,10 @@ export function mostrarModalConfirmacionProfesional(titulo, mensaje, onConfirm, 
             </div>
         </div>
     `;
-    
+
     // Agregar modal al body
     document.body.insertAdjacentHTML('beforeend', modalHTML);
-    
+
     const style = document.createElement('style');
     style.textContent = `
         @keyframes fadeInScale {
@@ -240,7 +237,7 @@ export function mostrarModalConfirmacionProfesional(titulo, mensaje, onConfirm, 
         }
     `;
     document.head.appendChild(style);
-    
+
     // Mostrar modal
     const modalElement = document.getElementById('modalConfirmacionProfesional');
     const modal = new bootstrap.Modal(modalElement, {
@@ -248,7 +245,7 @@ export function mostrarModalConfirmacionProfesional(titulo, mensaje, onConfirm, 
         keyboard: true
     });
     modal.show();
-    
+
     // Evento del botón confirmar
     const btnConfirmar = document.getElementById('btnConfirmarAccionProfesional');
     btnConfirmar.onclick = () => {
@@ -259,9 +256,9 @@ export function mostrarModalConfirmacionProfesional(titulo, mensaje, onConfirm, 
             limpiarBackdrops();
         }, 300);
     };
-    
+
     // Limpiar al cerrar
-    modalElement.addEventListener('hidden.bs.modal', function() {
+    modalElement.addEventListener('hidden.bs.modal', function () {
         modalElement.remove();
         limpiarBackdrops();
     });

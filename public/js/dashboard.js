@@ -24,27 +24,27 @@ let menuPermisos = [];
 
 // FUNCIONES DE UTILIDAD
 function limpiarModalesAbiertos() {
-    document.querySelectorAll('.modal.show').forEach(modalEl => {
-        try {
-            const modal = bootstrap.Modal.getInstance(modalEl);
-            if (modal) {
-                modal.hide();
-            } else {
-                modalEl.classList.remove('show');
-                modalEl.style.display = 'none';
-            }
-        } catch (e) { }
-    });
-
+    // NO cerrar modales - solo limpiar backdrops sobrantes
     setTimeout(() => {
-        document.querySelectorAll('.modal-backdrop').forEach(backdrop => {
-            backdrop.remove();
-        });
+        const backdrops = document.querySelectorAll('.modal-backdrop');
+        const modalesAbiertos = document.querySelectorAll('.modal.show');
 
-        document.body.classList.remove('modal-open');
-        document.body.style.removeProperty('padding-right');
-        document.body.style.removeProperty('overflow');
-        document.body.style.removeProperty('padding-left');
+        if (modalesAbiertos.length > 0) {
+            // Mantener solo 1 backdrop (el último)
+            if (backdrops.length > 1) {
+                for (let i = 0; i < backdrops.length - 1; i++) {
+                    backdrops[i].remove();
+                }
+            }
+            document.body.classList.add('modal-open');
+        } else {
+            // Solo si NO hay modales abiertos, limpiar todo
+            backdrops.forEach(backdrop => backdrop.remove());
+            document.body.classList.remove('modal-open');
+            document.body.style.removeProperty('padding-right');
+            document.body.style.removeProperty('overflow');
+            document.body.style.removeProperty('padding-left');
+        }
     }, 100);
 }
 
@@ -619,7 +619,8 @@ function configurarSidebar() {
 
 // CONFIGURACIÓN DE MODALES GLOBALES
 function configurarModalesGlobales() {
-    document.addEventListener('hidden.bs.modal', () => {
+    document.addEventListener('hidden.bs.modal', function (e) {
+        // Solo limpiar backdrops, NO cerrar otros modales
         limpiarModalesAbiertos();
     });
 

@@ -9,6 +9,8 @@ let productosSeleccionados = [];
 let totalVenta = 0;
 let cuotaSeleccionada = null;
 let ventaActualId = null;
+let cotizacionCargada = null;
+let modalSeleccionCotizacion = null;
 
 // ============================================
 // VALIDACIONES
@@ -76,6 +78,7 @@ function formatearFecha(fechaISO) {
     return `${dia}/${mes}/${año}`;
 }
 
+
 // ============================================
 // LIMPIAR FORMULARIO
 // ============================================
@@ -86,28 +89,36 @@ function limpiarFormulario() {
     getElement('ventaId').value = '';
     getElement('tituloModalVenta').textContent = 'Nueva Venta';
 
+    // Fecha actual - NO MODIFICABLE
     const hoy = new Date();
     const año = hoy.getFullYear();
     const mes = String(hoy.getMonth() + 1).padStart(2, '0');
     const dia = String(hoy.getDate()).padStart(2, '0');
     getElement('fecha_venta').value = `${año}-${mes}-${dia}`;
 
-    const tipoDocCliente = document.getElementById('tipo_documento_cliente');
-    if (tipoDocCliente) tipoDocCliente.value = '';
-    const numeroDocCliente = document.getElementById('numero_documento_cliente');
-    if (numeroDocCliente) numeroDocCliente.value = '';
-    const nombreCliente = document.getElementById('nombre_cliente');
-    if (nombreCliente) nombreCliente.value = '';
-    const apellidoCliente = document.getElementById('apellido_cliente');
-    if (apellidoCliente) apellidoCliente.value = '';
-    const telefonoCliente = document.getElementById('telefono_cliente');
-    if (telefonoCliente) telefonoCliente.value = '';
-    const correoCliente = document.getElementById('correo_cliente');
-    if (correoCliente) correoCliente.value = '';
-    const idCliente = document.getElementById('id_cliente');
-    if (idCliente) idCliente.value = '';
-    const alertNoExistente = document.getElementById('clienteNoExistenteAlert');
-    if (alertNoExistente) alertNoExistente.style.display = 'none';
+    // Resetear cotización
+    cotizacionCargada = null;
+    const idCotOrigen = document.getElementById('id_cotizacion_origen');
+    if (idCotOrigen) idCotOrigen.value = '';
+    const infoDiv = document.getElementById('cotizacionCargadaInfo');
+    if (infoDiv) infoDiv.style.display = 'none';
+    const btnCargar = document.getElementById('btnCargarCotizacion');
+    if (btnCargar) btnCargar.style.display = 'block';
+
+    // Limpiar cliente
+    const safeSetValue = (id, value) => {
+        const el = document.getElementById(id);
+        if (el) el.value = value;
+    };
+    safeSetValue('tipo_documento_cliente', '');
+    safeSetValue('numero_documento_cliente', '');
+    safeSetValue('nombre_cliente', '');
+    safeSetValue('apellido_cliente', '');
+    safeSetValue('telefono_cliente', '');
+    safeSetValue('correo_cliente', '');
+    safeSetValue('id_cliente', '');
+    const alertEl = document.getElementById('clienteNoExistenteAlert');
+    if (alertEl) alertEl.style.display = 'none';
 
     const divCredito = document.getElementById('div_credito_fields');
     if (divCredito) divCredito.style.display = 'none';
@@ -135,14 +146,14 @@ function actualizarTablaProductos() {
     totalVenta = 0;
 
     productosSeleccionados.forEach((item, idx) => {
-        const precio = typeof item.precio_unitario === 'number' ? item.precio_unitario : parseFloat(item.precio_unitario) || 0;
-        const cantidad = typeof item.cantidad === 'number' ? item.cantidad : parseFloat(item.cantidad) || 0;
+        const precio = parseFloat(item.precio_unitario) || 0;
+        const cantidad = parseFloat(item.cantidad) || 0;
         const subtotal = precio * cantidad;
         totalVenta += subtotal;
 
         tbody.innerHTML += `
             <tr style="font-size: 0.8rem;">
-                <td class="text-truncate" style="max-width: 200px;">${item.producto_nombre || '-'}</td>
+                <td>${item.producto_nombre || '-'}</td>
                 <td class="text-end">S/ ${precio.toFixed(2)}</td>
                 <td class="text-center">${cantidad}</td>
                 <td class="text-end">S/ ${subtotal.toFixed(2)}</td>
@@ -156,14 +167,10 @@ function actualizarTablaProductos() {
     });
 
     const totalVentaElement = document.getElementById('totalVenta');
-    if (totalVentaElement) {
-        totalVentaElement.innerHTML = `S/ ${totalVenta.toFixed(2)}`;
-    }
+    if (totalVentaElement) totalVentaElement.innerHTML = `S/ ${totalVenta.toFixed(2)}`;
 
     const modalidadPago = document.getElementById('modalidad_pago')?.value;
-    if (modalidadPago === 'CREDITO') {
-        calcularYMostrarCuotas();
-    }
+    if (modalidadPago === 'CREDITO') calcularYMostrarCuotas();
 
     setTimeout(() => {
         document.querySelectorAll('.btn-eliminar-producto').forEach(btn => {
@@ -190,10 +197,7 @@ async function cargarVentas() {
         if (!response.ok) throw new Error('Error al cargar ventas');
         ventasGlobal = await response.json();
         aplicarFiltros();
-    } catch (error) {
-        console.error(error);
-        mostrarToast('Error al cargar ventas', 'danger');
-    }
+    } catch (error) { console.error(error); }
 }
 
 async function cargarClientes() {
@@ -202,9 +206,7 @@ async function cargarClientes() {
         const response = await fetch('/api/clientes');
         if (!response.ok) throw new Error('Error al cargar clientes');
         clientesGlobal = await response.json();
-    } catch (error) {
-        console.error(error);
-    }
+    } catch (error) { console.error(error); }
 }
 
 async function cargarProductos() {
@@ -213,27 +215,20 @@ async function cargarProductos() {
         const response = await fetch('/api/productos');
         if (!response.ok) throw new Error('Error al cargar productos');
         productosGlobal = await response.json();
-
         const selectProducto = document.getElementById('selectProducto');
-        if (selectProducto) {
-            cargarSelectProductos('');
-        }
-    } catch (error) {
-        console.error(error);
-        mostrarToast('Error al cargar productos', 'danger');
-    }
+        if (selectProducto) cargarSelectProductos('');
+    } catch (error) { console.error(error); }
 }
+
 
 // ============================================
 // FILTROS Y RENDERIZADO
 // ============================================
 function aplicarFiltros() {
     if (!isCurrentPage()) return;
-
     const buscarInput = getElement('buscarVenta');
     const filtroCantidad = getElement('filtroCantidad');
     const filtroEstado = getElement('filtroEstado');
-
     const textoBusqueda = buscarInput?.value?.toLowerCase() || '';
     const cantidadMostrar = parseInt(filtroCantidad?.value || 5);
     const estadoFiltro = filtroEstado?.value || '';
@@ -241,12 +236,10 @@ function aplicarFiltros() {
     let ventasFiltradas = ventasGlobal
         .filter(venta => {
             if (estadoFiltro !== '' && venta.estado != estadoFiltro) return false;
-            return venta.numero_nota_venta?.toLowerCase().includes(textoBusqueda) ||
-                venta.cliente?.toLowerCase().includes(textoBusqueda);
+            return venta.numero_nota_venta?.toLowerCase().includes(textoBusqueda) || venta.cliente?.toLowerCase().includes(textoBusqueda);
         })
         .sort((a, b) => b.id - a.id)
         .slice(0, cantidadMostrar);
-
     renderizar(ventasFiltradas);
 }
 
@@ -254,69 +247,39 @@ function renderizar(ventas) {
     const tabla = getElement('tablaVentas');
     if (!tabla) return;
     tabla.innerHTML = '';
-
     if (ventas.length === 0) {
         tabla.innerHTML = `<tr><td colspan="8" class="text-center text-muted py-4">No hay ventas registradas</td></tr>`;
         return;
     }
-
     ventas.forEach(venta => {
         let estadoBadge = '';
-        if (venta.estado === 0) {
-            estadoBadge = '<span class="badge bg-warning text-dark">Pago Parcial</span>';
-        } else if (venta.estado === 1) {
-            estadoBadge = '<span class="badge bg-success">Pagada</span>';
-        } else if (venta.estado === 2) {
-            estadoBadge = '<span class="badge bg-secondary">Anulada</span>';
-        } else if (venta.estado === 3) {
-            estadoBadge = '<span class="badge bg-dark">Eliminada</span>';
-        }
+        if (venta.estado === 0) estadoBadge = '<span class="badge bg-warning text-dark">Pago Parcial</span>';
+        else if (venta.estado === 1) estadoBadge = '<span class="badge bg-success">Pagada</span>';
+        else if (venta.estado === 2) estadoBadge = '<span class="badge bg-secondary">Anulada</span>';
 
         let botonesAccion = '';
-
         if (venta.estado === 0) {
-            botonesAccion = `
-                <button class="btn btn-sm btn-danger btnAnularVenta" data-id="${venta.id}" title="Anular">
-                    <i class="bi bi-slash-circle"></i>
-                </button>
-                <button class="btn btn-sm btn-primary btnImprimirVentaDirecto" data-id="${venta.id}" title="Imprimir">
-                    <i class="bi bi-printer"></i>
-                </button>
-            `;
+            botonesAccion = `<button class="btn btn-sm btn-danger btnAnularVenta" data-id="${venta.id}"><i class="bi bi-slash-circle"></i></button>
+                <button class="btn btn-sm btn-primary btnImprimirVentaDirecto" data-id="${venta.id}"><i class="bi bi-printer"></i></button>`;
         } else if (venta.estado === 1) {
-            botonesAccion = `
-                <button class="btn btn-sm btn-primary btnImprimirVentaDirecto" data-id="${venta.id}" title="Imprimir">
-                    <i class="bi bi-printer"></i>
-                </button>
-            `;
+            botonesAccion = `<button class="btn btn-sm btn-primary btnImprimirVentaDirecto" data-id="${venta.id}"><i class="bi bi-printer"></i></button>`;
         } else if (venta.estado === 2) {
-            botonesAccion = `
-                <button class="btn btn-sm btn-success btnActivarVenta" data-id="${venta.id}" title="Reactivar">
-                    <i class="bi bi-arrow-repeat"></i>
-                </button>
-                <button class="btn btn-sm btn-danger btnEliminarVenta" data-id="${venta.id}" title="Eliminar">
-                    <i class="bi bi-trash"></i>
-                </button>
-            `;
+            botonesAccion = `<button class="btn btn-sm btn-success btnActivarVenta" data-id="${venta.id}"><i class="bi bi-arrow-repeat"></i></button>
+                <button class="btn btn-sm btn-danger btnEliminarVenta" data-id="${venta.id}"><i class="bi bi-trash"></i></button>`;
         }
 
-        tabla.innerHTML += `
-            <tr>
-                <td class="text-center">${venta.id}</td>
-                <td><strong>${venta.numero_nota_venta}</strong></td>
-                <td>${venta.cliente || '-'}</td>
-                <td>${formatearFecha(venta.fecha_venta)}</td>
-                <td class="fw-bold text-primary">S/ ${parseFloat(venta.total_venta).toFixed(2)}</td>
-                <td><span class="badge bg-info">${venta.modalidad_pago}</span></td>
-                <td>${estadoBadge}</td>
-                <td class="text-nowrap">
-                    <button class="btn btn-sm btn-warning btnVerVenta" data-id="${venta.id}" title="Ver Detalles">
-                        <i class="bi bi-eye"></i>
-                    </button>
-                    ${botonesAccion}
-                </td>
-            </tr>
-        `;
+        tabla.innerHTML += `<tr>
+            <td class="text-center">${venta.id}</td>
+            <td><strong>${venta.numero_nota_venta}</strong></td>
+            <td>${venta.cliente || '-'}</td>
+            <td>${formatearFecha(venta.fecha_venta)}</td>
+            <td class="fw-bold text-primary">S/ ${parseFloat(venta.total_venta).toFixed(2)}</td>
+            <td><span class="badge bg-info">${venta.modalidad_pago}</span></td>
+            <td>${estadoBadge}</td>
+            <td class="text-nowrap">
+                <button class="btn btn-sm btn-warning btnVerVenta" data-id="${venta.id}"><i class="bi bi-eye"></i></button>
+                ${botonesAccion}
+            </td></tr>`;
     });
 }
 
@@ -1115,23 +1078,14 @@ function setupModalidadPago() {
 function cargarSelectProductos(filtro = '') {
     const selectProducto = document.getElementById('selectProducto');
     if (!selectProducto) return;
-
     let productosFiltrados = productosGlobal.filter(p => p.estado === 1);
-
     if (filtro.trim() !== '') {
         const termino = filtro.toLowerCase();
-        productosFiltrados = productosFiltrados.filter(p =>
-            p.nombre.toLowerCase().includes(termino) ||
-            (p.codigo_barras && p.codigo_barras.includes(termino))
-        );
+        productosFiltrados = productosFiltrados.filter(p => p.nombre.toLowerCase().includes(termino) || (p.codigo_barras && p.codigo_barras.includes(termino)));
     }
-
     selectProducto.innerHTML = '<option value="">-- Seleccione un producto --</option>';
-
     productosFiltrados.forEach(producto => {
-        selectProducto.innerHTML += `<option value="${producto.id}" data-precio="${producto.precio}" data-stock="${producto.stock}" data-unidad="${producto.unidad_abreviatura}">
-            ${producto.nombre} - Stock: ${producto.stock} ${producto.unidad_abreviatura || ''}
-        </option>`;
+        selectProducto.innerHTML += `<option value="${producto.id}" data-precio="${producto.precio}" data-stock="${producto.stock}">${producto.nombre} - Stock: ${producto.stock}</option>`;
     });
 }
 
@@ -1230,7 +1184,7 @@ function setupGuardarVenta() {
     btnGuardar.onclick = async () => {
         const id = getElement('ventaId')?.value;
         const numero_nota_venta = getElement('numero_nota_venta')?.value.trim();
-
+        const id_cotizacion = document.getElementById('id_cotizacion_origen')?.value || null;
         let id_cliente = document.getElementById('id_cliente')?.value;
         const tipo_documento = document.getElementById('tipo_documento_cliente')?.value;
         const numero_documento = document.getElementById('numero_documento_cliente')?.value.trim();
@@ -1239,61 +1193,28 @@ function setupGuardarVenta() {
         const telefono_cliente = document.getElementById('telefono_cliente')?.value.trim();
         const correo_cliente = document.getElementById('correo_cliente')?.value.trim();
 
-        if (!numero_documento) {
-            mostrarToast('Ingrese el número de documento del cliente', 'warning');
-            return;
-        }
-        if (!tipo_documento) {
-            mostrarToast('Seleccione el tipo de documento', 'warning');
-            return;
-        }
-        if (tipo_documento === 'DNI' && !/^\d{8}$/.test(numero_documento)) {
-            mostrarToast('El DNI debe tener 8 dígitos', 'warning');
-            return;
-        }
-        if (tipo_documento === 'RUC' && !/^\d{11}$/.test(numero_documento)) {
-            mostrarToast('El RUC debe tener 11 dígitos', 'warning');
-            return;
-        }
+        // Validaciones...
+        if (!numero_documento) { mostrarToast('Ingrese número de documento', 'warning'); return; }
+        if (!tipo_documento) { mostrarToast('Seleccione tipo de documento', 'warning'); return; }
 
         if (!id_cliente) {
             try {
-                if (!nombre_cliente) {
-                    mostrarToast('Debe buscar los datos del cliente primero', 'warning');
-                    return;
-                }
-                const nuevoCliente = {
-                    tipo_documento,
-                    numero_documento,
-                    nombre: nombre_cliente || 'Cliente',
-                    apellido: apellido_cliente || '',
-                    telefono: telefono_cliente || '',
-                    correo: correo_cliente || ''
-                };
-                const registerResponse = await fetch('/api/clientes', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(nuevoCliente)
-                });
-                if (!registerResponse.ok) throw new Error((await registerResponse.json()).error);
-                const clientesResponse = await fetch('/api/clientes');
-                const clientes = await clientesResponse.json();
-                const clienteNuevo = clientes.find(c => c.numero_documento === numero_documento);
-                id_cliente = clienteNuevo?.id;
-                if (!id_cliente) throw new Error('No se pudo obtener el ID');
-                mostrarToast('Cliente registrado automáticamente', 'success');
-            } catch (error) {
-                mostrarToast('Error al registrar cliente: ' + error.message, 'danger');
-                return;
-            }
+                if (!nombre_cliente) { mostrarToast('Busque los datos del cliente primero', 'warning'); return; }
+                const nuevoCliente = { tipo_documento, numero_documento, nombre: nombre_cliente || 'Cliente', apellido: apellido_cliente || '', telefono: telefono_cliente || '', correo: correo_cliente || '' };
+                const regRes = await fetch('/api/clientes', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(nuevoCliente) });
+                if (!regRes.ok) throw new Error((await regRes.json()).error);
+                const clientesRes = await fetch('/api/clientes');
+                const clientes = await clientesRes.json();
+                const cNuevo = clientes.find(c => c.numero_documento === numero_documento);
+                id_cliente = cNuevo?.id;
+                if (!id_cliente) throw new Error('No se pudo obtener ID');
+                mostrarToast('Cliente registrado', 'success');
+            } catch (error) { mostrarToast(error.message, 'danger'); return; }
         }
 
         const sesion = JSON.parse(localStorage.getItem('sesion') || '{}');
         const id_usuario = sesion?.usuario?.id;
-        if (!id_usuario) {
-            mostrarToast('No se encontró el usuario de sesión', 'danger');
-            return;
-        }
+        if (!id_usuario) { mostrarToast('Usuario no encontrado', 'danger'); return; }
 
         const modalidad_pago = getElement('modalidad_pago')?.value;
         const pago_inicial = parseFloat(getElement('pago_inicial')?.value) || 0;
@@ -1301,63 +1222,207 @@ function setupGuardarVenta() {
         const intervalo_dias = parseInt(getElement('intervalo_dias')?.value) || 0;
         const observacion = getElement('observacion')?.value;
 
-        if (!numero_nota_venta) {
-            mostrarToast('Número de nota obligatorio', 'warning');
-            return;
-        }
-        if (!modalidad_pago) {
-            mostrarToast('Seleccione modalidad de pago', 'warning');
-            return;
-        }
-        if (productosSeleccionados.length === 0) {
-            mostrarToast('Agregue al menos un producto', 'warning');
-            return;
-        }
+        // Usar la fecha del campo (que es readonly y tiene la fecha actual)
+        const fecha_venta = getElement('fecha_venta')?.value || new Date().toISOString().split('T')[0];
+
+        if (!numero_nota_venta) { mostrarToast('Número de nota obligatorio', 'warning'); return; }
+        if (!modalidad_pago) { mostrarToast('Seleccione modalidad', 'warning'); return; }
+        if (productosSeleccionados.length === 0) { mostrarToast('Agregue al menos un producto', 'warning'); return; }
 
         const total_venta = totalVenta;
-
-        if (modalidad_pago === 'CREDITO') {
-            const deudaCalculada = total_venta - pago_inicial;
-            if (deudaCalculada <= 0) {
-                mostrarToast('El pago inicial no puede ser mayor o igual al total', 'warning');
-                return;
-            }
-            if (cantidad_cuotas <= 0) {
-                mostrarToast('Ingrese cantidad de cuotas', 'warning');
-                return;
-            }
-        }
+        if (modalidad_pago === 'CREDITO' && (total_venta - pago_inicial) <= 0) { mostrarToast('Pago inicial inválido', 'warning'); return; }
 
         try {
+            const body = {
+                numero_nota_venta,
+                id_pedido: null,
+                id_cotizacion: id_cotizacion ? parseInt(id_cotizacion) : null,
+                id_cliente: parseInt(id_cliente),
+                id_usuario,
+                fecha_venta,  // ← AGREGAR FECHA
+                modalidad_pago,
+                pago_inicial,
+                cantidad_cuotas,
+                intervalo_dias,
+                total_venta,
+                observacion,
+                productos: productosSeleccionados
+            };
             const response = await fetch(id ? `/api/ventas/${id}` : '/api/ventas', {
                 method: id ? 'PUT' : 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    numero_nota_venta,
-                    id_pedido: null,
-                    id_cliente: parseInt(id_cliente),
-                    id_usuario,
-                    modalidad_pago,
-                    pago_inicial,
-                    cantidad_cuotas,
-                    intervalo_dias,
-                    total_venta,
-                    observacion,
-                    productos: productosSeleccionados
-                })
+                body: JSON.stringify(body)
             });
             const data = await response.json();
             if (!response.ok) throw new Error(data.error);
+
+            if (id_cotizacion) {
+                await fetch(`/api/cotizaciones/${id_cotizacion}/estado`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ estado: 3 })
+                });
+            }
+
             await cargarVentas();
-            mostrarToast(id ? 'Venta actualizada' : 'Venta registrada', 'success');
-            const modal = bootstrap.Modal.getInstance(getElement('modalVenta'));
-            if (modal) modal.hide();
+            mostrarToast('Venta registrada', 'success');
+            bootstrap.Modal.getInstance(getElement('modalVenta'))?.hide();
             limpiarFormulario();
-        } catch (error) {
-            mostrarToast(error.message, 'danger');
-        }
+        } catch (error) { mostrarToast(error.message, 'danger'); }
     };
 }
+
+// ============================================
+// ABRIR MODAL DE SELECCIÓN DE COTIZACIONES
+// ============================================
+async function abrirModalSeleccionarCotizacion() {
+    try {
+        const response = await fetch('/api/cotizaciones');
+        if (!response.ok) throw new Error('Error al cargar cotizaciones');
+
+        const cotizaciones = await response.json();
+        const activas = cotizaciones.filter(c => c.estado === 1);
+
+        const tbody = document.getElementById('tablaCotizacionesModal');
+        const sinDatos = document.getElementById('sinCotizacionesModal');
+        if (!tbody) return;
+
+        tbody.innerHTML = '';
+
+        if (activas.length === 0) {
+            if (sinDatos) sinDatos.style.display = 'block';
+        } else {
+            if (sinDatos) sinDatos.style.display = 'none';
+
+            activas.forEach(cot => {
+                tbody.innerHTML += `
+                    <tr style="font-size:0.75rem;">
+                        <td><strong>${cot.numero_cotizacion}</strong></td>
+                        <td>${cot.cliente || '-'}</td>
+                        <td>${formatearFecha(cot.fecha)}</td>
+                        <td>${formatearFecha(cot.fecha_vencimiento)}</td>
+                        <td class="text-end fw-bold">S/ ${parseFloat(cot.total).toFixed(2)}</td>
+                        <td class="text-center">
+                            <button class="btn btn-sm btn-success btnSeleccionarCotizacion" data-id="${cot.id}">
+                                <i class="bi bi-check-circle me-1"></i> Seleccionar
+                            </button>
+                        </td>
+                    </tr>`;
+            });
+        }
+
+        // Configurar búsqueda en el modal
+        const buscarInput = document.getElementById('buscarCotizacionModal');
+        if (buscarInput) {
+            buscarInput.value = '';
+            buscarInput.oninput = (e) => {
+                const valor = e.target.value.toLowerCase();
+                tbody.querySelectorAll('tr').forEach(fila => {
+                    fila.style.display = fila.textContent.toLowerCase().includes(valor) ? '' : 'none';
+                });
+            };
+        }
+
+        // Configurar selección de cotización
+        tbody.querySelectorAll('.btnSeleccionarCotizacion').forEach(btn => {
+            btn.onclick = async (e) => {
+                const id = parseInt(e.currentTarget.dataset.id);
+
+                // Cerrar modal de selección
+                if (modalSeleccionCotizacion) {
+                    modalSeleccionCotizacion.hide();
+                }
+
+                // Cargar datos
+                await seleccionarCotizacion(id);
+            };
+        });
+
+        // Mostrar modal de selección
+        if (modalSeleccionCotizacion) {
+            modalSeleccionCotizacion.show();
+        }
+
+    } catch (error) {
+        console.error(error);
+        mostrarToast('Error al cargar cotizaciones', 'danger');
+    }
+}
+
+// ============================================
+// SELECCIONAR COTIZACIÓN Y CARGAR DATOS
+// ============================================
+async function seleccionarCotizacion(idCotizacion) {
+    try {
+        const response = await fetch(`/api/cotizaciones/${idCotizacion}`);
+        if (!response.ok) throw new Error('Error al obtener cotización');
+
+        const cot = await response.json();
+        cotizacionCargada = cot;
+
+        document.getElementById('id_cotizacion_origen').value = cot.id;
+
+        // Cargar datos del cliente
+        if (cot.id_cliente) {
+            document.getElementById('id_cliente').value = cot.id_cliente;
+
+            // Cargar datos completos del cliente desde la API
+            try {
+                const res = await fetch('/api/clientes');
+                const clientes = await res.json();
+                const cliente = clientes.find(c => c.id === cot.id_cliente);
+
+                if (cliente) {
+                    document.getElementById('nombre_cliente').value = cliente.nombre || '';
+                    document.getElementById('apellido_cliente').value = cliente.apellido || '';
+                    document.getElementById('numero_documento_cliente').value = cliente.numero_documento || '';
+                    document.getElementById('tipo_documento_cliente').value = cliente.tipo_documento || '';
+                    document.getElementById('telefono_cliente').value = cliente.telefono || '';
+                    document.getElementById('correo_cliente').value = cliente.correo || '';
+                    document.getElementById('clienteNoExistenteAlert').style.display = 'none';
+                } else {
+                    // Separar nombre completo como fallback
+                    const nombreCompleto = cot.cliente || '';
+                    const partes = nombreCompleto.split(' ');
+                    document.getElementById('nombre_cliente').value = partes[0] || '';
+                    document.getElementById('apellido_cliente').value = partes.slice(1).join(' ') || '';
+                }
+            } catch (e) {
+                const nombreCompleto = cot.cliente || '';
+                const partes = nombreCompleto.split(' ');
+                document.getElementById('nombre_cliente').value = partes[0] || '';
+                document.getElementById('apellido_cliente').value = partes.slice(1).join(' ') || '';
+            }
+        }
+
+        // Cargar productos
+        productosSeleccionados = [];
+        if (cot.detalles) {
+            cot.detalles.forEach(det => {
+                productosSeleccionados.push({
+                    id_producto: det.id_producto || null,
+                    producto_nombre: det.producto_nombre,
+                    precio_unitario: parseFloat(det.precio_original) || 0,
+                    cantidad: parseInt(det.cantidad) || 0
+                });
+            });
+        }
+
+        actualizarTablaProductos();
+
+        document.getElementById('cotizacionCargadaInfo').style.display = 'block';
+        document.getElementById('cotizacionCargadaNumero').textContent = cot.numero_cotizacion;
+        document.getElementById('btnCargarCotizacion').style.display = 'none';
+
+        mostrarToast(`Cotización ${cot.numero_cotizacion} cargada correctamente`, 'success');
+
+    } catch (error) {
+        console.error('Error al cargar cotización:', error);
+        mostrarToast('Error al cargar la cotización', 'danger');
+    }
+}
+
+
 
 // ============================================
 // NUEVA VENTA
@@ -1426,6 +1491,42 @@ function calcularYMostrarCuotas() {
     } else {
         panelCuotas.style.display = 'none';
     }
+}
+
+// ============================================
+// CARGAR COTIZACIÓN EN VENTA
+// ============================================
+function setupCargarCotizacion() {
+    const btnCargar = document.getElementById('btnCargarCotizacion');
+    if (!btnCargar) return;
+
+    btnCargar.addEventListener('click', abrirModalSeleccionarCotizacion);
+
+    const btnQuitar = document.getElementById('btnQuitarCotizacion');
+    if (btnQuitar) btnQuitar.addEventListener('click', quitarCotizacionCargada);
+
+    // Inicializar la instancia del modal UNA SOLA VEZ
+    const modalEl = document.getElementById('modalSeleccionarCotizacion');
+    if (modalEl && !modalSeleccionCotizacion) {
+        modalSeleccionCotizacion = new bootstrap.Modal(modalEl, {
+            backdrop: true,
+            keyboard: true,
+            focus: true
+        });
+    }
+}
+
+
+
+// ============================================
+// QUITAR COTIZACIÓN CARGADA
+// ============================================
+function quitarCotizacionCargada() {
+    cotizacionCargada = null;
+    document.getElementById('id_cotizacion_origen').value = '';
+    document.getElementById('cotizacionCargadaInfo').style.display = 'none';
+    document.getElementById('btnCargarCotizacion').style.display = 'block';
+    mostrarToast('Cotización desvinculada. Puede seguir editando la venta.', 'info');
 }
 
 function setupCreditEventos() {
@@ -1645,14 +1746,7 @@ async function mostrarDetallePedidoDesdeVenta(idPedido) {
 // ============================================
 export async function init() {
     if (!isCurrentPage()) return;
-
-    if (eventosInicializados) {
-        await cargarVentas();
-        await cargarClientes();
-        await cargarProductos();
-        return;
-    }
-
+    if (eventosInicializados) { await cargarVentas(); await cargarClientes(); await cargarProductos(); return; }
     eventosInicializados = true;
 
     setupEventListeners();
@@ -1662,21 +1756,7 @@ export async function init() {
     setupAgregarProducto();
     setupBusquedaClienteVenta();
     setupCreditEventos();
-    setupValidacionesTiempoRealCliente();
-
-    const btnCerrarFormaPago = document.getElementById('btnCerrarFormaPago');
-    if (btnCerrarFormaPago) {
-        const newBtn = btnCerrarFormaPago.cloneNode(true);
-        btnCerrarFormaPago.parentNode.replaceChild(newBtn, btnCerrarFormaPago);
-        newBtn.addEventListener('click', ocultarFormularioPagoCuota);
-    }
-
-    const btnConfirmarPagoIntegrado = document.getElementById('btnConfirmarPagoCuotaIntegrado');
-    if (btnConfirmarPagoIntegrado) {
-        const newBtn = btnConfirmarPagoIntegrado.cloneNode(true);
-        btnConfirmarPagoIntegrado.parentNode.replaceChild(newBtn, btnConfirmarPagoIntegrado);
-        newBtn.addEventListener('click', confirmarPagoCuotaIntegrado);
-    }
+    setupCargarCotizacion();
 
     const buscarInput = getElement('buscarVenta');
     const filtroCantidad = getElement('filtroCantidad');
@@ -1698,4 +1778,4 @@ export function destroy() {
     clientesGlobal = [];
     productosSeleccionados = [];
     totalVenta = 0;
-}
+} 

@@ -10,6 +10,16 @@ exports.getAll = async (req, res) => {
     }
 };
 
+exports.generarNumero = async (req, res) => {
+    try {
+        const numero = await service.generarNumeroCotizacion();
+        res.json({ numero_cotizacion: numero });
+    } catch (error) {
+        console.error('Error al generar número:', error);
+        res.status(500).json({ error: error.message });
+    }
+};
+
 exports.getById = async (req, res) => {
     try {
         const id = parseInt(req.params.id);

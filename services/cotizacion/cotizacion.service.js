@@ -14,7 +14,7 @@ exports.getCotizaciones = async () => {
 exports.getCotizacionById = async (id) => {
     const [rows] = await db.query('CALL sp_cotizacion_obtener(?)', [id]);
     const cotizacion = rows[0][0];
-    
+
     if (cotizacion) {
         const detalles = await exports.getDetallesCotizacion(id);
         return {
@@ -41,11 +41,13 @@ exports.generarNumeroCotizacion = async () => {
     const año = fecha.getFullYear().toString().slice(-2);
     const mes = (fecha.getMonth() + 1).toString().padStart(2, '0');
     const dia = fecha.getDate().toString().padStart(2, '0');
-    
-    const [result] = await db.query('CALL sp_cotizacion_contar(@p_total)');
-    const [totalResult] = await db.query('SELECT @p_total AS total');
-    const count = (totalResult[0].total || 0) + 1;
-    
+
+    // Contar SOLO las cotizaciones del día actual
+    const [result] = await db.query(
+        'SELECT COUNT(*) AS total FROM cotizacion WHERE DATE(fecha_creacion) = CURDATE()'
+    );
+    const count = (result[0]?.total || 0) + 1;
+
     return `COT-${año}${mes}${dia}-${String(count).padStart(4, '0')}`;
 };
 
@@ -71,7 +73,7 @@ exports.createCotizacion = async (body, idUsuarioSesion) => {
     try {
         // Generar número de cotización
         const numeroCotizacion = await exports.generarNumeroCotizacion();
-        
+
         // Calcular total
         let total = 0;
         for (const item of productos) {

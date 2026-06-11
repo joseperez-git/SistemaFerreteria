@@ -3,6 +3,7 @@ const router = express.Router();
 const controller = require('./cotizacion.controller');
 
 router.get('/', controller.getAll);
+router.get('/generar-numero', controller.generarNumero); // ← AGREGAR ANTES de /:id
 router.get('/:id', controller.getById);
 router.post('/', controller.create);
 router.put('/:id', controller.update);

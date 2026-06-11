@@ -55,28 +55,41 @@ function safeSetDisplay(id, display) {
     if (el) el.style.display = display;
 }
 
+
 // ============================================
-// GENERAR NÚMERO DE COTIZACIÓN
+// GENERAR NÚMERO DE COTIZACIÓN (DESDE BACKEND)
 // ============================================
-function generarNumeroCotizacion() {
-    const fecha = new Date();
-    const año = fecha.getFullYear().toString().slice(-2);
-    const mes = (fecha.getMonth() + 1).toString().padStart(2, '0');
-    const dia = fecha.getDate().toString().padStart(2, '0');
-    const consecutivo = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
-    return `COT-${año}${mes}${dia}-${consecutivo}`;
+async function generarNumeroCotizacion() {
+    try {
+        const response = await fetch('/api/cotizaciones/generar-numero');
+        if (!response.ok) throw new Error('Error al generar número');
+        const data = await response.json();
+        return data.numero_cotizacion;
+    } catch (error) {
+        console.error('Error al generar número:', error);
+        // Fallback por si falla la API (solo emergencia)
+        const fecha = new Date();
+        const año = fecha.getFullYear().toString().slice(-2);
+        const mes = (fecha.getMonth() + 1).toString().padStart(2, '0');
+        const dia = fecha.getDate().toString().padStart(2, '0');
+        const consecutivo = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
+        return `COT-${año}${mes}${dia}-${consecutivo}`;
+    }
 }
 
 // ============================================
 // LIMPIAR FORMULARIO COMPLETO
 // ============================================
-function limpiarFormulario() {
+async function limpiarFormulario() {
     const form = getElement('formCotizacion');
     if (form) form.reset();
 
     safeSetValue('cotizacionId', '');
     safeSetText('tituloModalCotizacion', 'Nueva Cotización');
-    safeSetValue('numero_cotizacion', generarNumeroCotizacion());
+
+    // Obtener número del BACKEND
+    const numero = await generarNumeroCotizacion();
+    safeSetValue('numero_cotizacion', numero);
 
     // Limpiar cliente
     safeSetValue('tipo_documento_cliente', '');
@@ -94,7 +107,7 @@ function limpiarFormulario() {
         const hoy = new Date();
         const fechaMinima = hoy.toISOString().split('T')[0];
         fechaVencimiento.setAttribute('min', fechaMinima);
-        
+
         const fechaDefault = new Date();
         fechaDefault.setDate(fechaDefault.getDate() + 7);
         fechaVencimiento.value = fechaDefault.toISOString().split('T')[0];
@@ -143,7 +156,7 @@ function setupValidacionFechaVencimiento() {
     fechaVencimiento.setAttribute('min', hoy.toISOString().split('T')[0]);
 
     // Validar al cambiar
-    fechaVencimiento.addEventListener('change', function() {
+    fechaVencimiento.addEventListener('change', function () {
         const fechaSeleccionada = new Date(this.value + 'T00:00:00');
         const fechaHoy = new Date();
         fechaHoy.setHours(0, 0, 0, 0);
@@ -301,7 +314,7 @@ function aplicarFiltros() {
         .filter(cot => {
             if (estadoFiltro !== '' && cot.estado != estadoFiltro) return false;
             return cot.numero_cotizacion?.toLowerCase().includes(textoBusqueda) ||
-                   cot.cliente?.toLowerCase().includes(textoBusqueda);
+                cot.cliente?.toLowerCase().includes(textoBusqueda);
         })
         .sort((a, b) => b.id - a.id)
         .slice(0, cantidadMostrar);
@@ -360,10 +373,10 @@ function renderizar(cotizaciones) {
                 <td>${cot.cliente || '-'}</td>
                 <td>${cot.vendedor || '-'}</td>
                 <td class="text-center">
-                    ${vencida && cot.estado === 1 
-                        ? `<span class="text-danger fw-bold">${formatearFecha(cot.fecha_vencimiento)} <i class="bi bi-exclamation-triangle-fill"></i></span>`
-                        : formatearFecha(cot.fecha_vencimiento)
-                    }
+                    ${vencida && cot.estado === 1
+                ? `<span class="text-danger fw-bold">${formatearFecha(cot.fecha_vencimiento)} <i class="bi bi-exclamation-triangle-fill"></i></span>`
+                : formatearFecha(cot.fecha_vencimiento)
+            }
                 </td>
                 <td class="text-end fw-bold text-primary">S/ ${parseFloat(cot.total).toFixed(2)}</td>
                 <td class="text-center">${estadoBadge}</td>
@@ -387,7 +400,7 @@ function setupBusquedaCliente() {
 
     // Auto-detectar tipo de documento por longitud
     if (numeroDocInput && tipoDocSelect) {
-        numeroDocInput.addEventListener('input', function() {
+        numeroDocInput.addEventListener('input', function () {
             this.value = this.value.replace(/[^0-9]/g, '');
             const longitud = this.value.length;
 
@@ -404,7 +417,7 @@ function setupBusquedaCliente() {
         });
 
         // Enter para buscar automáticamente
-        numeroDocInput.addEventListener('keydown', function(e) {
+        numeroDocInput.addEventListener('keydown', function (e) {
             if (e.key === 'Enter') {
                 e.preventDefault();
                 const longitud = this.value.length;
@@ -574,7 +587,7 @@ function setupAgregarProducto() {
                             if (selectProducto.options[i].value == productoPorCodigo.id) {
                                 selectProducto.selectedIndex = i;
                                 selectProducto.dispatchEvent(new Event('change', { bubbles: true }));
-                                
+
                                 const cantidadInput = document.getElementById('cantidadProducto');
                                 if (cantidadInput) {
                                     setTimeout(() => cantidadInput.focus(), 100);
@@ -630,7 +643,7 @@ function setupAgregarProducto() {
 
             safeSetValue('precioUnitario', precio.toFixed(2));
             safeSetValue('stockDisponible', stock ? `${stock} ${unidad || ''}` : '');
-            
+
             const cantidadProducto = document.getElementById('cantidadProducto');
             if (cantidadProducto) {
                 cantidadProducto.value = '1';
@@ -679,7 +692,7 @@ function setupAgregarProducto() {
 function setupValidacionesInputs() {
     const cantidadProducto = document.getElementById('cantidadProducto');
     if (cantidadProducto) {
-        cantidadProducto.addEventListener('input', function() {
+        cantidadProducto.addEventListener('input', function () {
             let valor = this.value;
             if (valor === '') return;
             valor = valor.replace(/[^0-9]/g, '');
@@ -689,12 +702,12 @@ function setupValidacionesInputs() {
             if (numero > 9999) { numero = 9999; mostrarToast('La cantidad máxima es 9999', 'warning'); }
             this.value = numero;
         });
-        cantidadProducto.addEventListener('blur', function() {
+        cantidadProducto.addEventListener('blur', function () {
             if (this.value === '' || parseInt(this.value) < 1) this.value = '1';
         });
     }
 
-    document.addEventListener('input', function(e) {
+    document.addEventListener('input', function (e) {
         if (e.target.classList.contains('cantidad-cot')) {
             let valor = e.target.value;
             if (valor === '') return;
@@ -711,7 +724,7 @@ function setupValidacionesInputs() {
         }
     });
 
-    document.addEventListener('blur', function(e) {
+    document.addEventListener('blur', function (e) {
         if (e.target.classList.contains('cantidad-cot')) {
             if (e.target.value === '' || parseInt(e.target.value) < 1) {
                 e.target.value = '1';
@@ -909,13 +922,16 @@ function setupEventListeners() {
     });
 }
 
+
 // ============================================
 // NUEVA COTIZACIÓN
 // ============================================
 function setupNuevaCotizacion() {
     const nuevoBtn = document.querySelector('[data-bs-target="#modalCotizacion"]');
     if (nuevoBtn) {
-        nuevoBtn.addEventListener('click', () => limpiarFormulario());
+        nuevoBtn.addEventListener('click', async () => {
+            await limpiarFormulario();
+        });
     }
 }
 
