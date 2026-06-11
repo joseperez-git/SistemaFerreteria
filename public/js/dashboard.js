@@ -366,7 +366,8 @@ function construirMenuDesdeAPI() {
         'categorias': 'bi bi-grid',
         'ventas': 'bi bi-cart-check',
         'pedidos': 'bi bi-truck',
-        'inventario': 'bi bi-clipboard-data'
+        'inventario': 'bi bi-clipboard-data',
+        'cotizaciones': 'bi bi-file-text'
     };
 
     const ordenModulos = [
@@ -378,7 +379,8 @@ function construirMenuDesdeAPI() {
         'categorias',
         'ventas',
         'pedidos',
-        'inventario'
+        'inventario',
+        'cotizaciones'
     ];
 
     const permisosOrdenados = [...menuPermisos].sort((a, b) => {
