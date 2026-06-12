@@ -1,0 +1,91 @@
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="mb-2">Catálogo</h2>
+        <p class="text-muted">Gestión de logo, slider principal y redes sociales.</p>
+    </div>
+</div>
+
+<!-- SECCIÓN LOGO -->
+<div class="card shadow-sm mb-4">
+    <div class="card-header py-3" style="border-left:4px solid #1a3a5c">
+        <h2 class="h5 mb-0 fw-bold">Logo de la Empresa</h2>
+        <small class="text-muted">Selecciona cuál logo se mostrará públicamente</small>
+    </div>
+    <div class="card-body">
+        <div class="mb-3">
+            <label class="form-label fw-semibold">Subir nuevo logo (PNG, JPG, WebP - Max 10MB)</label>
+            <input type="file" id="input-logo" class="form-control" accept="image/*" style="max-width:400px">
+        </div>
+        <div id="logos-container" class="row g-3"></div>
+    </div>
+</div>
+
+<!-- SECCIÓN SLIDER -->
+<div class="card shadow-sm mb-4">
+    <div class="card-header py-3" style="border-left:4px solid #1a3a5c">
+        <h2 class="h5 mb-0 fw-bold">Slider Principal</h2>
+        <small class="text-muted">Gestiona las imágenes del slider</small>
+    </div>
+    <div class="card-body">
+        <div class="mb-3">
+            <label class="form-label fw-semibold">Subir nueva imagen (JPG, PNG, WebP - Max 10MB)</label>
+            <input type="file" id="input-slider" class="form-control" accept="image/*" style="max-width:400px">
+        </div>
+        <div id="sliders-container" class="row g-3"></div>
+    </div>
+</div>
+
+<!-- SECCIÓN REDES SOCIALES -->
+<div class="card shadow-sm">
+    <div class="card-header py-3" style="border-left:4px solid #1a3a5c">
+        <h2 class="h5 mb-0 fw-bold">Redes Sociales</h2>
+        <small class="text-muted">Gestiona tus enlaces a redes sociales</small>
+    </div>
+    <div class="card-body">
+        <button id="btn-nueva-red" class="btn btn-dark mb-3"><i class="bi bi-plus-lg me-1"></i>Nueva Red Social</button>
+        <div id="redes-container" class="row g-3"></div>
+    </div>
+</div>
+
+<!-- Modal Red Social -->
+<div class="modal fade" id="redModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-dark text-white">
+                <h5 class="modal-title fw-bold" id="redModalLabel">Nueva Red Social</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="formRed" novalidate>
+                    <input type="hidden" id="redId">
+                    <div class="mb-3">
+                        <label class="form-label">Tipo <span class="text-danger">*</span></label>
+                        <select id="redTipo" class="form-select" required>
+                            <option value="">Seleccione...</option>
+                            <option value="facebook">Facebook</option>
+                            <option value="instagram">Instagram</option>
+                            <option value="tiktok">TikTok</option>
+                            <option value="twitter">Twitter / X</option>
+                            <option value="youtube">YouTube</option>
+                            <option value="linkedin">LinkedIn</option>
+                            <option value="whatsapp">WhatsApp</option>
+                            <option value="web">Sitio Web</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Nombre <span class="text-danger">*</span></label>
+                        <input type="text" id="redNombre" class="form-control" required placeholder="Ej: Facebook Oficial">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">URL <span class="text-danger">*</span></label>
+                        <input type="url" id="redUrl" class="form-control" required placeholder="https://...">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline-dark" data-bs-dismiss="modal">Cancelar</button>
+                <button type="submit" form="formRed" class="btn btn-dark"><i class="bi bi-check-lg me-1"></i>Guardar</button>
+            </div>
+        </div>
+    </div>
+</div>

@@ -367,7 +367,8 @@ function construirMenuDesdeAPI() {
         'ventas': 'bi bi-cart-check',
         'pedidos': 'bi bi-truck',
         'inventario': 'bi bi-clipboard-data',
-        'cotizaciones': 'bi bi-file-text'
+        'cotizaciones': 'bi bi-file-text',
+        'catalogo': 'bi bi-images',
     };
 
     const ordenModulos = [
@@ -380,7 +381,8 @@ function construirMenuDesdeAPI() {
         'ventas',
         'pedidos',
         'inventario',
-        'cotizaciones'
+        'cotizaciones',
+        'catalogo'
     ];
 
     const permisosOrdenados = [...menuPermisos].sort((a, b) => {
@@ -514,6 +516,9 @@ async function inicializarModulo(view) {
                 break;
             case 'cotizaciones':
                 modulo = await import('/js/cotizaciones.js');
+                break;
+            case 'catalogo':
+                modulo = await import('/js/catalogo.js');
                 break;
             default:
                 console.warn(`Módulo no implementado: ${view}`);

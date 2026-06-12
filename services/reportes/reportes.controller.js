@@ -1,5 +1,6 @@
 const reportesService = require('./reportes.service');
 const ventaService = require('../venta/venta.service');
+const clienteService = require('../cliente/cliente.service');
 
 class ReportesController {
     async generarNotaVentaPDF(req, res) {
@@ -10,6 +11,16 @@ class ReportesController {
             const venta = await ventaService.getVentaById(idVenta);
             if (!venta) {
                 return res.status(404).json({ error: 'Venta no encontrada' });
+            }
+            
+            // Obtener datos completos del cliente
+            const cliente = await clienteService.getClienteById(venta.id_cliente);
+            if (cliente) {
+                venta.numero_documento = cliente.numero_documento;
+                venta.tipo_documento = cliente.tipo_documento;
+                venta.direccion = cliente.direccion;
+                venta.telefono = cliente.telefono;
+                venta.cliente = `${cliente.nombre} ${cliente.apellido || ''}`;
             }
             
             const detalles = await ventaService.getDetallesVenta(idVenta);

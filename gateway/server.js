@@ -45,6 +45,9 @@ app.use('/api/movimientos-inventario', soloAutenticacion, require(path.join(__di
 app.use('/api/entregas', soloAutenticacion, require(path.join(__dirname, '../services/entrega_pedido/entrega.routes')));
 app.use('/api/reportes', soloAutenticacion, require(path.join(__dirname, '../services/reportes/reportes.routes')));
 app.use('/api/cotizaciones', validarPermiso('Cotizaciones'), require(path.join(__dirname, '../services/cotizacion/cotizacion.routes')));
+app.use('/api/catalogo', validarPermiso('Catálogo'), require(path.join(__dirname, '../services/catalogo/catalogo.routes')));
+
+app.use('/Fotos', express.static(path.join(__dirname, 'public/Fotos')));
 
 app.use(express.static('public'));
 app.use('/uploads', express.static('public/uploads'));

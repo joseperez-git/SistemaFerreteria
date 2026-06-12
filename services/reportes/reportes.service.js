@@ -2,30 +2,32 @@ const PDFDocument = require('pdfkit');
 const QRCode = require('qrcode');
 const fs = require('fs');
 const path = require('path');
+const db = require('../../config/db');
 
 class ReportesService {
     constructor() {
         this.EMPRESA = {
             nombre: 'Ferretería Liam & Miley',
-            ruc: 'xxxyyyzzzx',
-            direccion: 'Domingo Elias 282, Chiclayo 14011',
-            telefono: '906456034',
-            correo: 'valientelorena245@gmail.com'
+            nombreComercial: 'FERRETERÍA LIAM & MILEY S.A.C.',
+            ruc: '20123456789',
+            direccion: 'Av. Domingo Elías 282, Chiclayo',
+            telefono: '906 456 034',
+            correo: 'valientelorena245@gmail.com',
+            web: 'www.ferreterialiamymiley.com'
         };
 
         this.COLORES = {
             primario: '#1a3a5c',
-            secundario: '#2c5a7a',
-            header: '#4A5568',
+            header: '#1a3a5c',
             headerTexto: '#FFFFFF',
             filaPar: '#F9FAFB',
             filaImpar: '#FFFFFF',
-            borde: '#E5E7EB',
-            texto: '#374151',
+            borde: '#D1D5DB',
+            texto: '#1F2937',
             textoClaro: '#6B7280',
-            exito: '#10B981',
-            peligro: '#EF4444',
-            advertencia: '#F59E0B'
+            exito: '#059669',
+            peligro: '#DC2626',
+            advertencia: '#D97706'
         };
     }
 
@@ -39,14 +41,24 @@ class ReportesService {
         });
     }
 
-    formatearFechaCompleta() {
-        return new Date().toLocaleString('es-PE', {
-            day: '2-digit',
-            month: '2-digit',
+    formatearFechaCompleta(fechaISO) {
+        if (!fechaISO) return new Date().toLocaleString('es-PE');
+        const fecha = new Date(fechaISO);
+        return fecha.toLocaleDateString('es-PE', {
+            weekday: 'long',
             year: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit',
-            second: '2-digit'
+            month: 'long',
+            day: 'numeric'
+        });
+    }
+
+    formatearFechaLarga(fechaISO) {
+        if (!fechaISO) return '-';
+        const fecha = new Date(fechaISO);
+        return fecha.toLocaleDateString('es-PE', {
+            day: '2-digit',
+            month: 'long',
+            year: 'numeric'
         });
     }
 
@@ -55,12 +67,16 @@ class ReportesService {
         return `S/ ${num.toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     }
 
-    async generarQR(data, width = 100, height = 100) {
+    async generarQR(data) {
         try {
             return await QRCode.toBuffer(data, {
-                width: width,
-                margin: 1,
-                errorCorrectionLevel: 'M'
+                width: 120,
+                margin: 2,
+                errorCorrectionLevel: 'M',
+                color: {
+                    dark: '#000000',
+                    light: '#FFFFFF'
+                }
             });
         } catch (error) {
             console.error('Error generando QR:', error);
@@ -68,493 +84,528 @@ class ReportesService {
         }
     }
 
-    // ==================== NOTA DE VENTA A4 ====================
+    // ============================================
+    // GENERAR NOTA DE VENTA A4
+    // ============================================
     async generarNotaVentaA4(venta, detalles, cuotas = [], pagos = []) {
-        return new Promise(async (resolve) => {
-            const doc = new PDFDocument({
-                margin: 35,
-                size: 'A4',
-                autoFirstPage: true,
-                bufferPages: true
-            });
-
-            const buffers = [];
-            doc.on('data', buffers.push.bind(buffers));
-            doc.on('end', () => resolve(Buffer.concat(buffers)));
-
-            // Constantes de diseño
-            const MARGEN_IZQ = 35;
-            const MARGEN_DER = doc.page.width - 35;
-            const ANCHO_UTIL = MARGEN_DER - MARGEN_IZQ;
-            const CENTRO_PAGINA = doc.page.width / 2;
-
-            // Variables de flujo
-            let y = 35;
-            let paginaActual = 1;
-
-            // Función helper para verificar espacio
-            const verificarEspacio = (necesario) => {
-                if (y + necesario > doc.page.height - 60) {
-                    doc.addPage();
-                    paginaActual++;
-                    y = 35;
-                    return true;
-                }
-                return false;
-            };
-
-            // Función helper para línea horizontal
-            const linea = (grosor = 0.5, color = this.COLORES.borde, espacioY = 0) => {
-                y += espacioY;
-                doc.strokeColor(color)
-                    .lineWidth(grosor)
-                    .moveTo(MARGEN_IZQ, y)
-                    .lineTo(MARGEN_DER, y)
-                    .stroke();
-            };
-
-            // ==========================================
-            // ENCABEZADO
-            // ==========================================
-            const logoPath = path.join(__dirname, '../../public/logo.png');
-            if (fs.existsSync(logoPath)) {
-                doc.image(logoPath, MARGEN_IZQ, y, { width: 75 });
-            }
-
-            // Datos de la empresa (junto al logo)
-            doc.fontSize(14).font('Helvetica-Bold').fillColor(this.COLORES.primario);
-            doc.text(this.EMPRESA.nombre, MARGEN_IZQ + 85, y + 3);
-
-            doc.fontSize(8).font('Helvetica').fillColor(this.COLORES.textoClaro);
-            doc.text(this.EMPRESA.direccion, MARGEN_IZQ + 85, y + 20);
-            doc.text(`Teléfono: ${this.EMPRESA.telefono}`, MARGEN_IZQ + 85, y + 30);
-            doc.text(`Email: ${this.EMPRESA.correo}`, MARGEN_IZQ + 85, y + 40);
-
-            // RUC y Título (lado derecho)
-            const xDerecha = MARGEN_DER - 160;
-
-            doc.fillColor(this.COLORES.textoClaro).fontSize(7).font('Helvetica');
-            doc.text(`R.U.C. N° ${this.EMPRESA.ruc}`, xDerecha, y, {
-                width: 160,
-                align: 'right'
-            });
-
-            doc.fillColor(this.COLORES.primario).fontSize(18).font('Helvetica-Bold');
-            doc.text('NOTA DE VENTA', xDerecha, y + 12, {
-                width: 160,
-                align: 'right'
-            });
-
-            doc.fillColor(this.COLORES.texto).fontSize(12).font('Helvetica-Bold');
-            doc.text(venta.numero_nota_venta || 'Sin número', xDerecha, y + 34, {
-                width: 160,
-                align: 'right'
-            });
-
-            y += 65;
-            linea(2, this.COLORES.primario, 5);
-
-            // ==========================================
-            // DATOS DEL CLIENTE Y VENTA
-            // ==========================================
-            const clienteNombre = venta.cliente || 'Venta Interna';
-            const clienteDoc = venta.numero_documento || '-';
-            const clienteDireccion = venta.direccion || 'No especificada';
-            const formaPago = venta.modalidad_pago === 'CREDITO' ? 'CRÉDITO' : 'CONTADO';
-            const cajero = venta.usuario || 'Sistema';
-            const fechaVenta = this.formatearFecha(venta.fecha_venta);
-
-            // Rectángulo de información del cliente
-            doc.roundedRect(MARGEN_IZQ, y, ANCHO_UTIL, 55, 3)
-                .fillColor('#F8FAFC')
-                .fill()
-                .strokeColor(this.COLORES.borde)
-                .stroke();
-
-            const yInfo = y + 8;
-            const col1 = MARGEN_IZQ + 10;
-            const col2 = MARGEN_IZQ + 300;
-
-            // Columna 1
-            doc.fillColor(this.COLORES.texto).fontSize(8).font('Helvetica-Bold');
-            doc.text('CLIENTE:', col1, yInfo);
-            doc.text('DOCUMENTO:', col1, yInfo + 17);
-            doc.text('DIRECCIÓN:', col1, yInfo + 34);
-
-            doc.font('Helvetica').fillColor(this.COLORES.textoClaro);
-            doc.text(clienteNombre.length > 25 ? clienteNombre.substring(0, 25) + '...' : clienteNombre,
-                col1 + 65, yInfo, { width: 200 });
-            doc.text(clienteDoc, col1 + 65, yInfo + 17);
-            doc.text(clienteDireccion.length > 25 ? clienteDireccion.substring(0, 25) + '...' : clienteDireccion,
-                col1 + 65, yInfo + 34, { width: 200 });
-
-            // Columna 2
-            doc.font('Helvetica-Bold').fillColor(this.COLORES.texto);
-            doc.text('FECHA:', col2, yInfo);
-            doc.text('CAJERO:', col2, yInfo + 17);
-            doc.text('TIPO PAGO:', col2, yInfo + 34);
-
-            doc.font('Helvetica').fillColor(this.COLORES.textoClaro);
-            doc.text(fechaVenta, col2 + 55, yInfo);
-            doc.text(cajero.length > 20 ? cajero.substring(0, 20) : cajero, col2 + 55, yInfo + 17);
-
-            // Tipo de pago con color
-            if (venta.modalidad_pago === 'CREDITO') {
-                doc.fillColor(this.COLORES.advertencia).font('Helvetica-Bold');
-            } else {
-                doc.fillColor(this.COLORES.exito).font('Helvetica-Bold');
-            }
-            doc.text(formaPago, col2 + 55, yInfo + 34);
-
-            y += 65;
-
-            // ==========================================
-            // TABLA DE PRODUCTOS
-            // ==========================================
-            verificarEspacio(100);
-
-            // Definición de columnas
-            const tabla = {
-                item: { x: MARGEN_IZQ, w: 30 },
-                cant: { x: MARGEN_IZQ + 32, w: 45 },
-                um: { x: MARGEN_IZQ + 79, w: 35 },
-                descripcion: { x: MARGEN_IZQ + 116, w: 175 },
-                precio: { x: MARGEN_IZQ + 293, w: 70 },
-                descuento: { x: MARGEN_IZQ + 365, w: 65 },
-                subtotal: { x: MARGEN_IZQ + 432, w: 75 }
-            };
-
-            // Cabecera de tabla
-            doc.fillColor(this.COLORES.header)
-                .rect(MARGEN_IZQ, y, ANCHO_UTIL, 22)
-                .fill();
-
-            doc.fillColor(this.COLORES.headerTexto).fontSize(8).font('Helvetica-Bold');
-            doc.text('#', tabla.item.x + 5, y + 7, { width: tabla.item.w - 5, align: 'center' });
-            doc.text('CANT.', tabla.cant.x + 5, y + 7, { width: tabla.cant.w - 5, align: 'center' });
-            doc.text('U.M.', tabla.um.x + 5, y + 7, { width: tabla.um.w - 5, align: 'center' });
-            doc.text('DESCRIPCIÓN', tabla.descripcion.x + 5, y + 7, { width: tabla.descripcion.w - 10 });
-            doc.text('P. UNITARIO', tabla.precio.x, y + 7, { width: tabla.precio.w - 5, align: 'right' });
-            doc.text('DESCUENTO', tabla.descuento.x, y + 7, { width: tabla.descuento.w - 5, align: 'right' });
-            doc.text('SUBTOTAL', tabla.subtotal.x, y + 7, { width: tabla.subtotal.w - 5, align: 'right' });
-
-            y += 24;
-            let subtotalSinDescuento = 0;
-            let descuentoTotal = 0;
-            let totalVenta = 0;
-
-            // Filas de productos
-            for (let i = 0; i < detalles.length; i++) {
-                verificarEspacio(20);
-
-                const det = detalles[i];
-                const cantidad = parseFloat(det.cantidad) || 0;
-                const precio = parseFloat(det.precio_unitario) || 0;
-                const subtotal = precio * cantidad;
-                const descuento = parseFloat(det.descuento) || 0;
-                const totalLinea = subtotal - descuento;
-
-                subtotalSinDescuento += subtotal;
-                descuentoTotal += descuento;
-                totalVenta += totalLinea;
-
-                // Fondo alternado
-                const colorFondo = i % 2 === 0 ? this.COLORES.filaPar : this.COLORES.filaImpar;
-                doc.fillColor(colorFondo)
-                    .rect(MARGEN_IZQ, y - 2, ANCHO_UTIL, 18)
-                    .fill();
-
-                // Datos de la fila
-                doc.fillColor(this.COLORES.texto).fontSize(7.5).font('Helvetica');
-
-                doc.text((i + 1).toString(), tabla.item.x, y, {
-                    width: tabla.item.w,
-                    align: 'center'
+        return new Promise(async (resolve, reject) => {
+            try {
+                const doc = new PDFDocument({
+                    margin: 30,
+                    size: 'A4',
+                    bufferPages: true
                 });
 
-                doc.text(cantidad.toString(), tabla.cant.x, y, {
-                    width: tabla.cant.w,
-                    align: 'center'
-                });
+                const buffers = [];
+                doc.on('data', (chunk) => buffers.push(chunk));
+                doc.on('end', () => resolve(Buffer.concat(buffers)));
+                doc.on('error', reject);
 
-                doc.text((det.unidad_abreviatura || 'UND').substring(0, 4), tabla.um.x, y, {
-                    width: tabla.um.w,
-                    align: 'center'
-                });
+                // ============================================
+                // CONSTANTES DE DISEÑO
+                // ============================================
+                const LEFT = 30;
+                const RIGHT = doc.page.width - 30;
+                const WIDTH = RIGHT - LEFT;
+                const CENTER = doc.page.width / 2;
 
-                const nombreProducto = (det.producto || det.producto_nombre || '-');
-                doc.text(nombreProducto.length > 28 ? nombreProducto.substring(0, 28) + '...' : nombreProducto,
-                    tabla.descripcion.x + 3, y, {
-                        width: tabla.descripcion.w - 6
-                    });
+                let y = 30;
 
-                doc.text(this.formatoSoles(precio), tabla.precio.x, y, {
-                    width: tabla.precio.w - 3,
-                    align: 'right'
-                });
-
-                // Descuento
-                if (descuento > 0) {
-                    doc.fillColor(this.COLORES.peligro)
-                        .text(`-${this.formatoSoles(descuento)}`, tabla.descuento.x, y, {
-                            width: tabla.descuento.w - 3,
-                            align: 'right'
-                        });
-                    doc.fillColor(this.COLORES.texto);
-                } else {
-                    doc.fillColor(this.COLORES.textoClaro)
-                        .text('S/ 0.00', tabla.descuento.x, y, {
-                            width: tabla.descuento.w - 3,
-                            align: 'right'
-                        });
-                    doc.fillColor(this.COLORES.texto);
-                }
-
-                // Subtotal de línea
-                doc.font('Helvetica-Bold')
-                    .text(this.formatoSoles(totalLinea), tabla.subtotal.x, y, {
-                        width: tabla.subtotal.w - 3,
-                        align: 'right'
-                    });
-
-                y += 16;
-            }
-
-            // Línea final de tabla
-            linea(0.8, this.COLORES.borde, 4);
-
-            // ==========================================
-            // TOTALES - PRECIO A LA IZQUIERDA
-            // ==========================================
-            verificarEspacio(130);
-
-            const totalPagado = pagos.reduce((sum, p) => sum + parseFloat(p.monto), 0);
-            const deuda = totalVenta - totalPagado;
-
-            // 📦 POSICIÓN Y TAMAÑO DEL RECUADRO
-            const totalesX = MARGEN_IZQ + ANCHO_UTIL - 230;
-            const totalesAncho = 230;
-
-            // 🔧 CALCULAR ALTURA NECESARIA
-            let lineasTotales = 1;
-            if (descuentoTotal > 0) lineasTotales++;
-            lineasTotales++;
-            if (venta.modalidad_pago === 'CREDITO') {
-                lineasTotales++;
-                if (deuda > 0.01) lineasTotales++;
-            }
-
-            const altoTotales = 25 + (lineasTotales * 16) + 15;
-
-            // 🎨 FONDO DEL RECUADRO
-            doc.roundedRect(totalesX, y, totalesAncho, altoTotales, 4)
-                .fillColor('#F8FAFC')
-                .fill()
-                .strokeColor(this.COLORES.borde)
-                .stroke();
-
-            // 📝 POSICIÓN INICIAL
-            let yT = y + 10;
-
-            // 1️⃣ SUBTOTAL
-            doc.fillColor(this.COLORES.texto).fontSize(9).font('Helvetica');
-            doc.text('Subtotal:', totalesX + 15, yT, { continued: true, width: 50 });
-            doc.text(this.formatoSoles(subtotalSinDescuento), totalesX + 80, yT);
-            yT += 16;
-
-            // 2️⃣ DESCUENTO (si existe)
-            if (descuentoTotal > 0) {
-                doc.fillColor(this.COLORES.peligro);
-                doc.text('Descuento:', totalesX + 15, yT, { continued: true, width: 50 });
-                doc.text(`-${this.formatoSoles(descuentoTotal)}`, totalesX + 80, yT);
-                doc.fillColor(this.COLORES.texto);
-                yT += 16;
-            }
-
-            // ➖ LÍNEA SEPARADORA
-            doc.strokeColor(this.COLORES.borde).lineWidth(0.5)
-                .moveTo(totalesX + 15, yT)
-                .lineTo(totalesX + totalesAncho - 15, yT)
-                .stroke();
-            yT += 10;
-
-            // 💰 TOTAL - PRECIO A LA IZQUIERDA
-            doc.fillColor(this.COLORES.texto).fontSize(11).font('Helvetica-Bold');
-            doc.text('TOTAL:', totalesX + 15, yT, { continued: true, width: 70 });
-            
-            doc.fillColor(this.COLORES.primario).fontSize(13).font('Helvetica-Bold');
-            doc.text(this.formatoSoles(totalVenta), totalesX + 70, yT);
-            yT += 22;
-
-            // 💳 CRÉDITO (si aplica)
-            if (venta.modalidad_pago === 'CREDITO') {
-                doc.fillColor(this.COLORES.texto).fontSize(9).font('Helvetica');
-                doc.text('Pagado:', totalesX + 15, yT, { continued: true, width: 70 });
-                doc.fillColor(this.COLORES.exito);
-                doc.text(this.formatoSoles(totalPagado), totalesX + 70, yT);
-                yT += 16;
-
-                if (deuda > 0.01) {
-                    doc.fillColor(this.COLORES.texto).font('Helvetica-Bold');
-                    doc.text('Pendiente:', totalesX + 15, yT, { continued: true, width: 70 });
-                    doc.fillColor(this.COLORES.peligro);
-                    doc.text(this.formatoSoles(deuda), totalesX + 70, yT);
-                    yT += 16;
-                }
-            }
-
-            y = y + altoTotales + 10;
-
-            // ==========================================
-            // PLAN DE CUOTAS
-            // ==========================================
-            if (cuotas && cuotas.length > 0) {
-                verificarEspacio(80 + (cuotas.length * 18));
-
-                doc.fillColor(this.COLORES.primario).fontSize(11).font('Helvetica-Bold');
-                doc.text('PLAN DE CUOTAS', MARGEN_IZQ, y);
-                y += 20;
-
-                const cCols = {
-                    num: MARGEN_IZQ,
-                    fecha: MARGEN_IZQ + 70,
-                    monto: MARGEN_IZQ + 200,
-                    estado: MARGEN_IZQ + 320
+                // Helpers
+                const addLine = (grosor = 0.5, color = this.COLORES.borde, espacio = 4) => {
+                    y += espacio;
+                    doc.strokeColor(color).lineWidth(grosor)
+                        .moveTo(LEFT, y).lineTo(RIGHT, y).stroke();
                 };
 
-                const cWidths = {
-                    num: 65,
-                    fecha: 125,
-                    monto: 115,
-                    estado: 90
-                };
-
-                doc.fillColor(this.COLORES.header)
-                    .rect(MARGEN_IZQ, y, ANCHO_UTIL, 18)
-                    .fill();
-
-                doc.fillColor(this.COLORES.headerTexto).fontSize(8).font('Helvetica-Bold');
-                doc.text('CUOTA', cCols.num + 5, y + 5, { width: cWidths.num - 10 });
-                doc.text('FECHA VENCIMIENTO', cCols.fecha + 5, y + 5, { width: cWidths.fecha - 10 });
-                doc.text('MONTO', cCols.monto, y + 5, { width: cWidths.monto - 5, align: 'right' });
-                doc.text('ESTADO', cCols.estado, y + 5, { width: cWidths.estado - 5, align: 'right' });
-
-                y += 20;
-
-                for (let i = 0; i < cuotas.length; i++) {
-                    const cuota = cuotas[i];
-                    const estado = cuota.estado === 1 ? 'PAGADO' : 'PENDIENTE';
-                    const estadoColor = cuota.estado === 1 ? this.COLORES.exito : this.COLORES.advertencia;
-
-                    if (i % 2 === 0) {
-                        doc.fillColor(this.COLORES.filaPar)
-                            .rect(MARGEN_IZQ, y - 2, ANCHO_UTIL, 17)
-                            .fill();
+                const checkSpace = (needed) => {
+                    if (y + needed > doc.page.height - 50) {
+                        doc.addPage();
+                        y = 30;
+                        return true;
                     }
+                    return false;
+                };
 
-                    doc.fillColor(this.COLORES.texto).fontSize(8).font('Helvetica');
+                // ============================================
+                // ENCABEZADO PRINCIPAL
+                // ============================================
 
-                    doc.text(cuota.numero_cuota?.toString() || '-', cCols.num + 5, y, {
-                        width: cWidths.num - 10
-                    });
+                // ============================================
+                // ENCABEZADO PRINCIPAL
+                // ============================================
 
-                    doc.text(this.formatearFecha(cuota.fecha_vencimiento), cCols.fecha + 5, y, {
-                        width: cWidths.fecha - 10
-                    });
+                try {
+                    // Buscar el logo publicado en la base de datos
+                    const [logoRows] = await db.query(
+                        'SELECT ruta FROM logo WHERE publicado = 1 LIMIT 1'
+                    );
 
-                    doc.text(this.formatoSoles(cuota.monto), cCols.monto, y, {
-                        width: cWidths.monto - 5,
-                        align: 'right'
-                    });
+                    if (logoRows.length > 0 && logoRows[0].ruta) {
+                        // Construir la ruta física del archivo
+                        const logoPath = path.join(__dirname, '../../public/Fotos/catalogo', logoRows[0].ruta); // ← ESTA LÍNEA YA ESTÁ
 
-                    doc.fillColor(estadoColor).font('Helvetica-Bold');
-                    doc.text(estado, cCols.estado, y, {
-                        width: cWidths.estado - 5,
-                        align: 'right'
-                    });
-
-                    y += 17;
+                        if (fs.existsSync(logoPath)) {
+                            doc.image(logoPath, LEFT, y, { width: 80 });  // ← Muestra el logo
+                        }
+                    }
+                } catch (error) {
+                    console.warn('No se pudo cargar el logo dinámico:', error.message);
                 }
 
-                y += 15;
-            }
+                // Datos empresa (derecha)
+                const empresaX = LEFT + 95;
+                doc.fontSize(16).font('Helvetica-Bold').fillColor(this.COLORES.primario);
+                doc.text(this.EMPRESA.nombre, empresaX, y, { width: RIGHT - empresaX, align: 'left' });
 
-            // ==========================================
-            // OBSERVACIONES
-            // ==========================================
-            if (venta.observacion) {
-                verificarEspacio(50);
+                doc.fontSize(7.5).font('Helvetica').fillColor(this.COLORES.textoClaro);
+                doc.text(this.EMPRESA.direccion, empresaX, y + 22);
+                doc.text(`Tel: ${this.EMPRESA.telefono}  |  Email: ${this.EMPRESA.correo}`, empresaX, y + 32);
+                doc.text(`RUC: ${this.EMPRESA.ruc}`, empresaX, y + 42);
 
-                doc.fillColor(this.COLORES.texto).fontSize(9).font('Helvetica-Bold');
-                doc.text('OBSERVACIONES:', MARGEN_IZQ, y);
+                // Tipo de documento (extremo derecho)
+                doc.fontSize(20).font('Helvetica-Bold').fillColor(this.COLORES.primario);
+                doc.text('NOTA DE VENTA', RIGHT - 180, y, { width: 180, align: 'right' });
+
+                doc.fontSize(9).font('Helvetica-Bold').fillColor(this.COLORES.texto);
+                doc.text(venta.numero_nota_venta || 'N° 000000', RIGHT - 180, y + 25, { width: 180, align: 'right' });
+
+                doc.fontSize(7).font('Helvetica').fillColor(this.COLORES.textoClaro);
+                doc.text('ELECTRÓNICA', RIGHT - 180, y + 38, { width: 180, align: 'right' });
+
+                y += 80;
+                addLine(2, this.COLORES.primario, 15);
+
+                // ============================================
+                // DATOS DEL CLIENTE
+                // ============================================
+                checkSpace(40);
+
+                const clienteNombre = venta.cliente || 'Cliente Varios';
+                const clienteDoc = venta.numero_documento || '-';
+                const clienteDireccion = venta.direccion || 'No especificada';
+
+                doc.fontSize(9).font('Helvetica-Bold').fillColor(this.COLORES.texto);
+                doc.text('DATOS DEL CLIENTE', LEFT, y);
+                y += 16;
+
+                // Tabla de datos del cliente
+                const datosCliente = [
+                    { label: 'Cliente:', value: clienteNombre, width: 280 },
+                    { label: 'RUC/DNI:', value: clienteDoc, width: 150 },
+                    { label: 'Dirección:', value: clienteDireccion, width: WIDTH - 10 }
+                ];
+
+                datosCliente.forEach(dato => {
+                    doc.fontSize(8).font('Helvetica-Bold').fillColor(this.COLORES.texto);
+                    doc.text(dato.label, LEFT + 5, y + 2);
+                    doc.font('Helvetica').fillColor(this.COLORES.textoClaro);
+                    doc.text(dato.value || '-', LEFT + 55, y + 2, { width: dato.width - 55 });
+                    y += 16;
+                });
+
+                // ============================================
+                // DATOS DE LA VENTA (RECUADRO DERECHO)
+                // ============================================
+                const infoX = RIGHT - 180;
+                const infoY = y - 48;
+
+                doc.roundedRect(infoX - 5, infoY - 5, 185, 52, 3)
+                    .fillColor('#F8FAFC').fill()
+                    .strokeColor(this.COLORES.borde).stroke();
+
+                const fechaEmision = this.formatearFecha(venta.fecha_venta);
+                const cajero = venta.usuario || 'Sistema';
+                const formaPago = venta.modalidad_pago === 'CREDITO' ? 'CRÉDITO' : 'CONTADO';
+
+                doc.fontSize(7).font('Helvetica-Bold').fillColor(this.COLORES.texto);
+                doc.text('Fecha Emisión:', infoX, infoY);
+                doc.text('Vendedor:', infoX, infoY + 14);
+                doc.text('Forma Pago:', infoX, infoY + 28);
+
+                doc.font('Helvetica').fillColor(this.COLORES.textoClaro);
+                doc.text(fechaEmision, infoX + 70, infoY, { width: 100, align: 'right' });
+                doc.text(cajero.length > 15 ? cajero.substring(0, 15) : cajero, infoX + 70, infoY + 14, { width: 100, align: 'right' });
+
+                // Color según forma de pago
+                doc.font('Helvetica-Bold');
+                if (venta.modalidad_pago === 'CREDITO') {
+                    doc.fillColor(this.COLORES.advertencia);
+                } else {
+                    doc.fillColor(this.COLORES.exito);
+                }
+                doc.text(formaPago, infoX + 70, infoY + 28, { width: 100, align: 'right' });
+
+                y += 10;
+                addLine(0.5, this.COLORES.borde, 5);
+
+                // ============================================
+                // TABLA DE PRODUCTOS
+                // ============================================
+                checkSpace(80);
+
+                doc.fontSize(9).font('Helvetica-Bold').fillColor(this.COLORES.texto);
+                doc.text('DETALLE DE PRODUCTOS', LEFT, y);
                 y += 14;
 
-                doc.fillColor(this.COLORES.textoClaro).fontSize(8).font('Helvetica');
-                doc.text(venta.observacion, MARGEN_IZQ + 5, y, {
-                    width: ANCHO_UTIL - 10
+                // Definición de columnas
+                const cols = {
+                    item: { x: LEFT, w: 25 },
+                    cant: { x: LEFT + 28, w: 40 },
+                    um: { x: LEFT + 71, w: 35 },
+                    desc: { x: LEFT + 109, w: 175 },
+                    precio: { x: LEFT + 287, w: 70 },
+                    descuento: { x: LEFT + 360, w: 60 },
+                    subtotal: { x: LEFT + 423, w: 85 }
+                };
+
+                // Cabecera de tabla
+                doc.fillColor(this.COLORES.header)
+                    .rect(LEFT, y, WIDTH, 20)
+                    .fill();
+
+                doc.fillColor(this.COLORES.headerTexto).fontSize(7.5).font('Helvetica-Bold');
+                doc.text('#', cols.item.x + 3, y + 5, { width: cols.item.w, align: 'center' });
+                doc.text('CANT.', cols.cant.x + 3, y + 5, { width: cols.cant.w, align: 'center' });
+                doc.text('U.M.', cols.um.x + 3, y + 5, { width: cols.um.w, align: 'center' });
+                doc.text('DESCRIPCIÓN', cols.desc.x + 3, y + 5, { width: cols.desc.w - 6 });
+                doc.text('P. UNIT.', cols.precio.x, y + 5, { width: cols.precio.w - 3, align: 'right' });
+                doc.text('DSCTO.', cols.descuento.x, y + 5, { width: cols.descuento.w - 3, align: 'right' });
+                doc.text('IMPORTE', cols.subtotal.x, y + 5, { width: cols.subtotal.w - 3, align: 'right' });
+
+                y += 22;
+
+                // Variables de totales
+                let subtotalSinDesc = 0;
+                let totalDescuento = 0;
+                let totalVentaCalc = 0;
+
+                // Filas de productos
+                if (detalles && detalles.length > 0) {
+                    for (let i = 0; i < detalles.length; i++) {
+                        checkSpace(18);
+
+                        const det = detalles[i];
+                        const cantidad = parseFloat(det.cantidad) || 0;
+                        const precio = parseFloat(det.precio_unitario) || 0;
+                        const subtotal = precio * cantidad;
+                        const descuento = parseFloat(det.descuento) || 0;
+                        const importe = subtotal - descuento;
+
+                        subtotalSinDesc += subtotal;
+                        totalDescuento += descuento;
+                        totalVentaCalc += importe;
+
+                        // Fondo alternado
+                        if (i % 2 === 0) {
+                            doc.fillColor(this.COLORES.filaPar)
+                                .rect(LEFT, y - 2, WIDTH, 17)
+                                .fill();
+                        }
+
+                        doc.fillColor(this.COLORES.texto).fontSize(7).font('Helvetica');
+
+                        // Número
+                        doc.text((i + 1).toString(), cols.item.x, y, { width: cols.item.w, align: 'center' });
+
+                        // Cantidad
+                        doc.text(cantidad.toString(), cols.cant.x, y, { width: cols.cant.w, align: 'center' });
+
+                        // Unidad
+                        doc.text((det.unidad_abreviatura || 'UND').substring(0, 4), cols.um.x, y, { width: cols.um.w, align: 'center' });
+
+                        // Descripción
+                        const nombre = (det.producto || det.producto_nombre || 'Producto');
+                        doc.text(nombre.length > 30 ? nombre.substring(0, 30) + '...' : nombre,
+                            cols.desc.x + 3, y, { width: cols.desc.w - 6 });
+
+                        // Precio unitario
+                        doc.text(this.formatoSoles(precio), cols.precio.x, y, { width: cols.precio.w - 3, align: 'right' });
+
+                        // Descuento
+                        if (descuento > 0) {
+                            doc.fillColor(this.COLORES.peligro)
+                                .text(`-${this.formatoSoles(descuento)}`, cols.descuento.x, y, { width: cols.descuento.w - 3, align: 'right' });
+                            doc.fillColor(this.COLORES.texto);
+                        } else {
+                            doc.fillColor(this.COLORES.textoClaro)
+                                .text('S/ 0.00', cols.descuento.x, y, { width: cols.descuento.w - 3, align: 'right' });
+                            doc.fillColor(this.COLORES.texto);
+                        }
+
+                        // Importe
+                        doc.font('Helvetica-Bold')
+                            .text(this.formatoSoles(importe), cols.subtotal.x, y, { width: cols.subtotal.w - 3, align: 'right' });
+
+                        y += 16;
+                    }
+                } else {
+                    doc.fontSize(8).fillColor(this.COLORES.textoClaro);
+                    doc.text('No hay productos registrados', LEFT, y + 5, { width: WIDTH, align: 'center' });
+                    y += 20;
+                }
+
+                // Línea de cierre de tabla
+                addLine(0.8, this.COLORES.borde, 4);
+
+                // ============================================
+                // TOTALES
+                // ============================================
+                checkSpace(120);
+
+                const totalPagado = pagos.reduce((sum, p) => sum + parseFloat(p.monto || 0), 0);
+                const saldoPendiente = totalVentaCalc - totalPagado;
+
+                // Recuadro de totales (lado derecho)
+                const totalBoxX = RIGHT - 220;
+                const totalBoxW = 220;
+
+                let totalLines = 1; // Subtotal
+                if (totalDescuento > 0) totalLines++; // Descuento
+                totalLines++; // TOTAL
+                if (venta.modalidad_pago === 'CREDITO') {
+                    totalLines++; // Pagado
+                    if (saldoPendiente > 0.01) totalLines++; // Pendiente
+                }
+
+                const totalBoxH = 18 + (totalLines * 16) + 10;
+
+                doc.roundedRect(totalBoxX, y, totalBoxW, totalBoxH, 4)
+                    .fillColor('#F8FAFC').fill()
+                    .strokeColor(this.COLORES.borde).stroke();
+
+                let ty = y + 10;
+                const labelX = totalBoxX + 10;
+                const valueX = totalBoxX + 120;
+
+                // Subtotal
+                doc.fontSize(8).font('Helvetica').fillColor(this.COLORES.texto);
+                doc.text('Subtotal:', labelX, ty);
+                doc.font('Helvetica');
+                doc.text(this.formatoSoles(subtotalSinDesc), valueX, ty, { width: 95, align: 'right' });
+                ty += 16;
+
+                // Descuento
+                if (totalDescuento > 0) {
+                    doc.font('Helvetica').fillColor(this.COLORES.peligro);
+                    doc.text('Descuento:', labelX, ty);
+                    doc.text(`-${this.formatoSoles(totalDescuento)}`, valueX, ty, { width: 95, align: 'right' });
+                    ty += 16;
+                }
+
+                // Línea separadora
+                doc.strokeColor(this.COLORES.borde).lineWidth(0.5)
+                    .moveTo(labelX, ty - 2).lineTo(totalBoxX + totalBoxW - 10, ty - 2).stroke();
+                ty += 6;
+
+                // TOTAL
+                doc.fontSize(11).font('Helvetica-Bold').fillColor(this.COLORES.texto);
+                doc.text('TOTAL:', labelX, ty);
+                doc.fontSize(12).fillColor(this.COLORES.primario);
+                doc.text(this.formatoSoles(totalVentaCalc), labelX + 60, ty, { width: 145, align: 'right' });
+                ty += 20;
+
+                // Crédito
+                if (venta.modalidad_pago === 'CREDITO') {
+                    doc.fontSize(8).font('Helvetica').fillColor(this.COLORES.texto);
+                    doc.text('Pagado:', labelX, ty);
+                    doc.font('Helvetica').fillColor(this.COLORES.exito);
+                    doc.text(this.formatoSoles(totalPagado), valueX, ty, { width: 95, align: 'right' });
+                    ty += 16;
+
+                    if (saldoPendiente > 0.01) {
+                        doc.font('Helvetica-Bold').fillColor(this.COLORES.texto);
+                        doc.text('Saldo Pendiente:', labelX, ty);
+                        doc.fillColor(this.COLORES.peligro);
+                        doc.text(this.formatoSoles(saldoPendiente), valueX, ty, { width: 95, align: 'right' });
+                        ty += 16;
+                    }
+                }
+
+                y += totalBoxH + 12;
+
+                // ============================================
+                // SON (letras)
+                // ============================================
+                doc.fontSize(8).font('Helvetica').fillColor(this.COLORES.textoClaro);
+                doc.text(`SON: ${this.numeroALetras(totalVentaCalc)}`, LEFT, y);
+                y += 16;
+
+                // ============================================
+                // PLAN DE CUOTAS (si es crédito)
+                // ============================================
+                if (cuotas && cuotas.length > 0 && venta.modalidad_pago === 'CREDITO') {
+                    checkSpace(60 + cuotas.length * 18);
+
+                    addLine(0.5, this.COLORES.borde, 8);
+
+                    doc.fontSize(9).font('Helvetica-Bold').fillColor(this.COLORES.texto);
+                    doc.text('PLAN DE CUOTAS', LEFT, y);
+                    y += 14;
+
+                    // Cabecera cuotas
+                    const cCols = {
+                        num: { x: LEFT, w: 50 },
+                        fecha: { x: LEFT + 55, w: 130 },
+                        monto: { x: LEFT + 190, w: 90 },
+                        estado: { x: LEFT + 285, w: 80 }
+                    };
+
+                    doc.fillColor(this.COLORES.header)
+                        .rect(LEFT, y, WIDTH, 18).fill();
+
+                    doc.fillColor(this.COLORES.headerTexto).fontSize(7.5).font('Helvetica-Bold');
+                    doc.text('CUOTA', cCols.num.x + 5, y + 4, { width: cCols.num.w, align: 'center' });
+                    doc.text('VENCIMIENTO', cCols.fecha.x + 5, y + 4, { width: cCols.fecha.w, align: 'center' });
+                    doc.text('MONTO', cCols.monto.x, y + 4, { width: cCols.monto.w - 3, align: 'right' });
+                    doc.text('ESTADO', cCols.estado.x, y + 4, { width: cCols.estado.w - 3, align: 'right' });
+
+                    y += 20;
+
+                    cuotas.forEach((cuota, i) => {
+                        if (i % 2 === 0) {
+                            doc.fillColor(this.COLORES.filaPar)
+                                .rect(LEFT, y - 2, WIDTH, 16).fill();
+                        }
+
+                        const estadoColor = cuota.estado === 1 ? this.COLORES.exito : this.COLORES.advertencia;
+                        const estadoText = cuota.estado === 1 ? 'PAGADO' : 'PENDIENTE';
+
+                        doc.fontSize(7.5).font('Helvetica').fillColor(this.COLORES.texto);
+                        doc.text(cuota.numero_cuota?.toString() || '-', cCols.num.x, y, { width: cCols.num.w, align: 'center' });
+                        doc.text(this.formatearFechaLarga(cuota.fecha_vencimiento), cCols.fecha.x, y, { width: cCols.fecha.w, align: 'center' });
+                        doc.text(this.formatoSoles(cuota.monto), cCols.monto.x, y, { width: cCols.monto.w - 3, align: 'right' });
+
+                        doc.font('Helvetica-Bold').fillColor(estadoColor);
+                        doc.text(estadoText, cCols.estado.x, y, { width: cCols.estado.w - 3, align: 'right' });
+
+                        y += 15;
+                    });
+
+                    y += 8;
+                }
+
+                // ============================================
+                // OBSERVACIONES
+                // ============================================
+                if (venta.observacion) {
+                    checkSpace(40);
+                    addLine(0.5, this.COLORES.borde, 8);
+
+                    doc.fontSize(8).font('Helvetica-Bold').fillColor(this.COLORES.texto);
+                    doc.text('OBSERVACIONES:', LEFT, y);
+                    y += 12;
+
+                    doc.fontSize(7.5).font('Helvetica').fillColor(this.COLORES.textoClaro);
+                    doc.text(venta.observacion, LEFT + 5, y, { width: WIDTH - 10 });
+                    y += 25;
+                }
+
+                // ============================================
+                // QR Y FIRMA
+                // ============================================
+                checkSpace(130);
+
+                const qrData = JSON.stringify({
+                    ruc: this.EMPRESA.ruc,
+                    tipo: 'NOTA DE VENTA',
+                    numero: venta.numero_nota_venta,
+                    fecha: this.formatearFecha(venta.fecha_venta),
+                    total: totalVentaCalc,
+                    cliente: clienteNombre
                 });
 
-                y += 35;
-            } else {
-                y += 10;
+                const qrBuffer = await this.generarQR(qrData);
+
+                if (qrBuffer) {
+                    const qrSize = 90;
+                    const qrX = CENTER - (qrSize / 2);
+
+                    // Asegurar que el QR esté al final de la página
+                    const espacioNecesario = qrSize + 80;
+                    if (y + espacioNecesario > doc.page.height - 30) {
+                        doc.addPage();
+                        y = 30;
+                    }
+
+                    // Espacio mínimo desde abajo
+                    const minY = doc.page.height - espacioNecesario - 20;
+                    if (y < minY) y = minY;
+
+                    doc.image(qrBuffer, qrX, y, { width: qrSize, height: qrSize });
+                    y += qrSize + 8;
+
+                    doc.fontSize(7).font('Helvetica').fillColor(this.COLORES.textoClaro);
+                    doc.text('Escanee el código QR para verificar este documento', LEFT, y, { width: WIDTH, align: 'center' });
+                    y += 12;
+
+                    doc.fontSize(6.5);
+                    doc.text(`Documento generado el ${this.formatearFechaCompleta(venta.fecha_venta)} a las ${new Date().toLocaleTimeString('es-PE')}`, LEFT, y, { width: WIDTH, align: 'center' });
+                }
+
+                y += 20;
+
+                // Mensaje final
+                doc.fontSize(9).font('Helvetica-Bold').fillColor(this.COLORES.primario);
+                doc.text('¡Gracias por su compra!', LEFT, y, { width: WIDTH, align: 'center' });
+                y += 12;
+
+                doc.fontSize(7).font('Helvetica').fillColor(this.COLORES.textoClaro);
+                doc.text(this.EMPRESA.nombreComercial, LEFT, y, { width: WIDTH, align: 'center' });
+
+                // Finalizar
+                doc.end();
+
+            } catch (error) {
+                reject(error);
             }
-
-            // ==========================================
-            // QR Y PIE DE PÁGINA
-            // ==========================================
-            verificarEspacio(160);
-
-            const qrData = JSON.stringify({
-                RUC: this.EMPRESA.ruc,
-                Tipo: 'NOTA DE VENTA',
-                Numero: venta.numero_nota_venta,
-                Fecha: fechaVenta,
-                Total: totalVenta,
-                Cliente: clienteNombre
-            });
-
-            const qrBuffer = await this.generarQR(qrData, 100, 100);
-
-            const espacioQRTotal = 165;
-            let yQR = doc.page.height - espacioQRTotal - 25;
-
-            if (y < yQR - 20) {
-                y = yQR;
-            }
-
-            if (qrBuffer) {
-                const qrX = CENTRO_PAGINA - 50;
-                doc.image(qrBuffer, qrX, y, { width: 100, height: 100 });
-                y += 110;
-            }
-
-            doc.fontSize(8).font('Helvetica').fillColor(this.COLORES.textoClaro);
-            doc.text('Escanee este código QR para verificar la autenticidad del documento',
-                MARGEN_IZQ, y, {
-                    width: ANCHO_UTIL,
-                    align: 'center'
-                });
-
-            y += 15;
-
-            doc.fontSize(7);
-            doc.text(`Documento generado electrónicamente el ${this.formatearFechaCompleta()}`,
-                MARGEN_IZQ, y, {
-                    width: ANCHO_UTIL,
-                    align: 'center'
-                });
-
-            y += 12;
-
-            doc.fontSize(9).font('Helvetica-Bold').fillColor(this.COLORES.primario);
-            doc.text('¡Gracias por su preferencia!',
-                MARGEN_IZQ, y, {
-                    width: ANCHO_UTIL,
-                    align: 'center'
-                });
-
-            doc.end();
         });
+    }
+
+    // ============================================
+    // CONVERTIR NÚMERO A LETRAS
+    // ============================================
+    numeroALetras(num) {
+        const unidades = ['', 'UN', 'DOS', 'TRES', 'CUATRO', 'CINCO', 'SEIS', 'SIETE', 'OCHO', 'NUEVE'];
+        const decenas = ['', 'DIEZ', 'VEINTE', 'TREINTA', 'CUARENTA', 'CINCUENTA', 'SESENTA', 'SETENTA', 'OCHENTA', 'NOVENTA'];
+        const especiales = ['DIEZ', 'ONCE', 'DOCE', 'TRECE', 'CATORCE', 'QUINCE', 'DIECISÉIS', 'DIECISIETE', 'DIECIOCHO', 'DIECINUEVE'];
+        const centenas = ['', 'CIENTO', 'DOSCIENTOS', 'TRESCIENTOS', 'CUATROCIENTOS', 'QUINIENTOS', 'SEISCIENTOS', 'SETECIENTOS', 'OCHOCIENTOS', 'NOVECIENTOS'];
+
+        const n = Math.round(parseFloat(num) || 0);
+        if (n === 0) return 'CERO SOLES';
+
+        const enteros = Math.floor(n);
+        const decimales = Math.round((n - enteros) * 100);
+
+        let resultado = '';
+
+        if (enteros >= 1000) {
+            const miles = Math.floor(enteros / 1000);
+            if (miles === 1) resultado += 'MIL ';
+            else resultado += unidades[miles] + ' MIL ';
+        }
+
+        const resto = enteros % 1000;
+        const c = Math.floor(resto / 100);
+        const d = Math.floor((resto % 100) / 10);
+        const u = resto % 10;
+
+        if (c === 1 && d === 0 && u === 0) resultado += 'CIEN ';
+        else if (c > 0) resultado += centenas[c] + ' ';
+
+        if (d === 1 && u > 0) resultado += especiales[u] + ' ';
+        else if (d > 0) {
+            resultado += decenas[d];
+            if (u > 0) resultado += ' Y ' + unidades[u] + ' ';
+            else resultado += ' ';
+        } else if (u > 0) {
+            resultado += unidades[u] + ' ';
+        }
+
+        resultado += enteros === 1 ? 'SOL' : 'SOLES';
+        resultado += decimales > 0 ? ` CON ${decimales}/100 CÉNTIMOS` : ' CON 00/100 CÉNTIMOS';
+
+        return resultado;
     }
 }
 

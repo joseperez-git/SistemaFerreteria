@@ -1239,7 +1239,7 @@ function setupGuardarVenta() {
                 id_cotizacion: id_cotizacion ? parseInt(id_cotizacion) : null,
                 id_cliente: parseInt(id_cliente),
                 id_usuario,
-                fecha_venta,  // ← AGREGAR FECHA
+                fecha_venta, 
                 modalidad_pago,
                 pago_inicial,
                 cantidad_cuotas,
