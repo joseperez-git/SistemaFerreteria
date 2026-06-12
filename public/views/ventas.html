@@ -329,6 +329,30 @@
                         </div>
                     </div>
 
+                    <!-- Medios de Pago -->
+                    <div class="card border-0 shadow-sm mb-3" style="border-radius:16px;">
+                        <div
+                            class="card-header bg-white border-0 pt-2 pb-0 d-flex justify-content-between align-items-center">
+                            <h6 class="fw-bold mb-0 small"><i class="bi bi-cash-coin text-success me-1"></i> Medios de
+                                Pago</h6>
+                            <button type="button" class="btn btn-outline-success btn-sm" id="btnAgregarPago">
+                                <i class="bi bi-plus-circle me-1"></i> Pago Mixto
+                            </button>
+                        </div>
+                        <div class="card-body p-2">
+                            <div id="pagosContainer"></div>
+                            <div class="d-flex justify-content-between align-items-center mt-2 pt-2 border-top">
+                                <small class="text-muted" id="cantidadPagos">1 medio de pago</small>
+                                <div class="text-end">
+                                    <small class="d-block">Total pagado: <span id="totalPagadoPagos"
+                                            class="fw-bold text-success">S/ 0.00</span></small>
+                                    <small class="d-block">Pendiente: <span id="pendientePago"
+                                            class="fw-bold text-danger">S/ 0.00</span></small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="mb-2">
                         <label class="form-label fw-semibold text-secondary mb-0 small">Observación</label>
                         <textarea class="form-control form-control-sm" id="observacion" rows="2"
