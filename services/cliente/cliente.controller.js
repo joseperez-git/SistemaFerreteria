@@ -10,7 +10,6 @@ exports.getAll = async (req, res) => {
     }
 };
 
-// Crear cliente
 exports.create = async (req, res) => {
     try {
         const { tipo_documento, numero_documento, nombre, apellido, telefono, correo } = req.body;
@@ -21,7 +20,7 @@ exports.create = async (req, res) => {
             });
         }
 
-        const nuevo = await service.createCliente(req.body);
+        const nuevo = await service.createCliente(req.body, req.session.usuario);
         res.json(nuevo);
 
     } catch (error) {
@@ -29,18 +28,16 @@ exports.create = async (req, res) => {
     }
 };
 
-// Actualizar cliente
 exports.update = async (req, res) => {
     try {
         const id = parseInt(req.params.id);
-        const actualizado = await service.updateCliente(id, req.body);
+        const actualizado = await service.updateCliente(id, req.body, req.session.usuario);
         res.json(actualizado);
     } catch (error) {
         res.status(400).json({ error: error.message });
     }
 };
 
-// Cambiar estado (desactivar/activar/eliminar)
 exports.cambiarEstado = async (req, res) => {
     try {
         const id = parseInt(req.params.id);
@@ -50,7 +47,7 @@ exports.cambiarEstado = async (req, res) => {
             return res.status(400).json({ error: "Estado inválido" });
         }
 
-        const resultado = await service.updateCliente(id, { estado });
+        const resultado = await service.cambiarEstadoCliente(id, estado, req.session.usuario);
         res.json(resultado);
 
     } catch (error) {
@@ -58,10 +55,6 @@ exports.cambiarEstado = async (req, res) => {
     }
 };
 
-// ============================================
-// CONSULTAR DOCUMENTO (CORREGIDO)
-// Primero busca en BD local, luego en API externa
-// ============================================
 exports.consultarDocumento = async (req, res) => {
     try {
         const { numero, tipo } = req.query;
@@ -70,9 +63,6 @@ exports.consultarDocumento = async (req, res) => {
             return res.status(400).json({ error: 'Número y tipo de documento son requeridos' });
         }
 
-        // ==========================================
-        // PASO 1: Buscar en la base de datos local
-        // ==========================================
         const clienteLocal = await service.buscarClientePorDocumento(numero);
 
         if (clienteLocal) {
@@ -92,9 +82,6 @@ exports.consultarDocumento = async (req, res) => {
             });
         }
 
-        // ==========================================
-        // PASO 2: Consultar API externa (SUNAT)
-        // ==========================================
         const resultadoAPI = await consultarAplicloud(numero, tipo);
 
         if (!resultadoAPI.success) {
@@ -105,22 +92,24 @@ exports.consultarDocumento = async (req, res) => {
             });
         }
 
-        // Devolver datos de la API
         return res.json({
             success: true,
-            encontrado: false, // No está en BD local
+            encontrado: false,
             origen: 'sunat',
             cliente: {
                 nombre: resultadoAPI.data.nombre || '',
                 apellido: resultadoAPI.data.apellido || '',
                 tipo_documento: tipo,
                 numero_documento: numero,
-                telefono: resultadoAPI.data.telefono || '',
-                correo: resultadoAPI.data.correo || ''
+                telefono: '',
+                correo: ''
             }
         });
 
     } catch (error) {
+        console.error('Error en consultarDocumento:', error);
         res.status(500).json({ error: 'Error al consultar el documento' });
     }
 };
+
+

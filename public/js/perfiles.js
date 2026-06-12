@@ -40,6 +40,42 @@ function inicializarTooltips() {
 }
 
 
+// ==================== RENDERIZAR BOTONES DE ACCIÓN (DINÁMICOS) ====================
+function renderizarBotonesAccion() {
+    const contenedor = document.getElementById('botonesAccionPerfiles');
+    if (!contenedor) return;
+    
+    const sesion = JSON.parse(localStorage.getItem('sesion') || '{}');
+    const esAdminSesion = sesion?.usuario?.id_perfil === PERFIL_ADMIN_ID;
+    
+    if (!esAdminSesion) {
+        // Usuario no admin - botón deshabilitado con tooltip en span wrapper
+        contenedor.innerHTML = `
+            <span data-bs-toggle="tooltip" data-bs-title="Solo administradores pueden crear perfiles">
+                <button class="btn btn-primary" 
+                        data-bs-toggle="modal" 
+                        data-bs-target="#modalPerfil" 
+                        disabled
+                        style="pointer-events: none;">
+                    <i class="bi bi-plus-circle"></i> Nuevo Perfil
+                </button>
+            </span>
+        `;
+    } else {
+        // Usuario admin - botón habilitado sin tooltip
+        contenedor.innerHTML = `
+            <button class="btn btn-primary" 
+                    data-bs-toggle="modal" 
+                    data-bs-target="#modalPerfil">
+                <i class="bi bi-plus-circle"></i> Nuevo Perfil
+            </button>
+        `;
+    }
+    
+    inicializarTooltips();
+}
+
+
 // FUNCIONES DE UTILIDAD
 function isCurrentPage() {
     const tabla = document.getElementById('tablaPerfiles');
@@ -672,6 +708,7 @@ export async function init() {
     
     if (eventosInicializados) {
         await cargarPerfiles();
+        renderizarBotonesAccion();
         return;
     }
     
@@ -683,7 +720,9 @@ export async function init() {
     initNuevoPerfil();
     
     await cargarPerfiles();
+    renderizarBotonesAccion();
 }
+
 
 export { destroy };
 
