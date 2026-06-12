@@ -42,6 +42,56 @@ function inicializarTooltips() {
 }
 
 
+// ==================== RENDERIZAR BOTONES DE ACCIÓN (DINÁMICOS) ====================
+function renderizarBotonesAccion() {
+    const contenedor = document.getElementById('botonesAccionUsuarios');
+    if (!contenedor) return;
+    
+    const sesion = JSON.parse(localStorage.getItem('sesion') || '{}');
+    const esAdminSesion = sesion?.usuario?.id_perfil === PERFIL_ADMIN_ID;
+    
+    if (!esAdminSesion) {
+        // Usuario no admin - botones deshabilitados con tooltip en span wrapper
+        contenedor.innerHTML = `
+            <span data-bs-toggle="tooltip" data-bs-title="Solo administradores pueden realizar acciones masivas">
+                <button class="btn btn-outline-dark" 
+                        data-bs-toggle="modal" 
+                        data-bs-target="#modalAccionesMasivas" 
+                        disabled
+                        style="pointer-events: none;">
+                    <i class="bi bi-people-fill me-2"></i> Acciones Masivas
+                </button>
+            </span>
+            <span data-bs-toggle="tooltip" data-bs-title="Solo administradores pueden crear usuarios">
+                <button class="btn btn-primary" 
+                        data-bs-toggle="modal" 
+                        data-bs-target="#modalUsuario" 
+                        disabled
+                        style="pointer-events: none;">
+                    <i class="bi bi-plus-circle"></i> Nuevo Usuario
+                </button>
+            </span>
+        `;
+    } else {
+        // Usuario admin - botones habilitados sin tooltip
+        contenedor.innerHTML = `
+            <button class="btn btn-outline-dark" 
+                    data-bs-toggle="modal" 
+                    data-bs-target="#modalAccionesMasivas">
+                <i class="bi bi-people-fill me-2"></i> Acciones Masivas
+            </button>
+            <button class="btn btn-primary" 
+                    data-bs-toggle="modal" 
+                    data-bs-target="#modalUsuario">
+                <i class="bi bi-plus-circle"></i> Nuevo Usuario
+            </button>
+        `;
+    }
+    
+    inicializarTooltips();
+}
+
+
 // FUNCIONES DE UTILIDAD 
 function isCurrentPage() {
     const tabla = document.getElementById('tablaUsuarios');
@@ -617,6 +667,7 @@ export async function init() {
     if (eventosInicializados) {
         await cargarUsuarios();
         await cargarPerfiles();
+        renderizarBotonesAccion();
         inicializarTooltips();
         return;
     }
@@ -631,6 +682,7 @@ export async function init() {
     
     await cargarUsuarios();
     await cargarPerfiles();
+    renderizarBotonesAccion();
     inicializarTooltips();
 }
 

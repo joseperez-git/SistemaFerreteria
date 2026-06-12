@@ -977,6 +977,43 @@ button[disabled]:hover::before {
 }
 
 
+/* Fondo gris para selects deshabilitados */
+select:disabled {
+    background-color: #e9ecef !important;
+    cursor: not-allowed !important;
+    opacity: 0.8;
+}
+
+/* Fondo gris para inputs deshabilitados o readonly */
+input:disabled,
+input:read-only,
+textarea:disabled,
+textarea:read-only {
+    background-color: #e9ecef !important;
+    cursor: not-allowed !important;
+}
+
+/* Fondo gris para botones deshabilitados */
+button:disabled {
+    background-color: #adb5bd !important;
+    cursor: not-allowed !important;
+    opacity: 0.7;
+}
+
+/* Clase específica para campos bloqueados en el modal de clientes */
+#modalCliente input:disabled,
+#modalCliente input:read-only,
+#modalCliente select:disabled,
+#modalCliente select:read-only {
+    background-color: #e9ecef !important;
+    cursor: not-allowed !important;
+}
+
+/* Asegurar que el select deshabilitado en nuevo cliente NO tenga fondo gris al inicio */
+#modalCliente select:not(:disabled) {
+    background-color: white !important;
+    cursor: pointer !important;
+}
 
 
 
