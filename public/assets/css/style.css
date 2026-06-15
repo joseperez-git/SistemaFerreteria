@@ -1016,4 +1016,89 @@ button:disabled {
 }
 
 
+/* ============================================
+   ESTILOS ESPECÍFICOS PARA CHECKBOX DE PERMISOS
+   ============================================ */
+
+/* Resetear cursor para checkboxes de permisos (habilitados) */
+.permiso-item .form-check-input:not(:disabled) {
+    cursor: pointer !important;
+}
+
+/* Mantener cursor de bloqueo solo para checkboxes deshabilitados */
+.permiso-item .form-check-input:disabled {
+    cursor: not-allowed !important;
+    opacity: 0.6;
+}
+
+/* Asegurar que el checkbox seleccionado se vea bien */
+.permiso-item .form-check-input:checked {
+    background-color: #0d6efd !important;
+    border-color: #0d6efd !important;
+}
+
+/* Checkbox seleccionado y deshabilitado (obligatorios) */
+.permiso-item .form-check-input:checked:disabled {
+    background-color: #0d6efd !important;
+    border-color: #0d6efd !important;
+    opacity: 0.6;
+}
+
+/* Hover en checkbox habilitado */
+.permiso-item .form-check-input:not(:disabled):hover {
+    transform: scale(1.05);
+    box-shadow: 0 0 0 2px rgba(13, 110, 253, 0.25);
+}
+
+/* Asegurar que el label no herede cursor not-allowed */
+.permiso-item .form-check-label {
+    cursor: pointer !important;
+}
+
+/* Label para checkbox deshabilitado */
+.permiso-item .form-check-input:disabled + .form-check-label {
+    cursor: not-allowed !important;
+}
+
+/* Quitar cualquier estilo conflictivo de input:disabled general */
+#listaPermisos input:disabled,
+#listaPermisos input:read-only {
+    cursor: default !important;
+}
+
+#listaPermisos .form-check-input:not(:disabled) {
+    cursor: pointer !important;
+}
+
+
+/* ============================================
+   ESTILOS ESPECÍFICOS PARA CHECKBOX "SELECCIONAR TODOS"
+   ============================================ */
+
+/* Checkbox "Seleccionar todos" - siempre debe tener cursor pointer */
+#seleccionarTodosPermisos {
+    cursor: pointer !important;
+}
+
+#seleccionarTodosPermisos:not(:disabled) {
+    cursor: pointer !important;
+}
+
+#seleccionarTodosPermisos:checked {
+    background-color: #0d6efd !important;
+    border-color: #0d6efd !important;
+}
+
+#seleccionarTodosPermisos:hover {
+    transform: scale(1.05);
+    box-shadow: 0 0 0 2px rgba(13, 110, 253, 0.25);
+}
+
+/* Asegurar que el label asociado también tenga cursor pointer */
+.select-all-card .form-check-label {
+    cursor: pointer !important;
+}
+
+
+
 

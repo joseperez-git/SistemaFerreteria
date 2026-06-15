@@ -91,27 +91,54 @@ function renderizarBotonesAccion() {
     if (!esAdminSesion) {
         contenedor.innerHTML = `
             <span data-bs-toggle="tooltip" data-bs-title="Solo administradores pueden crear clientes">
-                <button class="btn btn-primary" 
-                        data-bs-toggle="modal" 
-                        data-bs-target="#modalCliente" 
-                        disabled
-                        style="pointer-events: none;">
+                <button class="btn btn-primary btnNuevoCliente" disabled style="pointer-events: none;">
                     <i class="bi bi-plus-circle"></i> Nuevo Cliente
                 </button>
             </span>
         `;
     } else {
         contenedor.innerHTML = `
-            <button class="btn btn-primary" 
-                    data-bs-toggle="modal" 
-                    data-bs-target="#modalCliente">
+            <button class="btn btn-primary btnNuevoCliente">
                 <i class="bi bi-plus-circle"></i> Nuevo Cliente
             </button>
         `;
     }
     
+    // Re-asignar el evento del botón Nuevo Cliente
+    const nuevoBtn = document.querySelector('.btnNuevoCliente');
+    if (nuevoBtn && !nuevoBtn.disabled) {
+        // Remover event listener anterior si existe
+        const nuevoBtnClone = nuevoBtn.cloneNode(true);
+        nuevoBtn.parentNode.replaceChild(nuevoBtnClone, nuevoBtn);
+        
+        nuevoBtnClone.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            // Limpiar completamente el formulario
+            limpiarFormulario();
+            
+            // Eliminar instancia anterior del modal
+            const modalElement = getElement('modalCliente');
+            if (modalElement) {
+                const existingModal = bootstrap.Modal.getInstance(modalElement);
+                if (existingModal) {
+                    existingModal.dispose();
+                }
+            }
+            
+            // Abrir modal nuevo
+            const modalElementFresh = getElement('modalCliente');
+            if (modalElementFresh) {
+                const modal = new bootstrap.Modal(modalElementFresh);
+                modal.show();
+            }
+        });
+    }
+    
     inicializarTooltips();
 }
+
 
 // ==================== FUNCIONES DE UTILIDAD ====================
 function isCurrentPage() {
@@ -708,39 +735,6 @@ function setupEditarCliente() {
 }
 
 
-// ==================== NUEVO CLIENTE (MODAL LIMPIO) ====================
-function setupNuevoCliente() {
-    const nuevoBtn = document.querySelector('[data-bs-target="#modalCliente"]');
-    if (nuevoBtn) {
-        const nuevoBtnClone = nuevoBtn.cloneNode(true);
-        nuevoBtn.parentNode.replaceChild(nuevoBtnClone, nuevoBtn);
-        
-        nuevoBtnClone.addEventListener('click', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            
-            // LIMPIAR COMPLETAMENTE EL FORMULARIO
-            limpiarFormulario();
-            
-            // ELIMINAR INSTANCIA ANTERIOR DEL MODAL
-            const modalElement = getElement('modalCliente');
-            if (modalElement) {
-                const existingModal = bootstrap.Modal.getInstance(modalElement);
-                if (existingModal) {
-                    existingModal.dispose();
-                }
-            }
-            
-            // ABRIR MODAL NUEVO
-            const modalElementFresh = getElement('modalCliente');
-            if (modalElementFresh) {
-                const modal = new bootstrap.Modal(modalElementFresh);
-                modal.show();
-            }
-        });
-    }
-}
-
 // ==================== EVENTOS DE ACCIONES ====================
 function setupEventosAcciones() {
     document.body.addEventListener('click', async (e) => {
@@ -857,7 +851,6 @@ export async function init() {
     setupEventosAcciones();
     setupEditarCliente();
     setupGuardarCliente();
-    setupNuevoCliente();
     setupBuscador();
     setupFiltroCantidad();
     setupValidacionesTiempoReal();

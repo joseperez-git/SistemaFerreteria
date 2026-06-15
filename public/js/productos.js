@@ -1,5 +1,8 @@
 import { mostrarToast, limpiarBackdrops, mostrarModalConfirmacionProfesional } from './helpers.js';
 
+// ==================== CONSTANTES ====================
+const PERFIL_ADMIN_ID = 1;
+
 let productosGlobal = [];
 let categoriasGlobal = [];
 let unidadesMedidaGlobal = [];
@@ -13,6 +16,7 @@ let imagenesAEliminar = [];
 let galeriaImagenes = [];
 let galeriaIndex = 0;
 
+// ==================== FUNCIONES DE UTILIDAD ====================
 function generarCodigoBarras() {
     const fecha = new Date();
     const año = fecha.getFullYear();
@@ -67,7 +71,6 @@ function getElement(id) {
     return elementos[id];
 }
 
-
 function limpiarFormulario() {
     const form = getElement('formProducto');
     if (form) form.reset();
@@ -98,7 +101,6 @@ function limpiarFormulario() {
         btnGenerar.className = 'btn btn-primary';
     }
 }
-
 
 function actualizarPrevisualizacionCompleta() {
     const preview = document.getElementById('previsualizacionProducto');
@@ -142,7 +144,6 @@ function actualizarPrevisualizacionCompleta() {
     }, 100);
 }
 
-
 function setupPrevisualizacionImagenes() {
     const inputImagenes = document.getElementById('inputImagenesProducto');
     const preview = document.getElementById('previsualizacionProducto');
@@ -178,8 +179,98 @@ function obtenerImagenPrincipal(producto) {
     return '/assets/img/producto-default.png';
 }
 
+// ==================== INICIALIZAR TOOLTIPS ====================
+function inicializarTooltips() {
+    setTimeout(function() {
+        const existingTooltips = document.querySelectorAll('.tooltip');
+        existingTooltips.forEach(tooltip => tooltip.remove());
+        
+        const elementsWithTooltip = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+        elementsWithTooltip.forEach(el => {
+            if (el._tooltip) {
+                el._tooltip.dispose();
+            }
+        });
+        
+        const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+        tooltipTriggerList.forEach(function (tooltipTriggerEl) {
+            new bootstrap.Tooltip(tooltipTriggerEl, {
+                placement: 'top',
+                trigger: 'hover',
+                delay: { show: 300, hide: 100 }
+            });
+        });
+    }, 50);
+}
 
-// Aplicar filtros
+// ==================== RENDERIZAR BOTONES DE ACCIÓN (DINÁMICOS) ====================
+function renderizarBotonesAccion() {
+    const contenedor = document.getElementById('botonesAccionProductos');
+    if (!contenedor) return;
+    
+    const sesion = JSON.parse(localStorage.getItem('sesion') || '{}');
+    const esAdminSesion = sesion?.usuario?.id_perfil === PERFIL_ADMIN_ID;
+    
+    if (!esAdminSesion) {
+        contenedor.innerHTML = `
+            <span data-bs-toggle="tooltip" data-bs-title="Solo administradores pueden crear productos">
+                <button class="btn btn-primary" disabled style="pointer-events: none;">
+                    <i class="bi bi-plus-circle"></i> Nuevo Producto
+                </button>
+            </span>
+        `;
+    } else {
+        contenedor.innerHTML = `
+            <button class="btn btn-primary" id="btnNuevoProductoPrincipal">
+                <i class="bi bi-plus-circle"></i> Nuevo Producto
+            </button>
+        `;
+        
+        const nuevoBtn = document.getElementById('btnNuevoProductoPrincipal');
+        if (nuevoBtn) {
+            nuevoBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                limpiarFormulario();
+                
+                const codigoInput = getElement('codigo_barras');
+                const btnGenerar = document.getElementById('btnGenerarCodigo');
+                const btnGuardar = getElement('btnGuardarProducto');
+                
+                if (btnGuardar) {
+                    btnGuardar.textContent = 'Guardar Producto';
+                    btnGuardar.style.background = 'linear-gradient(135deg, #198754 0%, #0f5c3a 100%)';
+                    btnGuardar.style.border = 'none';
+                }
+                
+                if (codigoInput) {
+                    codigoInput.disabled = false;
+                    codigoInput.value = generarCodigoBarras();
+                }
+                if (btnGenerar) {
+                    btnGenerar.style.display = 'inline-block';
+                    btnGenerar.className = 'btn btn-primary';
+                }
+                
+                generarImagenCodigo(getElement('codigo_barras')?.value);
+                
+                const modalElement = getElement('modalProducto');
+                if (modalElement) {
+                    const existingModal = bootstrap.Modal.getInstance(modalElement);
+                    if (existingModal) {
+                        existingModal.dispose();
+                    }
+                    const modal = new bootstrap.Modal(modalElement);
+                    modal.show();
+                }
+            });
+        }
+    }
+    
+    inicializarTooltips();
+}
+
+// ==================== FILTROS Y RENDERIZADO ====================
 function aplicarFiltros() {
     if (!isCurrentPage()) return;
     
@@ -206,8 +297,6 @@ function aplicarFiltros() {
     renderizar(productosFiltrados);
 }
 
-
-//Renderizar tabla de productos
 function renderizar(productos) {
     const tabla = getElement('tablaProductos');
     if (!tabla) return;
@@ -219,6 +308,9 @@ function renderizar(productos) {
         return;
     }
     
+    const sesion = JSON.parse(localStorage.getItem('sesion') || '{}');
+    const esAdminSesion = sesion?.usuario?.id_perfil === PERFIL_ADMIN_ID;
+    
     productos.forEach(producto => {
         const stockFisico = parseFloat(producto.stock) || 0;
         const stockReservado = parseFloat(producto.stock_reservado) || 0;
@@ -227,7 +319,6 @@ function renderizar(productos) {
         const unidadAbreviatura = producto.unidad_abreviatura || 'und';
         const esFraccionable = producto.unidad_tipo === 'DECIMAL';
         
-        // Determinar color del stock disponible
         let stockDisponibleClass = 'fw-bold';
         if (stockDisponible <= 0) {
             stockDisponibleClass += ' text-danger';
@@ -237,29 +328,42 @@ function renderizar(productos) {
             stockDisponibleClass += ' text-success';
         }
         
-        // Stock Físico status
-        let stockFisicoStatus = '';
         let stockFisicoBadge = '';
         if (producto.estado === 1) {
             if (stockFisico <= 0) {
-                stockFisicoStatus = 'Sin Stock';
                 stockFisicoBadge = 'danger';
             } else if (stockFisico < stockMinimoFijo) {
-                stockFisicoStatus = 'Stock Crítico';
                 stockFisicoBadge = 'danger';
             } else if (stockFisico === stockMinimoFijo) {
-                stockFisicoStatus = 'Stock Mínimo';
                 stockFisicoBadge = 'warning text-dark';
             } else {
-                stockFisicoStatus = 'Disponible';
                 stockFisicoBadge = 'success';
             }
         } else {
-            stockFisicoStatus = 'Inactivo';
             stockFisicoBadge = 'secondary';
         }
 
         const imagenUrl = obtenerImagenPrincipal(producto);
+        
+        // ==========================================
+        // PERMISOS Y TOOLTIPS INDIVIDUALES
+        // ==========================================
+        const editarDeshabilitado = !esAdminSesion;
+        const desactivarDeshabilitado = !esAdminSesion;
+        const activarDeshabilitado = !esAdminSesion;
+        const eliminarDeshabilitado = !esAdminSesion;
+        
+        let tooltipEditar = '';
+        let tooltipDesactivar = '';
+        let tooltipActivar = '';
+        let tooltipEliminar = '';
+        
+        if (!esAdminSesion) {
+            tooltipEditar = 'Solo administradores pueden editar productos';
+            tooltipDesactivar = 'Solo administradores pueden desactivar productos';
+            tooltipActivar = 'Solo administradores pueden activar productos';
+            tooltipEliminar = 'Solo administradores pueden eliminar productos';
+        }
         
         tabla.innerHTML += `
             <tr>
@@ -273,7 +377,7 @@ function renderizar(productos) {
                 <td>S/ ${parseFloat(producto.precio).toFixed(2)}</td>
                 <td class="text-center">
                     <span class="fw-bold">${stockFisico.toFixed(2)} ${unidadAbreviatura}</span>
-                    <br><span class="badge bg-${stockFisicoBadge.split(' ')[0]}">${stockFisicoStatus}</span>
+                    <br><span class="badge bg-${stockFisicoBadge.split(' ')[0]}">${producto.estado === 1 ? (stockFisico <= 0 ? 'Sin Stock' : (stockFisico < stockMinimoFijo ? 'Stock Crítico' : (stockFisico === stockMinimoFijo ? 'Stock Mínimo' : 'Disponible'))) : 'Inactivo'}</span>
                 </td>
                 <td class="text-center text-warning fw-bold">${stockReservado.toFixed(2)} ${unidadAbreviatura}</td>
                 <td class="text-center ${stockDisponibleClass}">${stockDisponible.toFixed(2)} ${unidadAbreviatura}</td>
@@ -283,20 +387,41 @@ function renderizar(productos) {
                     ${esFraccionable ? '<br><span class="badge bg-info mt-1">Fraccionable</span>' : ''}
                 </td>
                 <td class="text-nowrap">
-                    <button class="btn btn-sm btn-warning btnEditarProducto" data-id="${producto.id}" title="Editar"><i class="bi bi-pencil-square"></i></button>
+                    <button class="btn btn-sm btn-warning btnEditarProducto" 
+                            data-id="${producto.id}" 
+                            ${editarDeshabilitado ? 'disabled' : ''}
+                            ${tooltipEditar ? `title="${tooltipEditar}" data-bs-toggle="tooltip"` : ''}>
+                        <i class="bi bi-pencil-square"></i>
+                    </button>
                     ${producto.estado === 1 
-                        ? `<button class="btn btn-sm btn-secondary btnDesactivarProducto" data-id="${producto.id}" title="Desactivar"><i class="bi bi-slash-circle"></i></button>`
-                        : `<button class="btn btn-sm btn-success btnActivarProducto" data-id="${producto.id}" title="Activar"><i class="bi bi-check-circle"></i></button>`
+                        ? `<button class="btn btn-sm btn-secondary btnDesactivarProducto" 
+                                   data-id="${producto.id}"
+                                   ${desactivarDeshabilitado ? 'disabled' : ''}
+                                   ${tooltipDesactivar ? `title="${tooltipDesactivar}" data-bs-toggle="tooltip"` : ''}>
+                            <i class="bi bi-slash-circle"></i>
+                           </button>`
+                        : `<button class="btn btn-sm btn-success btnActivarProducto" 
+                                   data-id="${producto.id}"
+                                   ${activarDeshabilitado ? 'disabled' : ''}
+                                   ${tooltipActivar ? `title="${tooltipActivar}" data-bs-toggle="tooltip"` : ''}>
+                            <i class="bi bi-check-circle"></i>
+                           </button>`
                     }
-                    <button class="btn btn-sm btn-danger btnEliminarProducto" data-id="${producto.id}" title="Eliminar"><i class="bi bi-trash"></i></button>
+                    <button class="btn btn-sm btn-danger btnEliminarProducto" 
+                            data-id="${producto.id}"
+                            ${eliminarDeshabilitado ? 'disabled' : ''}
+                            ${tooltipEliminar ? `title="${tooltipEliminar}" data-bs-toggle="tooltip"` : ''}>
+                        <i class="bi bi-trash"></i>
+                    </button>
                 </td>
             </tr>
         `;
     });
+    
+    inicializarTooltips();
 }
 
-
-//Cargar categorias
+// ==================== CARGA DE DATOS ====================
 async function cargarCategorias() {
     if (!isCurrentPage()) return;
     try {
@@ -376,7 +501,7 @@ async function cambiarEstado(id, estado, mensaje, tipo) {
     }
 }
 
-
+// ==================== GUARDAR PRODUCTO ====================
 function setupGuardarProducto() {
     const btnGuardar = getElement('btnGuardarProducto');
     if (!btnGuardar) return;
@@ -455,7 +580,7 @@ function setupGuardarProducto() {
     };
 }
 
-
+// ==================== EVENTOS GLOBALES ====================
 function setupGlobalEventListeners() {
     document.body.addEventListener('click', async (e) => {
         if (!isCurrentPage()) return;
@@ -476,6 +601,8 @@ function setupGlobalEventListeners() {
         
         const btnEditar = e.target.closest('.btnEditarProducto');
         if (btnEditar) {
+            if (btnEditar.disabled) return;
+            
             const id = parseInt(btnEditar.dataset.id);
             const producto = productosGlobal.find(p => p.id === id);
             
@@ -494,20 +621,15 @@ function setupGlobalEventListeners() {
                 getElement('tituloModalProducto').textContent = 'Editar Producto';
                 const btnGuardar = getElement('btnGuardarProducto');
                 btnGuardar.textContent = 'Actualizar Producto';
-                btnGuardar.classList.remove('btn-guardar');
-                btnGuardar.classList.add('btn-actualizar');
                 btnGuardar.style.background = 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)';
                 btnGuardar.style.border = 'none';
                 
                 const codigoInput = getElement('codigo_barras');
                 const btnGenerar = document.getElementById('btnGenerarCodigo');
-
-                // Obtener el perfil del usuario logueado
                 const sesion = JSON.parse(localStorage.getItem('sesion') || '{}');
-                const esAdministrador = sesion?.usuario?.id_perfil === 1;
+                const esAdministrador = sesion?.usuario?.id_perfil === PERFIL_ADMIN_ID;
 
                 if (esAdministrador) {
-                    // Administrador puede editar el código
                     codigoInput.disabled = false;
                     if (btnGenerar) {
                         btnGenerar.style.display = 'inline-block';
@@ -516,7 +638,6 @@ function setupGlobalEventListeners() {
                     codigoInput.style.backgroundColor = '#ffffff';
                     codigoInput.style.cursor = 'text';
                 } else {
-                    // Otros usuarios NO pueden editar
                     codigoInput.disabled = true;
                     if (btnGenerar) {
                         btnGenerar.style.display = 'none';
@@ -571,52 +692,62 @@ function setupGlobalEventListeners() {
                     }
                 }
                 
-                new bootstrap.Modal(getElement('modalProducto')).show();
+                const modalElement = getElement('modalProducto');
+                if (modalElement) {
+                    const existingModal = bootstrap.Modal.getInstance(modalElement);
+                    if (existingModal) {
+                        existingModal.dispose();
+                    }
+                    const modal = new bootstrap.Modal(modalElement);
+                    modal.show();
+                }
             }
             return;
         }
         
-        //Desactivar
         const btnDesactivar = e.target.closest('.btnDesactivarProducto');
         if (btnDesactivar) {
+            if (btnDesactivar.disabled) return;
             const id = parseInt(btnDesactivar.dataset.id);
             mostrarModalConfirmacionProfesional(
                 'Desactivar Producto',
                 '¿Desea desactivar este producto?',
                 () => cambiarEstado(id, 0, 'Producto desactivado', 'warning'),
-                'warning'
+                'warning',
+                'Desactivar'
             );
             return;
         }
         
-        //Activar
         const btnActivar = e.target.closest('.btnActivarProducto');
         if (btnActivar) {
+            if (btnActivar.disabled) return;
             const id = parseInt(btnActivar.dataset.id);
             mostrarModalConfirmacionProfesional(
                 'Activar Producto',
                 '¿Desea activar este producto?',
                 () => cambiarEstado(id, 1, 'Producto activado', 'success'),
-                'success'
+                'success',
+                'Activar'
             );
             return;
         }
         
-        //Eliminar
         const btnEliminar = e.target.closest('.btnEliminarProducto');
         if (btnEliminar) {
+            if (btnEliminar.disabled) return;
             const id = parseInt(btnEliminar.dataset.id);
             mostrarModalConfirmacionProfesional(
                 'Eliminar Producto',
                 '¿Desea eliminar este producto?',
                 () => cambiarEstado(id, 2, 'Producto eliminado', 'danger'),
-                'danger'
+                'danger',
+                'Eliminar'
             );
             return;
         }
     });
 }
-
 
 function setupConfirmacionModal() {
     const btnConfirmar = document.getElementById('btnConfirmarAccionProducto');
@@ -629,7 +760,6 @@ function setupConfirmacionModal() {
         };
     }
 }
-
 
 function actualizarGaleria() {
     const img = getElement('imagenActual');
@@ -650,7 +780,6 @@ function actualizarGaleria() {
         titulo.innerHTML = `<i class="bi bi-images me-2"></i> Imágenes del Producto ${esPrincipal ? '<span class="badge bg-primary ms-2">Principal</span>' : ''}`;
     }
 }
-
 
 function setupGaleriaNavegacion() {
     const btnAnterior = document.getElementById('btnAnterior');
@@ -720,37 +849,11 @@ function setupFiltroCategoria() {
     if (filtro) filtro.addEventListener('change', () => aplicarFiltros());
 }
 
-
 function setupNuevoProducto() {
-    const nuevoBtn = document.querySelector('[data-bs-target="#modalProducto"]');
-    if (nuevoBtn) {
-        nuevoBtn.addEventListener('click', () => {
-            limpiarFormulario();
-            
-            const codigoInput = getElement('codigo_barras');
-            const btnGenerar = document.getElementById('btnGenerarCodigo');
-            const btnGuardar = getElement('btnGuardarProducto');
-            
-            if (btnGuardar) {
-                btnGuardar.textContent = 'Guardar Producto';
-                btnGuardar.style.background = 'linear-gradient(135deg, #198754 0%, #0f5c3a 100%)';
-                btnGuardar.style.border = 'none';
-            }
-            
-            if (codigoInput) {
-                codigoInput.disabled = false;
-                codigoInput.value = generarCodigoBarras();
-            }
-            if (btnGenerar) {
-                btnGenerar.style.display = 'inline-block';
-                btnGenerar.className = 'btn btn-primary';
-            }
-            
-            generarImagenCodigo(getElement('codigo_barras')?.value);
-        });
-    }
+    // Función vacía porque el evento se maneja en renderizarBotonesAccion
 }
 
+// ==================== INICIALIZACIÓN PRINCIPAL ====================
 export async function init() {
     if (!isCurrentPage()) return;
     
@@ -758,6 +861,7 @@ export async function init() {
         await cargarProductos();
         await cargarCategorias();
         await cargarUnidadesMedida();
+        renderizarBotonesAccion();
         return;
     }
     
@@ -777,6 +881,7 @@ export async function init() {
     await cargarCategorias();
     await cargarUnidadesMedida();
     await cargarProductos();
+    renderizarBotonesAccion();
 }
 
 export function destroy() {
@@ -789,7 +894,5 @@ export function destroy() {
     imagenesSeleccionadas = [];
     imagenesAEliminar = [];
 }
-
-
 
 
