@@ -32,9 +32,11 @@
                 <label class="form-label text-muted small">Estado</label>
                 <select id="filtroEstado" class="form-select">
                     <option value="">Todos</option>
-                    <option value="0">Pendientes</option>
-                    <option value="1">Pagados</option>
-                    <option value="2">Cancelados</option>
+                    <option value="0">Registrado</option>
+                    <option value="1">En Preparación</option>
+                    <option value="2">Parcialmente Entregado</option>
+                    <option value="3">Entregado</option>
+                    <option value="4">Cancelado</option>
                 </select>
             </div>
         </div>
@@ -48,13 +50,13 @@
             <table class="table table-hover align-middle mb-0">
                 <thead class="table-dark">
                     <tr>
-                        <th style="width: 50px;">ID</th>
-                        <th>N° Pedido</th>
-                        <th>Cliente</th>
-                        <th>Fecha</th>
-                        <th>Total</th>
-                        <th>Estado</th>
-                        <th style="width: 130px;">Acciones</th>
+                        <th class="col-id text-center" style="width: 50px;">ID</th>
+                        <th class="text-start">N° Pedido</th>
+                        <th class="text-start">Cliente</th>
+                        <th class="text-center">Fecha</th>
+                        <th class="col-monto text-end">Total</th>
+                        <th class="text-center">Estado</th>
+                        <th class="text-center" style="width: 160px;">Acciones</th>
                     </tr>
                 </thead>
                 <tbody id="tablaPedidos"></tbody>
@@ -128,78 +130,46 @@
                         </div>
                     </div>
 
-                    <!-- Sección Tipo de Entrega (INTERACTIVA) -->
+                    <!-- Tipo de Entrega -->
                     <div class="card border-0 shadow-sm mb-3" style="border-radius: 16px;">
                         <div class="card-header bg-white border-0 pt-2 pb-0" style="border-radius: 16px 16px 0 0;">
                             <h6 class="fw-bold mb-0 small">
-                                <i class="bi bi-truck me-1"></i> Tipo de Entrega
+                                <i class="bi bi-truck text-primary me-1"></i> Tipo de Entrega
                             </h6>
                         </div>
                         <div class="card-body p-2">
                             <div class="row g-2">
                                 <div class="col-md-6">
                                     <div class="form-check">
-                                        <input class="form-check-input" type="radio" name="tipoEntrega" id="entregaRecojo" value="recojo" checked>
-                                        <label class="form-check-label small fw-semibold" for="entregaRecojo">
-                                            <i class="bi bi-shop me-1"></i> Recoger en tienda
+                                        <input class="form-check-input" type="radio" name="tipo_entrega" id="tipoRecojo" value="RECOJO" checked>
+                                        <label class="form-check-label small" for="tipoRecojo">
+                                            <i class="bi bi-shop me-1"></i> Recojo en tienda
                                         </label>
                                     </div>
                                 </div>
                                 <div class="col-md-6">
                                     <div class="form-check">
-                                        <input class="form-check-input" type="radio" name="tipoEntrega" id="entregaEnvio" value="envio">
-                                        <label class="form-check-label small fw-semibold" for="entregaEnvio">
-                                            <i class="bi bi-truck me-1"></i> Enviar a domicilio
+                                        <input class="form-check-input" type="radio" name="tipo_entrega" id="tipoEnvio" value="ENVIO">
+                                        <label class="form-check-label small" for="tipoEnvio">
+                                            <i class="bi bi-truck me-1"></i> Envío a domicilio
                                         </label>
                                     </div>
                                 </div>
                             </div>
-                        </div>
-                    </div>
-
-                    <!-- Sección Recojo en Tienda (se muestra por defecto) -->
-                    <div id="seccionRecojo" class="card border-0 shadow-sm mb-3" style="border-radius: 16px;">
-                        <div class="card-header bg-white border-0 pt-2 pb-0" style="border-radius: 16px 16px 0 0;">
-                            <h6 class="fw-bold mb-0 small">
-                                <i class="bi bi-calendar-check me-1"></i> Datos de Recojo
-                            </h6>
-                        </div>
-                        <div class="card-body p-2">
-                            <div class="row g-2">
-                                <div class="col-md-12">
-                                    <label class="form-label small text-muted">Fecha de Recojo</label>
-                                    <input type="date" class="form-control form-control-sm" id="fecha_recojo">
-                                    <small class="text-muted">Fecha en que el cliente recogerá el pedido</small>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Sección Envío a Domicilio (oculta por defecto) -->
-                    <div id="seccionEnvio" class="card border-0 shadow-sm mb-3" style="border-radius: 16px; display: none;">
-                        <div class="card-header bg-white border-0 pt-2 pb-0" style="border-radius: 16px 16px 0 0;">
-                            <h6 class="fw-bold mb-0 small">
-                                <i class="bi bi-geo-alt me-1"></i> Datos de Envío
-                            </h6>
-                        </div>
-                        <div class="card-body p-2">
-                            <div class="row g-2">
-                                <div class="col-md-6">
-                                    <label class="form-label small text-muted">Fecha de Envío</label>
-                                    <input type="date" class="form-control form-control-sm" id="fecha_envio">
-                                </div>
-                                <div class="col-md-6">
-                                    <label class="form-label small text-muted">Costo de Envío (opcional)</label>
-                                    <div class="input-group input-group-sm">
-                                        <span class="input-group-text">S/</span>
-                                        <input type="number" step="0.01" class="form-control" id="costo_envio" value="0" min="0">
+                            <div id="envioFields" style="display: none;" class="mt-2">
+                                <div class="row g-1">
+                                    <div class="col-12">
+                                        <label class="form-label small text-muted">Dirección de envío</label>
+                                        <input type="text" class="form-control form-control-sm" id="direccion_entrega" placeholder="Ej: Av. Los Alamos 123, Lima">
                                     </div>
-                                    <small class="text-muted">Dejar en 0 si no aplica</small>
-                                </div>
-                                <div class="col-12">
-                                    <label class="form-label small text-muted">Dirección de Envío</label>
-                                    <input type="text" class="form-control form-control-sm" id="direccion_envio" placeholder="Ej: Av. Principal 123, Lima">
-                                    <small class="text-muted">Dirección completa donde se enviará el pedido</small>
+                                    <div class="col-6">
+                                        <label class="form-label small text-muted">Costo de envío (S/)</label>
+                                        <input type="number" step="0.01" class="form-control form-control-sm" id="costo_entrega" value="0" min="0">
+                                    </div>
+                                    <div class="col-6">
+                                        <label class="form-label small text-muted">Fecha programada</label>
+                                        <input type="date" class="form-control form-control-sm" id="fecha_programada">
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -252,19 +222,19 @@
                             <div class="table-responsive mt-2">
                                 <table class="table table-sm table-hover mb-0">
                                     <thead class="table-light">
-                                        <tr style="font-size: 0.7rem;">
-                                            <th>Producto</th>
+                                        <tr>
+                                            <th class="text-start">Producto</th>
                                             <th class="text-end">Precio</th>
                                             <th class="text-center">Cantidad</th>
+                                            <th class="text-center">Entregado</th>
                                             <th class="text-end">Subtotal</th>
-                                            <th class="text-center"></th>
                                         </tr>
                                     </thead>
                                     <tbody id="tablaProductosPedido"></tbody>
                                     <tfoot class="table-light">
                                         <tr>
                                             <td colspan="3" class="text-end fw-bold small">TOTAL:</td>
-                                            <td class="fw-bold text-primary" id="totalPedido" style="font-size: 0.9rem;">S/ 0.00</td>
+                                            <td class="fw-bold text-primary text-end" id="totalPedido" style="font-size: 0.9rem;">S/ 0.00</td>
                                             <td></td>
                                         </tr>
                                     </tfoot>
@@ -292,8 +262,7 @@
     </div>
 </div>
 
-
-<!-- Modal Detalle de Pedido -->
+<!-- Modal Detalle de Pedido (ACTUALIZADO) -->
 <div class="modal fade" id="modalDetallePedido" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
     <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable" style="max-width: 750px;">
         <div class="modal-content border-0 shadow-lg" style="border-radius: 20px; overflow: hidden;">
@@ -333,45 +302,16 @@
                                 <span class="fw-bold text-primary fs-6" id="detalleTotal">S/ 0.00</span>
                             </div>
                             <div class="d-flex justify-content-between small mt-1">
+                                <span class="text-muted">Saldo Pendiente:</span>
+                                <span class="fw-bold text-warning" id="detalleSaldo">S/ 0.00</span>
+                            </div>
+                            <div class="d-flex justify-content-between small mt-1">
                                 <span class="text-muted">Estado:</span>
-                                <span id="detalleEstado" class="badge bg-warning text-dark">Pendiente</span>
+                                <span id="detalleEstado" class="badge bg-warning text-dark">Registrado</span>
                             </div>
                             <div class="d-flex justify-content-between small mt-1">
                                 <span class="text-muted">Observación:</span>
                                 <span class="fw-semibold small" id="detalleObservacion">-</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Información de Entrega (Recojo o Envío) -->
-                <div id="detalleEntregaSection" class="card border-0 shadow-sm mb-2">
-                    <div class="card-header bg-white border-0 pt-1 pb-0">
-                        <h6 class="fw-bold mb-0 small" id="detalleTipoEntregaTitulo">Información de Entrega</h6>
-                    </div>
-                    <div class="card-body p-2">
-                        <div id="detalleRecojoInfo">
-                            <div class="row g-1">
-                                <div class="col-12">
-                                    <span class="text-muted small">Fecha de Recojo:</span>
-                                    <span class="fw-semibold small" id="detalleFechaRecojo">-</span>
-                                </div>
-                            </div>
-                        </div>
-                        <div id="detalleEnvioInfo" style="display: none;">
-                            <div class="row g-1">
-                                <div class="col-6">
-                                    <span class="text-muted small">Fecha de Envío:</span>
-                                    <span class="fw-semibold small" id="detalleFechaEnvio">-</span>
-                                </div>
-                                <div class="col-6">
-                                    <span class="text-muted small">Costo de Envío:</span>
-                                    <span class="fw-semibold small" id="detalleCostoEnvio">S/ 0.00</span>
-                                </div>
-                                <div class="col-12">
-                                    <span class="text-muted small">Dirección de Envío:</span>
-                                    <span class="fw-semibold small" id="detalleDireccionEnvio">-</span>
-                                </div>
                             </div>
                         </div>
                     </div>
@@ -387,19 +327,43 @@
                             <table class="table table-sm mb-0" style="font-size: 0.7rem;">
                                 <thead class="table-light">
                                     <tr>
-                                        <th>Producto</th>
+                                        <th class="text-start">Producto</th>
                                         <th class="text-end">Precio</th>
-                                        <th class="text-center">Cant</th>
+                                        <th class="text-center">Cantidad</th>
+                                        <th class="text-center">Entregado</th>
                                         <th class="text-end">Subtotal</th>
                                     </tr>
                                 </thead>
                                 <tbody id="detalleProductos"></tbody>
                                 <tfoot class="table-light">
                                     <tr>
-                                        <td colspan="3" class="text-end fw-bold">TOTAL:</td>
+                                        <td colspan="4" class="text-end fw-bold">TOTAL:</td>
                                         <td class="text-end fw-bold text-primary" id="detalleProductosTotal">S/ 0.00</td>
                                     </tr>
                                 </tfoot>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Historial de Entregas -->
+                <div id="detalleEntregasSection" class="card border-0 shadow-sm mb-2">
+                    <div class="card-header bg-white border-0 pt-1 pb-0">
+                        <h6 class="fw-bold mb-0 small">Historial de Entregas</h6>
+                    </div>
+                    <div class="card-body p-1">
+                        <div class="table-responsive">
+                            <table class="table table-sm mb-0" style="font-size: 0.7rem;">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th class="text-center">Fecha</th>
+                                        <th class="text-center">Tipo</th>
+                                        <th class="text-start">Dirección</th>
+                                        <th class="text-end">Costo</th>
+                                        <th class="text-center">Estado</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="detalleEntregas"></tbody>
                             </table>
                         </div>
                     </div>
@@ -413,7 +377,6 @@
     </div>
 </div>
 
-
 <!-- Modal Confirmación -->
 <div class="modal fade" id="modalConfirmacionPedido" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
@@ -426,54 +389,6 @@
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
                 <button type="button" class="btn btn-danger" id="btnConfirmarAccionPedido">Confirmar</button>
-            </div>
-        </div>
-    </div>
-</div>
-
-
-<!-- Modal Convertir a Venta -->
-<div class="modal fade" id="modalConvertirVenta" tabindex="-1" data-bs-backdrop="static">
-    <div class="modal-dialog modal-dialog-centered" style="max-width: 400px;">
-        <div class="modal-content border-0 shadow-lg" style="border-radius: 20px;">
-            <div class="modal-header border-0 p-3" style="background: linear-gradient(135deg, #198754 0%, #0f5c3a 100%);">
-                <div class="d-flex align-items-center gap-2">
-                    <i class="bi bi-cart-check text-white fs-5"></i>
-                    <h6 class="modal-title text-white fw-bold mb-0">Convertir a Venta</h6>
-                </div>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body p-4">
-                <div class="mb-3">
-                    <label class="form-label fw-semibold">Total del Pedido</label>
-                    <div class="input-group">
-                        <span class="input-group-text">S/</span>
-                        <input type="text" class="form-control bg-light" id="totalPedidoConvertir" readonly>
-                    </div>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label fw-semibold">Monto a Pagar</label>
-                    <div class="input-group">
-                        <span class="input-group-text">S/</span>
-                        <input type="number" step="0.01" class="form-control" id="montoPagoConvertir" value="0" min="0">
-                    </div>
-                    <small class="text-muted">Puede pagar el total o un adelanto</small>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label fw-semibold">Método de Pago</label>
-                    <select class="form-select" id="metodoPagoConvertir" required>
-                        <option value="">Seleccione</option>
-                        <option value="EFECTIVO">Efectivo</option>
-                        <option value="YAPE">Yape</option>
-                        <option value="PLIN">Plin</option>
-                        <option value="TRANSFERENCIA">Transferencia</option>
-                        <option value="TARJETA">Tarjeta</option>
-                    </select>
-                </div>
-            </div>
-            <div class="modal-footer border-0 p-3 bg-light">
-                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
-                <button type="button" class="btn btn-success btn-sm" id="btnConfirmarConvertir">Convertir a Venta</button>
             </div>
         </div>
     </div>

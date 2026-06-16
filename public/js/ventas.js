@@ -239,18 +239,19 @@ function aplicarFiltros() {
     const estadoFiltro = filtroEstado?.value || '';
     
     let ventasFiltradas = ventasGlobal
-        .filter(venta => venta.estado !== 2)
         .filter(venta => {
-            if (estadoFiltro && venta.estado != estadoFiltro) return false;
+            if (estadoFiltro !== '' && venta.estado != estadoFiltro) return false;
             return venta.numero_nota_venta?.toLowerCase().includes(textoBusqueda) ||
                    venta.cliente?.toLowerCase().includes(textoBusqueda);
         })
-        .reverse()
+        .sort((a, b) => b.id - a.id)
         .slice(0, cantidadMostrar);
     
     renderizar(ventasFiltradas);
 }
 
+
+//Renderizar ventas en la tabla
 function renderizar(ventas) {
     const tabla = getElement('tablaVentas');
     if (!tabla) return;
@@ -262,10 +263,45 @@ function renderizar(ventas) {
     }
     
     ventas.forEach(venta => {
-        const estadoBadge = venta.estado === 1 
-            ? '<span class="badge bg-success">Activa</span>' 
-            : '<span class="badge bg-secondary">Anulada</span>';
+        let estadoBadge = '';
+        if (venta.estado === 0) {
+            estadoBadge = '<span class="badge bg-warning text-dark">Pago Parcial</span>';
+        } else if (venta.estado === 1) {
+            estadoBadge = '<span class="badge bg-success">Pagada</span>';
+        } else if (venta.estado === 2) {
+            estadoBadge = '<span class="badge bg-secondary">Anulada</span>';
+        } else if (venta.estado === 3) {
+            estadoBadge = '<span class="badge bg-dark">Eliminada</span>';
+        }
         
+        let botonesAccion = '';
+        
+        if (venta.estado === 0) {
+            // Pago Parcial → Mostrar botón ANULAR
+            botonesAccion = `
+                <button class="btn btn-sm btn-danger btnAnularVenta" data-id="${venta.id}" title="Anular">
+                    <i class="bi bi-slash-circle"></i>
+                </button>
+            `;
+        } else if (venta.estado === 1) {
+            // Pagada → No mostrar botones (solo ver detalles)
+            botonesAccion = ``;
+        } else if (venta.estado === 2) {
+            // Anulada → Mostrar botones REACTIVAR + ELIMINAR
+            botonesAccion = `
+                <button class="btn btn-sm btn-success btnActivarVenta" data-id="${venta.id}" title="Reactivar">
+                    <i class="bi bi-arrow-repeat"></i>
+                </button>
+                <button class="btn btn-sm btn-danger btnEliminarVenta" data-id="${venta.id}" title="Eliminar">
+                    <i class="bi bi-trash"></i>
+                </button>
+            `;
+        } else if (venta.estado === 3) {
+            // Eliminada → No mostrar nada (o botón ver detalles)
+            botonesAccion = ``;
+        }
+        
+        // Botón Ver Detalles siempre visible para todos los estados
         tabla.innerHTML += `
             <tr>
                 <td class="text-center">${venta.id}</td>
@@ -279,22 +315,13 @@ function renderizar(ventas) {
                     <button class="btn btn-sm btn-warning btnVerVenta" data-id="${venta.id}" title="Ver Detalles">
                         <i class="bi bi-eye"></i>
                     </button>
-                    ${venta.estado === 1 
-                        ? `<button class="btn btn-sm btn-secondary btnAnularVenta" data-id="${venta.id}" title="Anular">
-                            <i class="bi bi-slash-circle"></i>
-                        </button>`
-                        : `<button class="btn btn-sm btn-success btnActivarVenta" data-id="${venta.id}" title="Reactivar">
-                            <i class="bi bi-check-circle"></i>
-                        </button>`
-                    }
-                    <button class="btn btn-sm btn-danger btnEliminarVenta" data-id="${venta.id}" title="Eliminar">
-                        <i class="bi bi-trash"></i>
-                    </button>
+                    ${botonesAccion}
                 </td>
             </tr>
         `;
     });
 }
+
 
 // ============================================
 // CAMBIAR ESTADO
@@ -308,12 +335,21 @@ async function cambiarEstado(id, estado, mensajeExito, tipoToast) {
         });
         const data = await response.json();
         if (!response.ok) throw new Error(data.error);
-        await cargarVentas();
+        
+        await cargarVentas();  // Esto ya recarga la tabla
+        
+        // Forzar re-renderizado del detalle si está abierto
+        const modalDetalle = document.getElementById('modalDetalleVenta');
+        if (modalDetalle && modalDetalle.classList.contains('show')) {
+            await mostrarDetalleVenta(id);
+        }
+        
         mostrarToast(mensajeExito, tipoToast);
     } catch (error) {
         mostrarToast(error.message, 'danger');
     }
 }
+
 
 // ============================================
 // ENVÍO DE RECORDATORIOS
@@ -370,10 +406,8 @@ async function registrarPagoAdicional() {
         
         mostrarToast('Pago registrado correctamente', 'success');
         
-        // Recargar detalle
         await mostrarDetalleVenta(idVenta);
         
-        // Limpiar campos
         document.getElementById('montoPagoAdicional').value = '0';
         document.getElementById('metodoPagoAdicional').value = '';
         
@@ -415,6 +449,8 @@ function ocultarFormularioPagoCuota() {
     cuotaSeleccionada = null;
 }
 
+
+// Confirmar pago cuota
 async function confirmarPagoCuotaIntegrado() {
     if (!cuotaSeleccionada) {
         mostrarToast('No hay una cuota seleccionada', 'warning');
@@ -460,13 +496,21 @@ async function confirmarPagoCuotaIntegrado() {
         
         mostrarToast('Pago registrado correctamente', 'success');
         ocultarFormularioPagoCuota();
+        
+        // ============================================
+        // RECARGAR LOS DATOS SIN CERRAR EL MODAL
+        // ============================================
         await mostrarDetalleVenta(parseInt(idVenta));
+        
+        // Actualizar la tabla principal
+        await cargarVentas();
         
     } catch (error) {
         console.error('Error en pago:', error);
         mostrarToast(error.message, 'danger');
     }
 }
+
 
 // ============================================
 // MOSTRAR DETALLE DE VENTA
@@ -478,6 +522,10 @@ async function mostrarDetalleVenta(id) {
         const response = await fetch(`/api/ventas/${id}`);
         if (!response.ok) throw new Error('Error al obtener detalles');
         const venta = await response.json();
+        
+        // Calcular saldo pendiente dinámicamente desde los pagos
+        const totalPagado = venta.pagos?.reduce((sum, p) => sum + parseFloat(p.monto), 0) || 0;
+        const saldoPendiente = venta.total_venta - totalPagado;
         
         limpiarBackdrops();
         
@@ -495,7 +543,7 @@ async function mostrarDetalleVenta(id) {
         const tbodyPagos = document.getElementById('detallePagos');
         const tbodyCuotas = document.getElementById('detalleCuotas');
         
-        // Origen de la venta (pedido o directa)
+        // Origen de la venta
         const origenRow = document.getElementById('detalleOrigenRow');
         const origenText = document.getElementById('detalleOrigen');
         const verPedidoBtn = document.getElementById('btnVerPedidoOrigen');
@@ -513,9 +561,11 @@ async function mostrarDetalleVenta(id) {
             if (verPedidoBtn) verPedidoBtn.style.display = 'none';
         }
         
-        // Mostrar sección de pago adicional solo para crédito con deuda
+        // Mostrar sección de pago adicional solo para crédito con saldo pendiente
         const pagoAdicionalRow = document.getElementById('detallePagoAdicionalRow');
-        if (venta.modalidad_pago === 'CREDITO' && venta.deuda > 0) {
+        const tienePedido = venta.id_pedido !== null && venta.id_pedido !== undefined;
+
+        if (tienePedido && venta.modalidad_pago === 'CREDITO' && saldoPendiente > 0 && venta.estado !== 2) {
             if (pagoAdicionalRow) pagoAdicionalRow.style.display = 'block';
         } else {
             if (pagoAdicionalRow) pagoAdicionalRow.style.display = 'none';
@@ -538,31 +588,26 @@ async function mostrarDetalleVenta(id) {
         
         setHtml('detalleTotal', `S/ ${parseFloat(venta.total_venta).toFixed(2)}`);
         
-        const deudaRow = document.getElementById('detalleDeudaRow');
-        if (venta.modalidad_pago === 'CREDITO' && venta.deuda > 0) {
-            if (deudaRow) deudaRow.style.display = 'flex';
-            setHtml('detalleDeuda', `S/ ${parseFloat(venta.deuda).toFixed(2)}`);
+        const saldoRow = document.getElementById('detalleSaldoRow');
+        if (venta.modalidad_pago === 'CREDITO' && saldoPendiente > 0) {
+            if (saldoRow) saldoRow.style.display = 'flex';
+            setHtml('detalleSaldo', `S/ ${saldoPendiente.toFixed(2)}`);
         } else {
-            if (deudaRow) deudaRow.style.display = 'none';
+            if (saldoRow) saldoRow.style.display = 'none';
         }
         
         const estadoBadge = document.getElementById('detalleEstado');
         if (estadoBadge) {
-            if (venta.estado === 1) {
-                estadoBadge.textContent = 'Activa';
+            if (venta.estado === 0) {
+                estadoBadge.textContent = 'Pago Parcial';
+                estadoBadge.className = 'badge bg-warning text-dark';
+            } else if (venta.estado === 1) {
+                estadoBadge.textContent = 'Pagada';
                 estadoBadge.className = 'badge bg-success';
-            } else {
+            } else if (venta.estado === 2) {
                 estadoBadge.textContent = 'Anulada';
                 estadoBadge.className = 'badge bg-secondary';
             }
-        }
-        
-        const observacionRow = document.getElementById('detalleObservacionRow');
-        if (venta.observacion && venta.observacion.trim() !== '') {
-            if (observacionRow) observacionRow.style.display = 'block';
-            setText('detalleObservacion', venta.observacion);
-        } else {
-            if (observacionRow) observacionRow.style.display = 'none';
         }
         
         let totalProductos = 0;
@@ -606,7 +651,7 @@ async function mostrarDetalleVenta(id) {
                     ? '<span class="badge bg-success">Pagada</span>' 
                     : '<span class="badge bg-warning">Pendiente</span>';
                 
-                const botonPagar = cuota.estado === 0 
+                const botonPagar = (cuota.estado === 0 && venta.estado === 0)
                     ? `<button class="btn btn-sm btn-primary btnPagarCuota ms-1" 
                                data-id-cuota="${cuota.id}" 
                                data-monto="${cuota.monto}" 
@@ -616,23 +661,21 @@ async function mostrarDetalleVenta(id) {
                         </button>` 
                     : '';
                 
-                const botonCorreo = cuota.estado === 0 
+                const botonCorreo = (cuota.estado === 0 && venta.estado === 0)
                     ? `<button class="btn btn-sm btn-outline-info btnEnviarCorreoCuota ms-1" 
                                data-id-cuota="${cuota.id}" 
                                data-id-venta="${venta.id}"
-                               title="Enviar recordatorio por correo"
-                               style="background: #0d6efd; color: white; border: none;">
+                               title="Enviar recordatorio por correo">
                             <i class="bi bi-envelope"></i>
                         </button>` 
                     : '';
                 
-                const botonWhatsApp = cuota.estado === 0 
+                const botonWhatsApp = (cuota.estado === 0 && venta.estado === 0)
                     ? `<button class="btn btn-sm btn-outline-success btnEnviarWhatsAppCuota ms-1" 
                                data-id-cuota="${cuota.id}" 
                                data-id-venta="${venta.id}" 
                                data-telefono="${venta.telefono || ''}"
-                               title="Enviar recordatorio por WhatsApp"
-                               style="background: #25D366; color: white; border: none;">
+                               title="Enviar recordatorio por WhatsApp">
                             <i class="bi bi-whatsapp"></i>
                         </button>` 
                     : '';
@@ -668,7 +711,14 @@ async function mostrarDetalleVenta(id) {
         
         ocultarFormularioPagoCuota();
         
-        const modal = new bootstrap.Modal(document.getElementById('modalDetalleVenta'));
+        // ============================================
+        // REUTILIZAR MODAL EN VEZ DE CREAR UNO NUEVO
+        // ============================================
+        const modalElement = document.getElementById('modalDetalleVenta');
+        let modal = bootstrap.Modal.getInstance(modalElement);
+        if (!modal) {
+            modal = new bootstrap.Modal(modalElement);
+        }
         modal.show();
         
     } catch (error) {
@@ -676,6 +726,7 @@ async function mostrarDetalleVenta(id) {
         mostrarToast('Error al cargar detalles', 'danger');
     }
 }
+
 
 // ============================================
 // MANEJADORES DE EVENTOS
@@ -1084,10 +1135,11 @@ function setupGuardarVenta() {
         }
         
         const total_venta = totalVenta;
-        let deuda = 0;
+        
+        // Validaciones para crédito
         if (modalidad_pago === 'CREDITO') {
-            deuda = total_venta - pago_inicial;
-            if (deuda <= 0) {
+            const deudaCalculada = total_venta - pago_inicial;
+            if (deudaCalculada <= 0) {
                 mostrarToast('El pago inicial no puede ser mayor o igual al total', 'warning');
                 return;
             }
@@ -1098,6 +1150,7 @@ function setupGuardarVenta() {
         }
         
         try {
+            // Ya no enviamos deuda en el body
             const response = await fetch(id ? `/api/ventas/${id}` : '/api/ventas', {
                 method: id ? 'PUT' : 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -1111,7 +1164,6 @@ function setupGuardarVenta() {
                     cantidad_cuotas,
                     intervalo_dias,
                     total_venta,
-                    deuda,
                     observacion,
                     productos: productosSeleccionados
                 })
@@ -1227,21 +1279,31 @@ function setupEventListeners() {
         const btnAnular = e.target.closest('.btnAnularVenta');
         if (btnAnular) {
             const id = parseInt(btnAnular.dataset.id);
-            mostrarModalConfirmacionProfesional('Anular Venta', '¿Desea anular esta venta?', () => cambiarEstado(id, 0, 'Venta anulada', 'warning'), 'warning');
+            mostrarModalConfirmacionProfesional('Anular Venta', '¿Desea anular esta venta? Se liberará el stock y se anularán las cuotas pendientes.', () => cambiarEstado(id, 2, 'Venta anulada correctamente', 'warning'), 'warning');
             return;
         }
         
         const btnActivar = e.target.closest('.btnActivarVenta');
         if (btnActivar) {
             const id = parseInt(btnActivar.dataset.id);
-            mostrarModalConfirmacionProfesional('Reactivar Venta', '¿Desea reactivar esta venta?', () => cambiarEstado(id, 1, 'Venta reactivada', 'success'), 'success');
+            mostrarModalConfirmacionProfesional('Reactivar Venta', '¿Desea reactivar esta venta? Volverá a estado Pago Parcial.', () => cambiarEstado(id, 0, 'Venta reactivada como Pago Parcial', 'success'), 'success');
             return;
         }
         
         const btnEliminar = e.target.closest('.btnEliminarVenta');
         if (btnEliminar) {
             const id = parseInt(btnEliminar.dataset.id);
-            mostrarModalConfirmacionProfesional('Eliminar Venta', '¿Desea eliminar esta venta?', () => cambiarEstado(id, 2, 'Venta eliminada', 'danger'), 'danger');
+            mostrarModalConfirmacionProfesional('Eliminar Venta', '¿Desea eliminar esta venta? Esta acción no se puede deshacer.', async () => {
+                try {
+                    const response = await fetch(`/api/ventas/${id}`, { method: 'DELETE' });
+                    const data = await response.json();
+                    if (!response.ok) throw new Error(data.error);
+                    await cargarVentas();
+                    mostrarToast('Venta eliminada correctamente', 'danger');
+                } catch (error) {
+                    mostrarToast(error.message, 'danger');
+                }
+            }, 'danger');
             return;
         }
     });
@@ -1291,7 +1353,6 @@ function setupEventListeners() {
     }
 }
 
-
 // ============================================
 // MOSTRAR DETALLE DE PEDIDO DESDE VENTA
 // ============================================
@@ -1301,7 +1362,6 @@ async function mostrarDetallePedidoDesdeVenta(idPedido) {
         if (!response.ok) throw new Error('Error al obtener detalles del pedido');
         const pedido = await response.json();
         
-        // Función auxiliar para setear texto
         const setText = (idEl, value) => {
             const el = document.getElementById(idEl);
             if (el) el.textContent = value || '-';
@@ -1312,11 +1372,9 @@ async function mostrarDetallePedidoDesdeVenta(idPedido) {
             if (el) el.innerHTML = value;
         };
         
-        // Limpiar productos
         const tbodyProductos = document.getElementById('detallePedidoProductos');
         if (tbodyProductos) tbodyProductos.innerHTML = '';
         
-        // Información general
         setText('detallePedidoNumero', pedido.numero_pedido);
         setText('detallePedidoCliente', pedido.cliente);
         setText('detallePedidoFecha', formatearFecha(pedido.fecha_pedido));
@@ -1324,22 +1382,26 @@ async function mostrarDetallePedidoDesdeVenta(idPedido) {
         setText('detallePedidoObservacion', pedido.observacion);
         setHtml('detallePedidoTotal', `S/ ${parseFloat(pedido.total_pedido).toFixed(2)}`);
         
-        // Estado
         const estadoBadge = document.getElementById('detallePedidoEstado');
         if (estadoBadge) {
             if (pedido.estado === 0) {
-                estadoBadge.textContent = 'Pendiente';
+                estadoBadge.textContent = 'Registrado';
                 estadoBadge.className = 'badge bg-warning text-dark';
             } else if (pedido.estado === 1) {
-                estadoBadge.textContent = 'Pagado';
+                estadoBadge.textContent = 'En Preparación';
+                estadoBadge.className = 'badge bg-info';
+            } else if (pedido.estado === 2) {
+                estadoBadge.textContent = 'Parcialmente Entregado';
+                estadoBadge.className = 'badge bg-warning';
+            } else if (pedido.estado === 3) {
+                estadoBadge.textContent = 'Entregado';
                 estadoBadge.className = 'badge bg-success';
-            } else {
+            } else if (pedido.estado === 4) {
                 estadoBadge.textContent = 'Cancelado';
                 estadoBadge.className = 'badge bg-secondary';
             }
         }
         
-        // Información de entrega
         const tieneRecojo = pedido.fecha_recojo;
         const tieneEnvio = pedido.fecha_envio || pedido.direccion_envio;
         
@@ -1366,7 +1428,6 @@ async function mostrarDetallePedidoDesdeVenta(idPedido) {
             setText('detallePedidoFechaRecojo', 'No especificada');
         }
         
-        // Productos
         let totalProductos = 0;
         if (pedido.detalles && pedido.detalles.length > 0) {
             pedido.detalles.forEach(det => {
@@ -1384,7 +1445,6 @@ async function mostrarDetallePedidoDesdeVenta(idPedido) {
         }
         setHtml('detallePedidoProductosTotal', `S/ ${totalProductos.toFixed(2)}`);
         
-        // Abrir modal independiente
         const modalElement = document.getElementById('modalDetallePedidoVenta');
         const modal = new bootstrap.Modal(modalElement);
         modal.show();
@@ -1394,7 +1454,6 @@ async function mostrarDetallePedidoDesdeVenta(idPedido) {
         mostrarToast('Error al cargar detalles del pedido', 'danger');
     }
 }
-
 
 // ============================================
 // INICIALIZACIÓN

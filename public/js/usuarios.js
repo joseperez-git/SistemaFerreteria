@@ -47,7 +47,7 @@ function aplicarFiltros() {
             usuario.apellido.toLowerCase().includes(textoBusqueda) ||
             usuario.username.toLowerCase().includes(textoBusqueda)
         )
-        .reverse()
+        .sort((a, b) => b.id - a.id)
         .slice(0, cantidadMostrar);
     
     renderizar(usuariosFiltrados);

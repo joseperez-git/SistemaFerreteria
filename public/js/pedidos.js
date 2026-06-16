@@ -31,6 +31,17 @@ function formatearFecha(fechaISO) {
     return `${dia}/${mes}/${año}`;
 }
 
+function formatearFechaHora(fechaISO) {
+    if (!fechaISO) return '-';
+    const fecha = new Date(fechaISO);
+    const dia = fecha.getDate().toString().padStart(2, '0');
+    const mes = (fecha.getMonth() + 1).toString().padStart(2, '0');
+    const año = fecha.getFullYear();
+    const hora = fecha.getHours().toString().padStart(2, '0');
+    const minutos = fecha.getMinutes().toString().padStart(2, '0');
+    return `${dia}/${mes}/${año} ${hora}:${minutos}`;
+}
+
 // ============================================
 // LIMPIAR FORMULARIO
 // ============================================
@@ -47,7 +58,6 @@ function limpiarFormulario() {
     const dia = String(hoy.getDate()).padStart(2, '0');
     getElement('fecha_pedido').value = `${año}-${mes}-${dia}`;
     
-    // Resetear cliente
     const selectCliente = document.getElementById('id_cliente');
     if (selectCliente) selectCliente.value = '';
     const nombreCliente = document.getElementById('nombre_cliente');
@@ -55,35 +65,14 @@ function limpiarFormulario() {
     const contactoCliente = document.getElementById('contacto_cliente');
     if (contactoCliente) contactoCliente.value = '';
     
-    // Resetear tipo de entrega (por defecto recogida)
-    const radioRecojo = document.getElementById('entregaRecojo');
-    const radioEnvio = document.getElementById('entregaEnvio');
-    const seccionRecojo = document.getElementById('seccionRecojo');
-    const seccionEnvio = document.getElementById('seccionEnvio');
-    
-    if (radioRecojo) radioRecojo.checked = true;
-    if (radioEnvio) radioEnvio.checked = false;
-    if (seccionRecojo) seccionRecojo.style.display = 'block';
-    if (seccionEnvio) seccionEnvio.style.display = 'none';
-    
-    // Limpiar campos de fechas
-    document.getElementById('fecha_recojo').value = '';
-    document.getElementById('fecha_envio').value = '';
-    document.getElementById('costo_envio').value = '0';
-    document.getElementById('direccion_envio').value = '';
-    
-    // Resetear productos
     productosSeleccionados = [];
     totalPedido = 0;
     actualizarTablaProductos();
     
-    // Generar número de pedido
     const numeroPedido = getElement('numero_pedido');
     if (numeroPedido) numeroPedido.value = generarNumeroPedido();
 }
 
-
-// Generar número de pedido único
 function generarNumeroPedido() {
     const fecha = new Date();
     const año = fecha.getFullYear();
@@ -111,7 +100,7 @@ function actualizarTablaProductos() {
         
         tbody.innerHTML += `
             <tr style="font-size: 0.75rem;">
-                <td class="text-truncate" style="max-width: 180px;">${item.producto_nombre || '-'}</td>
+                <td class="text-start">${item.producto_nombre || '-'}</td>
                 <td class="text-end">S/ ${precio.toFixed(2)}</td>
                 <td class="text-center">${cantidad}</td>
                 <td class="text-end">S/ ${subtotal.toFixed(2)}</td>
@@ -177,7 +166,6 @@ async function cargarClientes() {
             });
         }
         
-        // Evento para mostrar datos del cliente al seleccionar
         if (selectCliente) {
             selectCliente.addEventListener('change', () => {
                 const selectedOption = selectCliente.options[selectCliente.selectedIndex];
@@ -324,18 +312,16 @@ function aplicarFiltros() {
     
     let pedidosFiltrados = pedidosGlobal
         .filter(pedido => {
-            // Si el filtro de estado está activo, filtrar por ese estado
             if (estadoFiltro !== '') {
                 return pedido.estado == estadoFiltro;
             }
-            // Si no hay filtro, mostrar todos (incluyendo estado 2)
             return true;
         })
         .filter(pedido => {
             return pedido.numero_pedido?.toLowerCase().includes(textoBusqueda) ||
                    pedido.cliente?.toLowerCase().includes(textoBusqueda);
         })
-        .reverse()
+        .sort((a, b) => b.id - a.id) 
         .slice(0, cantidadMostrar);
     
     renderizar(pedidosFiltrados);
@@ -357,28 +343,46 @@ function renderizar(pedidos) {
         let estadoBadge = '';
         let botonesAccion = '';
         
-        // Estado: 0 = Pendiente, 1 = Pagado, 2 = Cancelado
+        // Estados: 0=Registrado, 1=En Preparación, 2=Parcialmente Entregado, 3=Entregado, 4=Cancelado
         if (pedido.estado === 0) {
-            estadoBadge = '<span class="badge bg-warning text-dark">Pendiente</span>';
+            estadoBadge = '<span class="badge bg-warning text-dark">Registrado</span>';
+            // Vendedor solo puede cancelar (no preparar)
             botonesAccion = `
-                <button class="btn btn-sm btn-success btnConvertirVenta" data-id="${pedido.id}" data-total="${pedido.total_pedido}" title="Convertir a Venta">
-                    <i class="bi bi-cart-check"></i>
-                </button>
-                <button class="btn btn-sm btn-danger btnCancelarPedido" data-id="${pedido.id}" title="Cancelar Pedido">
+                <button class="btn btn-sm btn-danger btnCancelarPedido" data-id="${pedido.id}" title="Cancelar">
                     <i class="bi bi-x-circle"></i>
                 </button>
             `;
         } else if (pedido.estado === 1) {
-            estadoBadge = '<span class="badge bg-success">Pagado</span>';
-            botonesAccion = `
-                <button class="btn btn-sm btn-info btnVerVenta" data-id="${pedido.id}" title="Ver Venta Asociada">
-                    <i class="bi bi-receipt"></i>
-                </button>
-            `;
-        } else {
+            estadoBadge = '<span class="badge bg-info">En Preparación</span>';
+            
+            // Si es RECOJO, mostrar botón "Entregar"
+            if (pedido.tipo_entrega === 'RECOJO') {
+                botonesAccion = `
+                    <button class="btn btn-sm btn-success btnEntregarRecojo" data-id="${pedido.id}" title="Marcar como entregado">
+                        <i class="bi bi-check-circle"></i>
+                    </button>
+                    <button class="btn btn-sm btn-danger btnCancelarPedido" data-id="${pedido.id}" title="Cancelar">
+                        <i class="bi bi-x-circle"></i>
+                    </button>
+                `;
+            } else {
+                // Si es ENVIO, solo cancelar (la entrega la maneja inventario)
+                botonesAccion = `
+                    <button class="btn btn-sm btn-danger btnCancelarPedido" data-id="${pedido.id}" title="Cancelar">
+                        <i class="bi bi-x-circle"></i>
+                    </button>
+                `;
+            }
+        } else if (pedido.estado === 2) {
+            estadoBadge = '<span class="badge bg-warning">Parcialmente Entregado</span>';
+            botonesAccion = '';  // Vendedor solo ve, no modifica
+        } else if (pedido.estado === 3) {
+            estadoBadge = '<span class="badge bg-success">Entregado</span>';
+            botonesAccion = '';
+        } else if (pedido.estado === 4) {
             estadoBadge = '<span class="badge bg-secondary">Cancelado</span>';
             botonesAccion = `
-                <button class="btn btn-sm btn-warning btnReactivarPedido" data-id="${pedido.id}" title="Reactivar Pedido">
+                <button class="btn btn-sm btn-warning btnReactivarPedido" data-id="${pedido.id}" title="Reactivar">
                     <i class="bi bi-arrow-repeat"></i>
                 </button>
             `;
@@ -387,18 +391,20 @@ function renderizar(pedidos) {
         tabla.innerHTML += `
             <tr>
                 <td class="text-center">${pedido.id}</td>
-                <td><strong>${pedido.numero_pedido}</strong></td>
-                <td>${pedido.cliente || '-'}</td>
-                <td>${formatearFecha(pedido.fecha_pedido)}</td>
-                <td class="fw-bold text-primary">S/ ${parseFloat(pedido.total_pedido).toFixed(2)}</td>
-                <td>${estadoBadge}</td>
-                <td class="text-nowrap">
-                    <button class="btn btn-sm btn-warning btnVerPedido" data-id="${pedido.id}" title="Ver Detalle">
-                        <i class="bi bi-eye"></i>
-                    </button>
-                    ${botonesAccion}
+                <td class="text-start"><strong>${pedido.numero_pedido}</strong></td>
+                <td class="text-start">${pedido.cliente || '-'}</td>
+                <td class="text-center">${formatearFecha(pedido.fecha_pedido)}</td>
+                <td class="text-end fw-bold text-primary">S/ ${parseFloat(pedido.total_pedido).toFixed(2)}</td>
+                <td class="text-center">${estadoBadge}</td>
+                <td class="text-center">
+                    <div class="btn-group btn-group-sm" role="group">
+                        <button class="btn btn-sm btn-info btnVerPedido" data-id="${pedido.id}" title="Ver Detalle">
+                            <i class="bi bi-eye"></i>
+                        </button>
+                        ${botonesAccion}
+                    </div>
                 </td>
-            </tr>
+            </table>
         `;
     });
 }
@@ -424,7 +430,7 @@ async function cambiarEstado(id, estado, mensajeExito, tipoToast) {
 }
 
 // ============================================
-// MOSTRAR DETALLE DE PEDIDO
+// MOSTRAR DETALLE DE PEDIDO (ACTUALIZADO)
 // ============================================
 async function mostrarDetallePedido(id) {
     try {
@@ -435,7 +441,10 @@ async function mostrarDetallePedido(id) {
         limpiarBackdrops();
         
         const tbodyProductos = document.getElementById('detalleProductos');
+        const tbodyEntregas = document.getElementById('detalleEntregas');
+        
         if (tbodyProductos) tbodyProductos.innerHTML = '';
+        if (tbodyEntregas) tbodyEntregas.innerHTML = '';
         
         const setText = (idEl, value) => {
             const el = document.getElementById(idEl);
@@ -453,47 +462,27 @@ async function mostrarDetallePedido(id) {
         setText('detalleUsuario', pedido.usuario);
         setText('detalleObservacion', pedido.observacion);
         setHtml('detalleTotal', `S/ ${parseFloat(pedido.total_pedido).toFixed(2)}`);
+        setHtml('detalleSaldo', `S/ ${parseFloat(pedido.saldo_pendiente || 0).toFixed(2)}`);
         
-        // Estado
+        // Estado del pedido
         const estadoBadge = document.getElementById('detalleEstado');
         if (estadoBadge) {
             if (pedido.estado === 0) {
-                estadoBadge.textContent = 'Pendiente';
+                estadoBadge.textContent = 'Registrado';
                 estadoBadge.className = 'badge bg-warning text-dark';
             } else if (pedido.estado === 1) {
-                estadoBadge.textContent = 'Pagado';
+                estadoBadge.textContent = 'En Preparación';
+                estadoBadge.className = 'badge bg-info';
+            } else if (pedido.estado === 2) {
+                estadoBadge.textContent = 'Parcialmente Entregado';
+                estadoBadge.className = 'badge bg-warning';
+            } else if (pedido.estado === 3) {
+                estadoBadge.textContent = 'Entregado';
                 estadoBadge.className = 'badge bg-success';
             } else {
                 estadoBadge.textContent = 'Cancelado';
                 estadoBadge.className = 'badge bg-secondary';
             }
-        }
-        
-        // Información de entrega
-        const tieneRecojo = pedido.fecha_recojo;
-        const tieneEnvio = pedido.fecha_envio || pedido.direccion_envio;
-        
-        const seccionRecojoInfo = document.getElementById('detalleRecojoInfo');
-        const seccionEnvioInfo = document.getElementById('detalleEnvioInfo');
-        const tituloEntrega = document.getElementById('detalleTipoEntregaTitulo');
-        
-        if (tieneRecojo) {
-            if (tituloEntrega) tituloEntrega.textContent = 'Recogida en Tienda';
-            if (seccionRecojoInfo) seccionRecojoInfo.style.display = 'block';
-            if (seccionEnvioInfo) seccionEnvioInfo.style.display = 'none';
-            setText('detalleFechaRecojo', formatearFecha(pedido.fecha_recojo));
-        } else if (tieneEnvio) {
-            if (tituloEntrega) tituloEntrega.textContent = 'Envío a Domicilio';
-            if (seccionRecojoInfo) seccionRecojoInfo.style.display = 'none';
-            if (seccionEnvioInfo) seccionEnvioInfo.style.display = 'block';
-            setText('detalleFechaEnvio', formatearFecha(pedido.fecha_envio));
-            setText('detalleDireccionEnvio', pedido.direccion_envio);
-            setHtml('detalleCostoEnvio', `S/ ${parseFloat(pedido.costo_envio || 0).toFixed(2)}`);
-        } else {
-            if (tituloEntrega) tituloEntrega.textContent = 'Información de Entrega';
-            if (seccionRecojoInfo) seccionRecojoInfo.style.display = 'block';
-            if (seccionEnvioInfo) seccionEnvioInfo.style.display = 'none';
-            setText('detalleFechaRecojo', 'No especificada');
         }
         
         // Productos
@@ -502,17 +491,59 @@ async function mostrarDetallePedido(id) {
             pedido.detalles.forEach(det => {
                 const subtotal = det.precio_unitario * det.cantidad;
                 totalProductos += subtotal;
+                const entregado = det.cantidad_entregada || 0;
+                
                 tbodyProductos.innerHTML += `
                     <tr class="small">
-                        <td>${det.producto || '-'}</td>
+                        <td class="text-start">${det.producto || '-'}</td>
                         <td class="text-end">S/ ${parseFloat(det.precio_unitario).toFixed(2)}</td>
                         <td class="text-center">${det.cantidad}</td>
+                        <td class="text-center">
+                            ${entregado > 0 
+                                ? `<span class="text-success fw-bold">${entregado}</span>`
+                                : '<span class="text-muted">0</span>'}
+                        </td>
                         <td class="text-end">S/ ${subtotal.toFixed(2)}</td>
                     </tr>
                 `;
             });
         }
         setHtml('detalleProductosTotal', `S/ ${totalProductos.toFixed(2)}`);
+        
+        // ============================================
+        // HISTORIAL DE ENTREGAS - CORREGIDO
+        // Solo mostrar entregas de tipo ENVIO
+        // ============================================
+        const entregasSection = document.getElementById('detalleEntregasSection');
+        if (pedido.entregas && pedido.entregas.length > 0) {
+            // Verificar si hay al menos una entrega de tipo ENVIO
+            const entregasEnvio = pedido.entregas.filter(e => e.tipo_entrega === 'ENVIO');
+            
+            if (entregasEnvio.length > 0) {
+                entregasSection.style.display = 'block';
+                entregasEnvio.forEach(entrega => {
+                    let estadoEntregaBadge = '';
+                    if (entrega.estado === 0) estadoEntregaBadge = '<span class="badge bg-warning text-dark">Pendiente</span>';
+                    else if (entrega.estado === 1) estadoEntregaBadge = '<span class="badge bg-info">En Camino</span>';
+                    else if (entrega.estado === 2) estadoEntregaBadge = '<span class="badge bg-success">Entregado</span>';
+                    else estadoEntregaBadge = '<span class="badge bg-danger">Fallido</span>';
+                    
+                    tbodyEntregas.innerHTML += `
+                        <tr class="small">
+                            <td class="text-center">${formatearFechaHora(entrega.fecha_creacion)}</td>
+                            <td class="text-center">Envío a domicilio</td>
+                            <td class="text-start">${entrega.direccion_entrega || '-'}</td>
+                            <td class="text-end">${parseFloat(entrega.costo_entrega || 0).toFixed(2)}</td>
+                            <td class="text-center">${estadoEntregaBadge}</td>
+                        </tr>
+                    `;
+                });
+            } else {
+                entregasSection.style.display = 'none';
+            }
+        } else {
+            entregasSection.style.display = 'none';
+        }
         
         const modal = new bootstrap.Modal(document.getElementById('modalDetallePedido'));
         modal.show();
@@ -536,21 +567,11 @@ function setupGuardarPedido() {
         const numero_pedido = getElement('numero_pedido')?.value.trim();
         const id_cliente = document.getElementById('id_cliente')?.value;
         const observacion = getElement('observacion')?.value;
-        
-        // Obtener datos según tipo de entrega
-        const tipoEntrega = document.getElementById('entregaRecojo').checked ? 'recojo' : 'envio';
-        let fecha_recojo = null;
-        let fecha_envio = null;
-        let direccion_envio = null;
-        let costo_envio = 0;
-        
-        if (tipoEntrega === 'recojo') {
-            fecha_recojo = document.getElementById('fecha_recojo')?.value || null;
-        } else {
-            fecha_envio = document.getElementById('fecha_envio')?.value || null;
-            direccion_envio = document.getElementById('direccion_envio')?.value.trim() || null;
-            costo_envio = parseFloat(document.getElementById('costo_envio')?.value) || 0;
-        }
+
+        const tipo_entrega = document.querySelector('input[name="tipo_entrega"]:checked')?.value;
+        const direccion_entrega = document.getElementById('direccion_entrega')?.value;
+        const costo_entrega = parseFloat(document.getElementById('costo_entrega')?.value) || 0;
+        const fecha_programada = document.getElementById('fecha_programada')?.value;
         
         if (!numero_pedido) {
             mostrarToast('Número de pedido obligatorio', 'warning');
@@ -565,12 +586,6 @@ function setupGuardarPedido() {
             return;
         }
         
-        // Validar dirección de envío si se eligió envío
-        if (tipoEntrega === 'envio' && !direccion_envio) {
-            mostrarToast('Ingrese la dirección de envío', 'warning');
-            return;
-        }
-        
         try {
             const response = await fetch(id ? `/api/pedidos/${id}` : '/api/pedidos', {
                 method: id ? 'PUT' : 'POST',
@@ -580,11 +595,11 @@ function setupGuardarPedido() {
                     id_cliente: parseInt(id_cliente),
                     total_pedido: totalPedido,
                     observacion,
-                    fecha_recojo,
-                    fecha_envio,
-                    direccion_envio,
-                    costo_envio,
-                    productos: productosSeleccionados
+                    productos: productosSeleccionados,
+                    tipo_entrega,
+                    direccion_entrega,
+                    costo_entrega,
+                    fecha_programada
                 })
             });
             
@@ -602,7 +617,6 @@ function setupGuardarPedido() {
         }
     };
 }
-
 
 // ============================================
 // NUEVO PEDIDO
@@ -630,22 +644,38 @@ function setupEventListeners() {
     document.body.addEventListener('click', async (e) => {
         if (!isCurrentPage()) return;
         
-        // Ver detalle de pedido
         const btnVer = e.target.closest('.btnVerPedido');
         if (btnVer) {
             mostrarDetallePedido(parseInt(btnVer.dataset.id));
             return;
         }
-        
-        // Cancelar pedido (solo para pendientes)
-        const btnCancelar = e.target.closest('.btnCancelarPedido');
-        if (btnCancelar) {
-            const id = parseInt(btnCancelar.dataset.id);
-            mostrarModalConfirmacionProfesional('Cancelar Pedido', '¿Desea cancelar este pedido? Se liberará el stock reservado.', () => cambiarEstado(id, 2, 'Pedido cancelado', 'warning'), 'warning');
+
+        const btnEntregarRecojo = e.target.closest('.btnEntregarRecojo');
+        if (btnEntregarRecojo) {
+            const id = parseInt(btnEntregarRecojo.dataset.id);
+            mostrarModalConfirmacionProfesional(
+                'Entregar Pedido', 
+                '¿Desea marcar este pedido como entregado? El cliente ha recogido el pedido.', 
+                () => cambiarEstado(id, 3, 'Pedido marcado como entregado', 'success'), 
+                'success'
+            );
             return;
         }
         
-        // Reactivar pedido (solo para cancelados)
+        const btnPreparar = e.target.closest('.btnPreparar');
+        if (btnPreparar) {
+            const id = parseInt(btnPreparar.dataset.id);
+            mostrarModalConfirmacionProfesional('Marcar en Preparación', '¿Desea marcar este pedido como "En Preparación"?', () => cambiarEstado(id, 1, 'Pedido marcado como "En Preparación"', 'success'), 'success');
+            return;
+        }
+        
+        const btnCancelar = e.target.closest('.btnCancelarPedido');
+        if (btnCancelar) {
+            const id = parseInt(btnCancelar.dataset.id);
+            mostrarModalConfirmacionProfesional('Cancelar Pedido', '¿Desea cancelar este pedido? Se liberará el stock reservado.', () => cambiarEstado(id, 4, 'Pedido cancelado', 'warning'), 'warning');
+            return;
+        }
+        
         const btnReactivar = e.target.closest('.btnReactivarPedido');
         if (btnReactivar) {
             const id = parseInt(btnReactivar.dataset.id);
@@ -653,145 +683,33 @@ function setupEventListeners() {
             return;
         }
         
-        // Ver venta asociada
-        const btnVerVenta = e.target.closest('.btnVerVenta');
-        if (btnVerVenta) {
-            const id = parseInt(btnVerVenta.dataset.id);
-            await verVentaAsociada(id);
-            return;
-        }
-        
-        // Convertir a venta
-        const btnConvertir = e.target.closest('.btnConvertirVenta');
-        if (btnConvertir) {
-            const id = parseInt(btnConvertir.dataset.id);
-            const total = parseFloat(btnConvertir.dataset.total);
-            await abrirModalConvertirVenta(id, total);
+        const btnLimpiarCliente = document.getElementById('btnLimpiarCliente');
+        if (btnLimpiarCliente && e.target === btnLimpiarCliente) {
+            const selectCliente = document.getElementById('id_cliente');
+            const nombreCliente = document.getElementById('nombre_cliente');
+            const contactoCliente = document.getElementById('contacto_cliente');
+            if (selectCliente) selectCliente.value = '';
+            if (nombreCliente) nombreCliente.value = '';
+            if (contactoCliente) contactoCliente.value = '';
             return;
         }
     });
 }
 
 
-// VER VENTA ASOCIADA
-async function verVentaAsociada(idPedido) {
-    try {
-        const response = await fetch(`/api/pedidos/${idPedido}/venta`);
-        if (!response.ok) throw new Error('Error al obtener venta');
-        const venta = await response.json();
-        
-        if (!venta) {
-            mostrarToast('No hay una venta asociada a este pedido', 'warning');
-            return;
-        }
-        
-        // Redirigir al módulo de ventas o mostrar modal
-        mostrarToast(`Venta N°: ${venta.numero_nota_venta} - Total: S/ ${venta.total_venta}`, 'info');
-        
-    } catch (error) {
-        mostrarToast(error.message, 'danger');
-    }
-}
-
-
-// CONVERTIR A VENTA
-async function abrirModalConvertirVenta(idPedido, totalPedido) {
-    // Configurar valores
-    document.getElementById('totalPedidoConvertir').value = totalPedido.toFixed(2);
-    document.getElementById('montoPagoConvertir').value = totalPedido;
-    document.getElementById('montoPagoConvertir').max = totalPedido;
-    document.getElementById('metodoPagoConvertir').value = '';
-    
-    // Guardar ID del pedido
-    const modalElement = document.getElementById('modalConvertirVenta');
-    modalElement.dataset.idPedido = idPedido;
-    
-    const modal = new bootstrap.Modal(modalElement);
-    modal.show();
-}
-
-
-//Confirmar conversión a venta
-async function confirmarConvertirVenta() {
-    console.log('Botón confirmar clickeado'); // Para depuración
-    
-    const modalElement = document.getElementById('modalConvertirVenta');
-    const idPedido = modalElement?.dataset.idPedido;
-    const montoPago = parseFloat(document.getElementById('montoPagoConvertir')?.value) || 0;
-    const metodoPago = document.getElementById('metodoPagoConvertir')?.value;
-    
-    console.log('Datos:', { idPedido, montoPago, metodoPago });
-    
-    if (!idPedido) {
-        mostrarToast('Error: No se identificó el pedido', 'danger');
-        return;
-    }
-    
-    if (!metodoPago) {
-        mostrarToast('Seleccione un método de pago', 'warning');
-        return;
-    }
-    
-    if (montoPago <= 0) {
-        mostrarToast('Ingrese un monto válido', 'warning');
-        return;
-    }
-    
-    try {
-        const response = await fetch(`/api/pedidos/${idPedido}/convertir-venta`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                monto_pago: montoPago,
-                metodo_pago: metodoPago
-            })
-        });
-        
-        const data = await response.json();
-        if (!response.ok) throw new Error(data.error);
-        
-        mostrarToast(`Pedido convertido a venta exitosamente`, 'success');
-        
-        const modal = bootstrap.Modal.getInstance(modalElement);
-        if (modal) modal.hide();
-        
-        await cargarPedidos();
-        
-    } catch (error) {
-        console.error('Error:', error);
-        mostrarToast(error.message, 'danger');
-    }
-}
-
-
-// ============================================
-// CONFIGURAR TIPO DE ENTREGA (RECOJO vs ENVIO)
-// ============================================
+// Tipo de entrega
 function setupTipoEntrega() {
-    const radioRecojo = document.getElementById('entregaRecojo');
-    const radioEnvio = document.getElementById('entregaEnvio');
-    const seccionRecojo = document.getElementById('seccionRecojo');
-    const seccionEnvio = document.getElementById('seccionEnvio');
+    const tipoRecojo = document.getElementById('tipoRecojo');
+    const tipoEnvio = document.getElementById('tipoEnvio');
+    const envioFields = document.getElementById('envioFields');
     
-    if (radioRecojo && radioEnvio) {
-        radioRecojo.addEventListener('change', () => {
-            if (radioRecojo.checked) {
-                seccionRecojo.style.display = 'block';
-                seccionEnvio.style.display = 'none';
-                // Limpiar campos de envío
-                document.getElementById('fecha_envio').value = '';
-                document.getElementById('costo_envio').value = '0';
-                document.getElementById('direccion_envio').value = '';
-            }
+    if (tipoRecojo && tipoEnvio && envioFields) {
+        tipoRecojo.addEventListener('change', () => {
+            envioFields.style.display = 'none';
         });
         
-        radioEnvio.addEventListener('change', () => {
-            if (radioEnvio.checked) {
-                seccionRecojo.style.display = 'none';
-                seccionEnvio.style.display = 'block';
-                // Limpiar campo de recogida
-                document.getElementById('fecha_recojo').value = '';
-            }
+        tipoEnvio.addEventListener('change', () => {
+            envioFields.style.display = 'block';
         });
     }
 }
@@ -821,17 +739,9 @@ export async function init() {
     const buscarInput = getElement('buscarPedido');
     const filtroCantidad = getElement('filtroCantidad');
     const filtroEstado = getElement('filtroEstado');
-    const btnConfirmarConvertir = document.getElementById('btnConfirmarConvertir');
-
     if (buscarInput) buscarInput.addEventListener('input', () => aplicarFiltros());
     if (filtroCantidad) filtroCantidad.addEventListener('change', () => aplicarFiltros());
     if (filtroEstado) filtroEstado.addEventListener('change', () => aplicarFiltros());
-    if (btnConfirmarConvertir) {
-        // Remover eventos anteriores
-        const newBtn = btnConfirmarConvertir.cloneNode(true);
-        btnConfirmarConvertir.parentNode.replaceChild(newBtn, btnConfirmarConvertir);
-        newBtn.addEventListener('click', confirmarConvertirVenta);
-    }
     
     await cargarClientes();
     await cargarProductos();
@@ -847,5 +757,7 @@ export function destroy() {
     productosSeleccionados = [];
     totalPedido = 0;
 }
+
+export { mostrarDetallePedido };
 
 

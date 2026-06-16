@@ -32,8 +32,9 @@
                 <label class="form-label text-muted small">Estado</label>
                 <select id="filtroEstado" class="form-select">
                     <option value="">Todos</option>
-                    <option value="1">Activas</option>
-                    <option value="0">Anuladas</option>
+                    <option value="0">Pago Parcial</option>
+                    <option value="1">Pagadas</option>
+                    <option value="2">Anuladas</option>
                 </select>
             </div>
         </div>
@@ -358,13 +359,13 @@
                                 <span class="text-muted">Total:</span>
                                 <span class="fw-bold text-primary" id="detalleTotal">S/ 0.00</span>
                             </div>
-                            <div id="detalleDeudaRow" style="display: none;" class="d-flex justify-content-between small mt-1">
-                                <span class="text-muted">Deuda:</span>
-                                <span class="fw-bold text-warning" id="detalleDeuda">S/ 0.00</span>
+                            <div id="detalleSaldoRow" style="display: none;" class="d-flex justify-content-between small mt-1">
+                                <span class="text-muted">Saldo Pendiente:</span>
+                                <span class="fw-bold text-warning" id="detalleSaldo">S/ 0.00</span>
                             </div>
                             <div class="d-flex justify-content-between small mt-1">
                                 <span class="text-muted">Estado:</span>
-                                <span id="detalleEstado" class="badge bg-success">Activa</span>
+                                <span id="detalleEstado" class="badge bg-success">Pagada</span>
                             </div>
                             <div class="d-flex justify-content-between small mt-1" id="detalleOrigenRow" style="display: none;">
                                 <span class="text-muted">Origen:</span>
@@ -519,7 +520,6 @@
                     </div>
                 </div>
 
-                <!-- PAGO ADICIONAL -->
                 <div id="detallePagoAdicionalRow" style="display: none;" class="mt-2">
                     <hr>
                     <div class="row g-2">
@@ -621,7 +621,6 @@
                     </div>
                 </div>
                 
-                <!-- Información de Entrega -->
                 <div id="detallePedidoEntregaSection" class="card border-0 shadow-sm mb-2">
                     <div class="card-header bg-white border-0 pt-1 pb-0">
                         <h6 class="fw-bold mb-0 small" id="detallePedidoTipoEntregaTitulo">Información de Entrega</h6>
@@ -654,7 +653,6 @@
                     </div>
                 </div>
                 
-                <!-- Productos -->
                 <div class="card border-0 shadow-sm mb-2">
                     <div class="card-header bg-white border-0 pt-1 pb-0">
                         <h6 class="fw-bold mb-0 small">Productos</h6>
@@ -689,6 +687,5 @@
         </div>
     </div>
 </div>
-
 
 
