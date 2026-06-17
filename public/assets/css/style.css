@@ -1100,5 +1100,44 @@ button:disabled {
 }
 
 
+/* ============================================
+   CARDS DE PEDIDOS Y STOCK
+   ============================================ */
+
+/* Efecto hover en cards */
+#ultimosPedidosContainer .card:hover,
+#stockCriticoContainer .card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08) !important;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* Badge de estado */
+#ultimosPedidosContainer .card .badge {
+    font-size: 0.7rem;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-weight: 500;
+}
+
+/* Fecha y estado en el pie de la card */
+#ultimosPedidosContainer .card .border-top {
+    border-color: #f1f5f9 !important;
+}
+
+#ultimosPedidosContainer .card .border-top small {
+    font-size: 0.75rem;
+}
+
+/* Responsive */
+@media (max-width: 576px) {
+    #ultimosPedidosContainer .card-body,
+    #stockCriticoContainer .card-body {
+        padding: 12px !important;
+    }
+    #ultimosPedidosContainer .card .fw-bold {
+        font-size: 0.85rem !important;
+    }
+}
 
 

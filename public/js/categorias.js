@@ -8,29 +8,7 @@ let eventosInicializados = false;
 let elementos = {};
 let confirmacionCallback = null;
 
-// ==================== INICIALIZAR TOOLTIPS ====================
-function inicializarTooltips() {
-    setTimeout(function() {
-        const existingTooltips = document.querySelectorAll('.tooltip');
-        existingTooltips.forEach(tooltip => tooltip.remove());
-        
-        const elementsWithTooltip = document.querySelectorAll('[data-bs-toggle="tooltip"]');
-        elementsWithTooltip.forEach(el => {
-            if (el._tooltip) {
-                el._tooltip.dispose();
-            }
-        });
-        
-        const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-        tooltipTriggerList.forEach(function (tooltipTriggerEl) {
-            new bootstrap.Tooltip(tooltipTriggerEl, {
-                placement: 'top',
-                trigger: 'hover',
-                delay: { show: 300, hide: 100 }
-            });
-        });
-    }, 50);
-}
+
 
 // ==================== RENDERIZAR BOTONES DE ACCIÓN (DINÁMICOS) ====================
 function renderizarBotonesAccion() {
@@ -41,14 +19,10 @@ function renderizarBotonesAccion() {
     const esAdminSesion = sesion?.usuario?.id_perfil === PERFIL_ADMIN_ID;
     
     if (!esAdminSesion) {
-        contenedor.innerHTML = `
-            <span data-bs-toggle="tooltip" data-bs-title="Solo administradores pueden crear categorías">
-                <button class="btn btn-primary" disabled style="pointer-events: none;">
-                    <i class="bi bi-plus-circle"></i> Nueva Categoría
-                </button>
-            </span>
-        `;
+        // Usuario no admin - OCULTAR botón
+        contenedor.innerHTML = '';
     } else {
+        // Usuario admin - mostrar botón
         contenedor.innerHTML = `
             <button class="btn btn-primary" id="btnNuevaCategoriaPrincipal">
                 <i class="bi bi-plus-circle"></i> Nueva Categoría
@@ -74,9 +48,8 @@ function renderizarBotonesAccion() {
             });
         }
     }
-    
-    inicializarTooltips();
 }
+
 
 // ==================== FUNCIONES DE UTILIDAD ====================
 function isCurrentPage() {
@@ -132,6 +105,8 @@ function aplicarFiltros() {
     renderizar(categoriasFiltradas);
 }
 
+
+// Renderizar
 function renderizar(categorias) {
     const tabla = getElement('tablaCategorias');
     if (!tabla) return;
@@ -146,25 +121,72 @@ function renderizar(categorias) {
     const sesion = JSON.parse(localStorage.getItem('sesion') || '{}');
     const esAdminSesion = sesion?.usuario?.id_perfil === PERFIL_ADMIN_ID;
     
+    // ==========================================
+    // DETERMINAR SI HAY ALGÚN BOTÓN VISIBLE
+    // ==========================================
+    let hayBotonesVisibles = false;
+    
     categorias.forEach(categoria => {
-        // ==========================================
-        // PERMISOS Y TOOLTIPS INDIVIDUALES
-        // ==========================================
-        const editarDeshabilitado = !esAdminSesion;
-        const desactivarDeshabilitado = !esAdminSesion;
-        const activarDeshabilitado = !esAdminSesion;
-        const eliminarDeshabilitado = !esAdminSesion;
+        const editarVisible = esAdminSesion;
+        const desactivarVisible = esAdminSesion;
+        const activarVisible = esAdminSesion;
+        const eliminarVisible = esAdminSesion;
         
-        let tooltipEditar = '';
-        let tooltipDesactivar = '';
-        let tooltipActivar = '';
-        let tooltipEliminar = '';
+        if (editarVisible || desactivarVisible || activarVisible || eliminarVisible) {
+            hayBotonesVisibles = true;
+        }
+    });
+    
+    // ==========================================
+    // RENDERIZAR FILAS
+    // ==========================================
+    categorias.forEach(categoria => {
+        // Lógica para OCULTAR botones
+        const editarVisible = esAdminSesion;
+        const desactivarVisible = esAdminSesion;
+        const activarVisible = esAdminSesion;
+        const eliminarVisible = esAdminSesion;
         
-        if (!esAdminSesion) {
-            tooltipEditar = 'Solo administradores pueden editar categorías';
-            tooltipDesactivar = 'Solo administradores pueden desactivar categorías';
-            tooltipActivar = 'Solo administradores pueden activar categorías';
-            tooltipEliminar = 'Solo administradores pueden eliminar categorías';
+        // Construir columna de acciones
+        let accionesHtml = '';
+        
+        if (editarVisible) {
+            accionesHtml += `
+                <button class="btn btn-sm btn-warning btnEditarCategoria" data-id="${categoria.id}">
+                    <i class="bi bi-pencil-square"></i>
+                </button>
+            `;
+        }
+        
+        if (categoria.estado === 1) {
+            if (desactivarVisible) {
+                accionesHtml += `
+                    <button class="btn btn-sm btn-secondary btnDesactivarCategoria" data-id="${categoria.id}">
+                        <i class="bi bi-slash-circle"></i>
+                    </button>
+                `;
+            }
+        } else {
+            if (activarVisible) {
+                accionesHtml += `
+                    <button class="btn btn-sm btn-success btnActivarCategoria" data-id="${categoria.id}">
+                        <i class="bi bi-check-circle"></i>
+                    </button>
+                `;
+            }
+        }
+        
+        if (eliminarVisible) {
+            accionesHtml += `
+                <button class="btn btn-sm btn-danger btnEliminarCategoria" data-id="${categoria.id}">
+                    <i class="bi bi-trash"></i>
+                </button>
+            `;
+        }
+        
+        // Si no hay botones visibles, mostrar mensaje
+        if (!accionesHtml) {
+            accionesHtml = `<span class="text-muted small">Sin acciones</span>`;
         }
         
         tabla.innerHTML += `
@@ -179,40 +201,51 @@ function renderizar(categorias) {
                     }
                 </td>
                 <td class="text-center">${categoria.fecha_creacion || '-'}</td>
-                <td class="text-center">
-                    <button class="btn btn-sm btn-warning btnEditarCategoria" 
-                            data-id="${categoria.id}"
-                            ${editarDeshabilitado ? 'disabled' : ''}
-                            ${tooltipEditar ? `title="${tooltipEditar}" data-bs-toggle="tooltip"` : ''}>
-                        <i class="bi bi-pencil-square"></i>
-                    </button>
-                    ${categoria.estado === 1 
-                        ? `<button class="btn btn-sm btn-secondary btnDesactivarCategoria" 
-                                   data-id="${categoria.id}"
-                                   ${desactivarDeshabilitado ? 'disabled' : ''}
-                                   ${tooltipDesactivar ? `title="${tooltipDesactivar}" data-bs-toggle="tooltip"` : ''}>
-                            <i class="bi bi-slash-circle"></i>
-                           </button>`
-                        : `<button class="btn btn-sm btn-success btnActivarCategoria" 
-                                   data-id="${categoria.id}"
-                                   ${activarDeshabilitado ? 'disabled' : ''}
-                                   ${tooltipActivar ? `title="${tooltipActivar}" data-bs-toggle="tooltip"` : ''}>
-                            <i class="bi bi-check-circle"></i>
-                           </button>`
-                    }
-                    <button class="btn btn-sm btn-danger btnEliminarCategoria" 
-                            data-id="${categoria.id}"
-                            ${eliminarDeshabilitado ? 'disabled' : ''}
-                            ${tooltipEliminar ? `title="${tooltipEliminar}" data-bs-toggle="tooltip"` : ''}>
-                        <i class="bi bi-trash"></i>
-                    </button>
-                </td>
+                <td class="text-center">${accionesHtml}</td>
             </tr>
         `;
     });
     
-    inicializarTooltips();
+    // ==========================================
+    // OCULTAR COLUMNA DE ACCIONES SI NO HAY BOTONES
+    // ==========================================
+    const table = tabla.closest('table');
+    if (table) {
+        const thead = table.querySelector('thead tr');
+        const allRows = table.querySelectorAll('tbody tr');
+        
+        if (!hayBotonesVisibles) {
+            // Ocultar la columna de acciones (índice 5)
+            if (thead) {
+                const ths = thead.querySelectorAll('th');
+                if (ths.length > 5) {
+                    ths[5].style.display = 'none';
+                }
+            }
+            allRows.forEach(row => {
+                const tds = row.querySelectorAll('td');
+                if (tds.length > 5) {
+                    tds[5].style.display = 'none';
+                }
+            });
+        } else {
+            // Mostrar la columna de acciones
+            if (thead) {
+                const ths = thead.querySelectorAll('th');
+                if (ths.length > 5) {
+                    ths[5].style.display = '';
+                }
+            }
+            allRows.forEach(row => {
+                const tds = row.querySelectorAll('td');
+                if (tds.length > 5) {
+                    tds[5].style.display = '';
+                }
+            });
+        }
+    }
 }
+
 
 // ==================== CARGA DE DATOS ====================
 async function cargarCategorias() {

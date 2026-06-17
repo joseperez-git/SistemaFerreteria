@@ -22,23 +22,6 @@ function validarNombrePerfilFrontend(event) {
 }
 
 
-// INICIALIZAR TOOLTIPS 
-function inicializarTooltips() {
-    setTimeout(function() {
-        const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-        tooltipTriggerList.forEach(function(tooltipTriggerEl) {
-            if (tooltipTriggerEl._tooltip) {
-                tooltipTriggerEl._tooltip.dispose();
-            }
-            new bootstrap.Tooltip(tooltipTriggerEl, {
-                placement: 'top',
-                trigger: 'hover',
-                delay: { show: 300, hide: 100 }
-            });
-        });
-    }, 100);
-}
-
 
 // ==================== RENDERIZAR BOTONES DE ACCIÓN (DINÁMICOS) ====================
 function renderizarBotonesAccion() {
@@ -49,20 +32,10 @@ function renderizarBotonesAccion() {
     const esAdminSesion = sesion?.usuario?.id_perfil === PERFIL_ADMIN_ID;
     
     if (!esAdminSesion) {
-        // Usuario no admin - botón deshabilitado con tooltip en span wrapper
-        contenedor.innerHTML = `
-            <span data-bs-toggle="tooltip" data-bs-title="Solo administradores pueden crear perfiles">
-                <button class="btn btn-primary" 
-                        data-bs-toggle="modal" 
-                        data-bs-target="#modalPerfil" 
-                        disabled
-                        style="pointer-events: none;">
-                    <i class="bi bi-plus-circle"></i> Nuevo Perfil
-                </button>
-            </span>
-        `;
+        // Usuario no admin - OCULTAR botón
+        contenedor.innerHTML = '';
     } else {
-        // Usuario admin - botón habilitado sin tooltip
+        // Usuario admin - mostrar botón
         contenedor.innerHTML = `
             <button class="btn btn-primary" 
                     data-bs-toggle="modal" 
@@ -71,8 +44,6 @@ function renderizarBotonesAccion() {
             </button>
         `;
     }
-    
-    inicializarTooltips();
 }
 
 
@@ -135,6 +106,7 @@ function aplicarFiltros() {
 }
 
 
+// Renderizar
 function renderizar(perfiles) {
     const tabla = getElement('tablaPerfiles');
     if (!tabla) return;
@@ -146,24 +118,90 @@ function renderizar(perfiles) {
         return;
     }
     
-    // Obtener usuario en sesión
     const sesion = JSON.parse(localStorage.getItem('sesion') || '{}');
     const esAdminSesion = sesion?.usuario?.id_perfil === PERFIL_ADMIN_ID;
     
+    // ==========================================
+    // DETERMINAR SI HAY ALGÚN BOTÓN VISIBLE
+    // ==========================================
+    let hayBotonesVisibles = false;
+    
+    perfiles.forEach(perfil => {
+        const esPerfilAdmin = perfil.id === PERFIL_ADMIN_ID;
+        const esAdminObjetivo = perfil.id === PERFIL_ADMIN_ID;
+        
+        const editarVisible = esAdminSesion && !esPerfilAdmin;
+        const permisosVisible = esAdminSesion;
+        const desactivarVisible = esAdminSesion && !esPerfilAdmin;
+        const eliminarVisible = esAdminSesion && !esPerfilAdmin;
+        
+        if (editarVisible || permisosVisible || desactivarVisible || eliminarVisible) {
+            hayBotonesVisibles = true;
+        }
+    });
+    
+    // ==========================================
+    // RENDERIZAR FILAS
+    // ==========================================
     perfiles.forEach(perfil => {
         const esPerfilAdmin = perfil.id === PERFIL_ADMIN_ID;
         
-        // Determinar qué botones están deshabilitados
-        const editarDeshabilitado = !esAdminSesion || esPerfilAdmin;
-        const permisosDeshabilitado = !esAdminSesion;
-        const desactivarDeshabilitado = !esAdminSesion || esPerfilAdmin;
-        const eliminarDeshabilitado = !esAdminSesion || esPerfilAdmin;
+        // Lógica para OCULTAR botones
+        const editarVisible = esAdminSesion && !esPerfilAdmin;
+        const permisosVisible = esAdminSesion;
+        const desactivarVisible = esAdminSesion && !esPerfilAdmin;
+        const eliminarVisible = esAdminSesion && !esPerfilAdmin;
+        const activarVisible = esAdminSesion;
         
-        // Textos para tooltips
-        const tooltipEditar = !esAdminSesion ? 'Solo administradores pueden editar perfiles' : 'No se puede editar el perfil Administrador';
-        const tooltipPermisos = !esAdminSesion ? 'Solo administradores pueden gestionar permisos' : '';
-        const tooltipDesactivar = !esAdminSesion ? 'Solo administradores pueden desactivar perfiles' : 'No se puede desactivar el perfil Administrador';
-        const tooltipEliminar = !esAdminSesion ? 'Solo administradores pueden eliminar perfiles' : 'No se puede eliminar el perfil Administrador';
+        // Construir columna de acciones
+        let accionesHtml = '';
+        
+        if (editarVisible) {
+            accionesHtml += `
+                <button class="btn btn-sm btn-warning btnEditarPerfil" data-id="${perfil.id}">
+                    <i class="bi bi-pencil-square"></i>
+                </button>
+            `;
+        }
+        
+        if (permisosVisible) {
+            accionesHtml += `
+                <button class="btn btn-sm btn-permisos btnPermisos" data-id="${perfil.id}">
+                    <i class="bi bi-shield-lock"></i>
+                </button>
+            `;
+        }
+        
+        if (perfil.estado === 1) {
+            if (desactivarVisible) {
+                accionesHtml += `
+                    <button class="btn btn-sm btn-secondary btnDesactivarPerfil" data-id="${perfil.id}">
+                        <i class="bi bi-slash-circle"></i>
+                    </button>
+                `;
+            }
+        } else {
+            if (activarVisible) {
+                accionesHtml += `
+                    <button class="btn btn-sm btn-success btnActivarPerfil" data-id="${perfil.id}">
+                        <i class="bi bi-check-circle"></i>
+                    </button>
+                `;
+            }
+        }
+        
+        if (eliminarVisible) {
+            accionesHtml += `
+                <button class="btn btn-sm btn-danger btnEliminarPerfil" data-id="${perfil.id}">
+                    <i class="bi bi-trash"></i>
+                </button>
+            `;
+        }
+        
+        // Si no hay botones visibles, mostrar mensaje
+        if (!accionesHtml) {
+            accionesHtml = `<span class="text-muted small">Sin acciones</span>`;
+        }
         
         tabla.innerHTML += `
             <tr>
@@ -173,44 +211,50 @@ function renderizar(perfiles) {
                 <td class="text-center">${perfil.estado === 1 ? '<span class="badge bg-success">Activo</span>' : '<span class="badge bg-secondary">Inactivo</span>'}</td>
                 <td class="text-center">${perfil.fecha_creacion || '-'}</td>
                 <td class="text-nowrap text-center">
-                    <div class="d-flex gap-1 justify-content-center">
-                        <button class="btn btn-sm btn-warning btnEditarPerfil" 
-                                data-id="${perfil.id}"
-                                ${editarDeshabilitado ? 'disabled' : ''}
-                                ${editarDeshabilitado ? `title="${tooltipEditar}" data-bs-toggle="tooltip"` : ''}>
-                            <i class="bi bi-pencil-square"></i>
-                        </button>
-                        <button class="btn btn-sm btn-permisos btnPermisos" 
-                                data-id="${perfil.id}"
-                                ${permisosDeshabilitado ? 'disabled' : ''}
-                                ${permisosDeshabilitado ? `title="${tooltipPermisos}" data-bs-toggle="tooltip"` : ''}>
-                            <i class="bi bi-shield-lock"></i>
-                        </button>
-                        ${perfil.estado === 1 
-                            ? `<button class="btn btn-sm btn-secondary btnDesactivarPerfil" 
-                                       data-id="${perfil.id}"
-                                       ${desactivarDeshabilitado ? 'disabled' : ''}
-                                       ${desactivarDeshabilitado ? `title="${tooltipDesactivar}" data-bs-toggle="tooltip"` : ''}>
-                                    <i class="bi bi-slash-circle"></i>
-                                </button>`
-                            : `<button class="btn btn-sm btn-success btnActivarPerfil" 
-                                       data-id="${perfil.id}">
-                                    <i class="bi bi-check-circle"></i>
-                                </button>`
-                        }
-                        <button class="btn btn-sm btn-danger btnEliminarPerfil" 
-                                data-id="${perfil.id}"
-                                ${eliminarDeshabilitado ? 'disabled' : ''}
-                                ${eliminarDeshabilitado ? `title="${tooltipEliminar}" data-bs-toggle="tooltip"` : ''}>
-                            <i class="bi bi-trash"></i>
-                        </button>
-                    </div>
+                    <div class="d-flex gap-1 justify-content-center">${accionesHtml}</div>
                 </td>
             </tr>
         `;
     });
     
-    inicializarTooltips();
+    // ==========================================
+    // OCULTAR COLUMNA DE ACCIONES SI NO HAY BOTONES
+    // ==========================================
+    const table = tabla.closest('table');
+    if (table) {
+        const thead = table.querySelector('thead tr');
+        const allRows = table.querySelectorAll('tbody tr');
+        
+        if (!hayBotonesVisibles) {
+            // Ocultar la columna de acciones (índice 5)
+            if (thead) {
+                const ths = thead.querySelectorAll('th');
+                if (ths.length > 5) {
+                    ths[5].style.display = 'none';
+                }
+            }
+            allRows.forEach(row => {
+                const tds = row.querySelectorAll('td');
+                if (tds.length > 5) {
+                    tds[5].style.display = 'none';
+                }
+            });
+        } else {
+            // Mostrar la columna de acciones
+            if (thead) {
+                const ths = thead.querySelectorAll('th');
+                if (ths.length > 5) {
+                    ths[5].style.display = '';
+                }
+            }
+            allRows.forEach(row => {
+                const tds = row.querySelectorAll('td');
+                if (tds.length > 5) {
+                    tds[5].style.display = '';
+                }
+            });
+        }
+    }
 }
 
 
@@ -418,7 +462,6 @@ async function abrirModalPermisos(idPerfil) {
             modal.show();
         }
         
-        inicializarTooltips();
         
     } catch (error) {
         console.error('Error al cargar permisos:', error);

@@ -179,29 +179,6 @@ function obtenerImagenPrincipal(producto) {
     return '/assets/img/producto-default.png';
 }
 
-// ==================== INICIALIZAR TOOLTIPS ====================
-function inicializarTooltips() {
-    setTimeout(function() {
-        const existingTooltips = document.querySelectorAll('.tooltip');
-        existingTooltips.forEach(tooltip => tooltip.remove());
-        
-        const elementsWithTooltip = document.querySelectorAll('[data-bs-toggle="tooltip"]');
-        elementsWithTooltip.forEach(el => {
-            if (el._tooltip) {
-                el._tooltip.dispose();
-            }
-        });
-        
-        const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-        tooltipTriggerList.forEach(function (tooltipTriggerEl) {
-            new bootstrap.Tooltip(tooltipTriggerEl, {
-                placement: 'top',
-                trigger: 'hover',
-                delay: { show: 300, hide: 100 }
-            });
-        });
-    }, 50);
-}
 
 // ==================== RENDERIZAR BOTONES DE ACCIÓN (DINÁMICOS) ====================
 function renderizarBotonesAccion() {
@@ -212,14 +189,10 @@ function renderizarBotonesAccion() {
     const esAdminSesion = sesion?.usuario?.id_perfil === PERFIL_ADMIN_ID;
     
     if (!esAdminSesion) {
-        contenedor.innerHTML = `
-            <span data-bs-toggle="tooltip" data-bs-title="Solo administradores pueden crear productos">
-                <button class="btn btn-primary" disabled style="pointer-events: none;">
-                    <i class="bi bi-plus-circle"></i> Nuevo Producto
-                </button>
-            </span>
-        `;
+        // Usuario no admin - OCULTAR botón
+        contenedor.innerHTML = '';
     } else {
+        // Usuario admin - mostrar botón
         contenedor.innerHTML = `
             <button class="btn btn-primary" id="btnNuevoProductoPrincipal">
                 <i class="bi bi-plus-circle"></i> Nuevo Producto
@@ -266,9 +239,8 @@ function renderizarBotonesAccion() {
             });
         }
     }
-    
-    inicializarTooltips();
 }
+
 
 // ==================== FILTROS Y RENDERIZADO ====================
 function aplicarFiltros() {
@@ -297,6 +269,8 @@ function aplicarFiltros() {
     renderizar(productosFiltrados);
 }
 
+
+// Renderizar
 function renderizar(productos) {
     const tabla = getElement('tablaProductos');
     if (!tabla) return;
@@ -311,6 +285,25 @@ function renderizar(productos) {
     const sesion = JSON.parse(localStorage.getItem('sesion') || '{}');
     const esAdminSesion = sesion?.usuario?.id_perfil === PERFIL_ADMIN_ID;
     
+    // ==========================================
+    // DETERMINAR SI HAY ALGÚN BOTÓN VISIBLE
+    // ==========================================
+    let hayBotonesVisibles = false;
+    
+    productos.forEach(producto => {
+        const editarVisible = esAdminSesion;
+        const desactivarVisible = esAdminSesion;
+        const activarVisible = esAdminSesion;
+        const eliminarVisible = esAdminSesion;
+        
+        if (editarVisible || desactivarVisible || activarVisible || eliminarVisible) {
+            hayBotonesVisibles = true;
+        }
+    });
+    
+    // ==========================================
+    // RENDERIZAR FILAS
+    // ==========================================
     productos.forEach(producto => {
         const stockFisico = parseFloat(producto.stock) || 0;
         const stockReservado = parseFloat(producto.stock_reservado) || 0;
@@ -346,23 +339,53 @@ function renderizar(productos) {
         const imagenUrl = obtenerImagenPrincipal(producto);
         
         // ==========================================
-        // PERMISOS Y TOOLTIPS INDIVIDUALES
+        // Lógica para OCULTAR botones
         // ==========================================
-        const editarDeshabilitado = !esAdminSesion;
-        const desactivarDeshabilitado = !esAdminSesion;
-        const activarDeshabilitado = !esAdminSesion;
-        const eliminarDeshabilitado = !esAdminSesion;
+        const editarVisible = esAdminSesion;
+        const desactivarVisible = esAdminSesion;
+        const activarVisible = esAdminSesion;
+        const eliminarVisible = esAdminSesion;
         
-        let tooltipEditar = '';
-        let tooltipDesactivar = '';
-        let tooltipActivar = '';
-        let tooltipEliminar = '';
+        // Construir columna de acciones
+        let accionesHtml = '';
         
-        if (!esAdminSesion) {
-            tooltipEditar = 'Solo administradores pueden editar productos';
-            tooltipDesactivar = 'Solo administradores pueden desactivar productos';
-            tooltipActivar = 'Solo administradores pueden activar productos';
-            tooltipEliminar = 'Solo administradores pueden eliminar productos';
+        if (editarVisible) {
+            accionesHtml += `
+                <button class="btn btn-sm btn-warning btnEditarProducto" data-id="${producto.id}">
+                    <i class="bi bi-pencil-square"></i>
+                </button>
+            `;
+        }
+        
+        if (producto.estado === 1) {
+            if (desactivarVisible) {
+                accionesHtml += `
+                    <button class="btn btn-sm btn-secondary btnDesactivarProducto" data-id="${producto.id}">
+                        <i class="bi bi-slash-circle"></i>
+                    </button>
+                `;
+            }
+        } else {
+            if (activarVisible) {
+                accionesHtml += `
+                    <button class="btn btn-sm btn-success btnActivarProducto" data-id="${producto.id}">
+                        <i class="bi bi-check-circle"></i>
+                    </button>
+                `;
+            }
+        }
+        
+        if (eliminarVisible) {
+            accionesHtml += `
+                <button class="btn btn-sm btn-danger btnEliminarProducto" data-id="${producto.id}">
+                    <i class="bi bi-trash"></i>
+                </button>
+            `;
+        }
+        
+        // Si no hay botones visibles, mostrar mensaje
+        if (!accionesHtml) {
+            accionesHtml = `<span class="text-muted small">Sin acciones</span>`;
         }
         
         tabla.innerHTML += `
@@ -386,40 +409,51 @@ function renderizar(productos) {
                     ${producto.estado === 1 ? '<span class="badge bg-success">Activo</span>' : '<span class="badge bg-secondary">Inactivo</span>'}
                     ${esFraccionable ? '<br><span class="badge bg-info mt-1">Fraccionable</span>' : ''}
                 </td>
-                <td class="text-nowrap">
-                    <button class="btn btn-sm btn-warning btnEditarProducto" 
-                            data-id="${producto.id}" 
-                            ${editarDeshabilitado ? 'disabled' : ''}
-                            ${tooltipEditar ? `title="${tooltipEditar}" data-bs-toggle="tooltip"` : ''}>
-                        <i class="bi bi-pencil-square"></i>
-                    </button>
-                    ${producto.estado === 1 
-                        ? `<button class="btn btn-sm btn-secondary btnDesactivarProducto" 
-                                   data-id="${producto.id}"
-                                   ${desactivarDeshabilitado ? 'disabled' : ''}
-                                   ${tooltipDesactivar ? `title="${tooltipDesactivar}" data-bs-toggle="tooltip"` : ''}>
-                            <i class="bi bi-slash-circle"></i>
-                           </button>`
-                        : `<button class="btn btn-sm btn-success btnActivarProducto" 
-                                   data-id="${producto.id}"
-                                   ${activarDeshabilitado ? 'disabled' : ''}
-                                   ${tooltipActivar ? `title="${tooltipActivar}" data-bs-toggle="tooltip"` : ''}>
-                            <i class="bi bi-check-circle"></i>
-                           </button>`
-                    }
-                    <button class="btn btn-sm btn-danger btnEliminarProducto" 
-                            data-id="${producto.id}"
-                            ${eliminarDeshabilitado ? 'disabled' : ''}
-                            ${tooltipEliminar ? `title="${tooltipEliminar}" data-bs-toggle="tooltip"` : ''}>
-                        <i class="bi bi-trash"></i>
-                    </button>
-                </td>
+                <td class="text-nowrap">${accionesHtml}</td>
             </tr>
         `;
     });
     
-    inicializarTooltips();
+    // ==========================================
+    // OCULTAR COLUMNA DE ACCIONES SI NO HAY BOTONES
+    // ==========================================
+    const table = tabla.closest('table');
+    if (table) {
+        const thead = table.querySelector('thead tr');
+        const allRows = table.querySelectorAll('tbody tr');
+        
+        if (!hayBotonesVisibles) {
+            // Ocultar la columna de acciones (índice 10)
+            if (thead) {
+                const ths = thead.querySelectorAll('th');
+                if (ths.length > 10) {
+                    ths[10].style.display = 'none';
+                }
+            }
+            allRows.forEach(row => {
+                const tds = row.querySelectorAll('td');
+                if (tds.length > 10) {
+                    tds[10].style.display = 'none';
+                }
+            });
+        } else {
+            // Mostrar la columna de acciones
+            if (thead) {
+                const ths = thead.querySelectorAll('th');
+                if (ths.length > 10) {
+                    ths[10].style.display = '';
+                }
+            }
+            allRows.forEach(row => {
+                const tds = row.querySelectorAll('td');
+                if (tds.length > 10) {
+                    tds[10].style.display = '';
+                }
+            });
+        }
+    }
 }
+
 
 // ==================== CARGA DE DATOS ====================
 async function cargarCategorias() {
