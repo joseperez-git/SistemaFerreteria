@@ -1,4 +1,6 @@
+// ============================================
 // VERIFICACIÓN DE SESIÓN
+// ============================================
 const sesionStorage = localStorage.getItem('sesion');
 
 if (!sesionStorage) {
@@ -14,23 +16,30 @@ if (usuarioLogueado) {
 }
 
 
+// ============================================
 // VARIABLES GLOBALES
+// ============================================
 let moduloActual = null;
 let vistaActual = '';
 let cargandoVista = false;
 let menuItemsInicializados = false;
 let menuPermisos = [];
+let chartVentas = null;
+let chartCategorias = null;
+let intervaloActualizacion = null;
+let filtroActual = '7';
 
 
+// ============================================
 // FUNCIONES DE UTILIDAD
+// ============================================
+
 function limpiarModalesAbiertos() {
-    // NO cerrar modales - solo limpiar backdrops sobrantes
     setTimeout(() => {
         const backdrops = document.querySelectorAll('.modal-backdrop');
         const modalesAbiertos = document.querySelectorAll('.modal.show');
 
         if (modalesAbiertos.length > 0) {
-            // Mantener solo 1 backdrop (el último)
             if (backdrops.length > 1) {
                 for (let i = 0; i < backdrops.length - 1; i++) {
                     backdrops[i].remove();
@@ -38,7 +47,6 @@ function limpiarModalesAbiertos() {
             }
             document.body.classList.add('modal-open');
         } else {
-            // Solo si NO hay modales abiertos, limpiar todo
             backdrops.forEach(backdrop => backdrop.remove());
             document.body.classList.remove('modal-open');
             document.body.style.removeProperty('padding-right');
@@ -91,12 +99,10 @@ function mostrarToast(mensaje, tipo = 'success') {
     }
 }
 
-// Mostrar modal de advertencia
 function mostrarModalAdvertencia(mensaje) {
     let modalElement = document.getElementById('modalAdvertenciaGlobal');
 
     if (!modalElement) {
-        // Crear modal si no existe
         modalElement = document.createElement('div');
         modalElement.className = 'modal fade';
         modalElement.id = 'modalAdvertenciaGlobal';
@@ -142,8 +148,6 @@ function mostrarModalAdvertencia(mensaje) {
     modal.show();
 }
 
-
-// RESALTAR MÓDULO ACTIVO EN EL MENÚ
 function resaltarModuloActivo(view) {
     document.querySelectorAll('.sidebar-nav .nav-link').forEach(link => {
         link.classList.remove('active');
@@ -163,124 +167,667 @@ function resaltarModuloActivo(view) {
 }
 
 
-// DASHBOARD PRINCIPAL
+// ============================================
+// DASHBOARD - CONFIGURAR FILTROS
+// ============================================
+
+function configurarFiltrosDashboard() {
+    const filtroRango = document.getElementById('filtroRango');
+    const fechasPersonalizadas = document.getElementById('fechasPersonalizadas');
+    const btnAplicarFechas = document.getElementById('btnAplicarFechas');
+    const fechaDesde = document.getElementById('fechaDesde');
+    const fechaHasta = document.getElementById('fechaHasta');
+
+    if (!filtroRango) {
+        console.warn('Selector de rango no encontrado');
+        return;
+    }
+
+    filtroRango.addEventListener('change', function() {
+        const valor = this.value;
+        filtroActual = valor;
+        
+        if (valor === 'personalizado') {
+            fechasPersonalizadas.style.display = 'block';
+            const hoy = new Date();
+            const hace7Dias = new Date();
+            hace7Dias.setDate(hoy.getDate() - 7);
+            if (fechaDesde) fechaDesde.value = hace7Dias.toISOString().split('T')[0];
+            if (fechaHasta) fechaHasta.value = hoy.toISOString().split('T')[0];
+        } else {
+            fechasPersonalizadas.style.display = 'none';
+            cargarDatosDashboard();
+        }
+    });
+
+    // Forzar evento inicial
+    setTimeout(() => {
+        if (filtroRango) {
+            const event = new Event('change');
+            filtroRango.dispatchEvent(event);
+        }
+    }, 100);
+
+    if (btnAplicarFechas && fechaDesde && fechaHasta) {
+        btnAplicarFechas.addEventListener('click', function() {
+            if (!fechaDesde.value || !fechaHasta.value) {
+                mostrarToast('Seleccione ambas fechas', 'warning');
+                return;
+            }
+            if (fechaDesde.value > fechaHasta.value) {
+                mostrarToast('La fecha de inicio no puede ser mayor a la fecha final', 'warning');
+                return;
+            }
+            filtroActual = 'personalizado';
+            cargarDatosDashboard();
+        });
+    }
+}
+
+
+// ============================================
+// DASHBOARD - CARGAR DATOS
+// ============================================
+
+async function cargarDatosDashboard() {
+    try {
+        const filtroRango = document.getElementById('filtroRango');
+        const filtro = filtroRango ? filtroRango.value : '7';
+        
+        let url = '/api/dashboard';
+        
+        if (filtro === 'personalizado') {
+            const fechaDesde = document.getElementById('fechaDesde')?.value;
+            const fechaHasta = document.getElementById('fechaHasta')?.value;
+            if (fechaDesde && fechaHasta) {
+                url += `?fecha_desde=${fechaDesde}&fecha_hasta=${fechaHasta}`;
+            } else {
+                url += '?dias=7';
+            }
+        } else {
+            url += `?dias=${filtro}`;
+        }
+        
+        const response = await fetch(url);
+        
+        if (!response.ok) {
+            throw new Error('Error al cargar datos del dashboard');
+        }
+
+        const data = await response.json();
+        
+        if (!data.success) {
+            throw new Error(data.error || 'Error al obtener datos');
+        }
+
+        actualizarKPIs(data.resumen);
+        actualizarGraficos(data);
+        actualizarUltimosPedidos(data.ultimosPedidos);
+        actualizarStockCritico(data.stockCritico);
+
+        const totalPeriodo = document.getElementById('totalVentasPeriodo');
+        if (totalPeriodo && data.ventasRango) {
+            const total = data.ventasRango.reduce((sum, item) => sum + parseFloat(item.total || 0), 0);
+            totalPeriodo.textContent = `Total: S/ ${total.toFixed(2)}`;
+        }
+
+        return data;
+
+    } catch (error) {
+        console.error('Error cargando dashboard:', error);
+        mostrarToast('Error al cargar datos del dashboard', 'danger');
+        return null;
+    }
+}
+
+function actualizarKPIs(resumen) {
+    const ventasHoy = document.getElementById('totalVentasHoy');
+    if (ventasHoy) {
+        ventasHoy.textContent = `S/ ${parseFloat(resumen.ventas_hoy || 0).toFixed(2)}`;
+    }
+
+    const variacion = document.getElementById('ventasVsAyer');
+    if (variacion) {
+        const valor = parseFloat(resumen.variacion || 0);
+        const icono = valor >= 0 ? 'arrow-up' : 'arrow-down';
+        const color = valor >= 0 ? 'text-success' : 'text-danger';
+        variacion.innerHTML = `<i class="bi bi-${icono}"></i> ${Math.abs(valor).toFixed(1)}%`;
+        variacion.className = color;
+    }
+
+    const totalClientes = document.getElementById('totalClientes');
+    if (totalClientes) {
+        totalClientes.textContent = resumen.total_clientes || 0;
+    }
+
+    const totalProductos = document.getElementById('totalProductos');
+    if (totalProductos) {
+        totalProductos.textContent = resumen.total_productos || 0;
+    }
+
+    const stockBajo = document.getElementById('productosStockBajo');
+    if (stockBajo) {
+        stockBajo.textContent = (resumen.stock_critico || 0) + (resumen.sin_stock || 0);
+    }
+}
+
+
+// ============================================
+// DASHBOARD - GRÁFICOS
+// ============================================
+
+function actualizarGraficos(data) {
+    // Gráfico de Ventas por Período (Línea)
+    if (chartVentas) {
+        chartVentas.destroy();
+        chartVentas = null;
+    }
+
+    const ctxVentas = document.getElementById('chartVentasSemana')?.getContext('2d');
+    if (ctxVentas) {
+        const ventas = data.ventasRango || [];
+        const labels = ventas.map(item => {
+            const fecha = new Date(item.fecha);
+            return fecha.toLocaleDateString('es-ES', { day: '2-digit', month: 'short' });
+        });
+        const values = ventas.map(item => parseFloat(item.total) || 0);
+        const cantidades = ventas.map(item => parseInt(item.cantidad_ventas) || 0);
+
+        chartVentas = new Chart(ctxVentas, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [
+                    {
+                        label: 'Ventas (S/.)',
+                        data: values,
+                        borderColor: '#0d6efd',
+                        backgroundColor: 'rgba(13, 110, 253, 0.1)',
+                        fill: true,
+                        tension: 0.4,
+                        pointBackgroundColor: '#0d6efd',
+                        pointBorderColor: '#fff',
+                        pointBorderWidth: 2,
+                        yAxisID: 'y',
+                        order: 1
+                    },
+                    {
+                        label: 'N° Ventas',
+                        data: cantidades,
+                        borderColor: '#f59e0b',
+                        backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                        fill: true,
+                        tension: 0.4,
+                        pointBackgroundColor: '#f59e0b',
+                        pointBorderColor: '#fff',
+                        pointBorderWidth: 2,
+                        yAxisID: 'y1',
+                        order: 2
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: {
+                    mode: 'index',
+                    intersect: false
+                },
+                plugins: {
+                    legend: {
+                        position: 'top',
+                        labels: {
+                            boxWidth: 12,
+                            padding: 15,
+                            font: { size: 11 }
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                let label = context.dataset.label || '';
+                                let value = context.parsed.y;
+                                if (context.dataset.label.includes('Ventas')) {
+                                    return label + ': S/ ' + value.toFixed(2);
+                                }
+                                return label + ': ' + value + ' ventas';
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        type: 'linear',
+                        display: true,
+                        position: 'left',
+                        beginAtZero: true,
+                        ticks: {
+                            callback: function(value) {
+                                return 'S/ ' + value.toFixed(0);
+                            }
+                        },
+                        grid: {
+                            drawOnChartArea: false
+                        }
+                    },
+                    y1: {
+                        type: 'linear',
+                        display: true,
+                        position: 'right',
+                        beginAtZero: true,
+                        ticks: {
+                            stepSize: 1
+                        },
+                        grid: {
+                            drawOnChartArea: false
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    // Gráfico de Categorías (Donut)
+    if (chartCategorias) {
+        chartCategorias.destroy();
+        chartCategorias = null;
+    }
+
+    const ctxCategorias = document.getElementById('chartCategorias')?.getContext('2d');
+    if (ctxCategorias) {
+        const categorias = data.productosCategoria || [];
+        const labels = categorias.map(item => item.categoria || 'Sin categoría');
+        const values = categorias.map(item => parseInt(item.total) || 0);
+        const colores = ['#0d6efd', '#198754', '#f59e0b', '#ef4444', '#6f42c1', '#0dcaf0', '#fd7e14', '#d63384', '#20c997', '#6610f2'];
+
+        chartCategorias = new Chart(ctxCategorias, {
+            type: 'doughnut',
+            data: {
+                labels: labels,
+                datasets: [{
+                    data: values,
+                    backgroundColor: colores.slice(0, labels.length),
+                    borderWidth: 2,
+                    borderColor: '#fff'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            boxWidth: 12,
+                            padding: 10,
+                            font: { size: 10 }
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                const percentage = total > 0 ? ((context.parsed / total) * 100).toFixed(1) : 0;
+                                return context.label + ': ' + context.parsed + ' productos (' + percentage + '%)';
+                            }
+                        }
+                    }
+                },
+                cutout: '65%'
+            }
+        });
+    }
+}
+
+
+// ============================================
+// DASHBOARD - TABLAS (CARDS)
+// ============================================
+
+function actualizarUltimosPedidos(pedidos) {
+    const container = document.getElementById('ultimosPedidosContainer');
+    if (!container) return;
+
+    if (!pedidos || pedidos.length === 0) {
+        container.innerHTML = `
+            <div class="text-center py-4 text-muted">
+                <i class="bi bi-inbox fs-4"></i>
+                <p class="mb-0 mt-2">No hay pedidos registrados</p>
+            </div>
+        `;
+        return;
+    }
+
+    const estados = {
+        0: { texto: 'Registrado', clase: 'bg-warning text-dark', color: '#f59e0b', icono: 'bi bi-clipboard', bg: '#fef3c7' },
+        1: { texto: 'En Preparación', clase: 'bg-info text-white', color: '#0dcaf0', icono: 'bi bi-clock-history', bg: '#d1f5ff' },
+        2: { texto: 'Parcialmente Entregado', clase: 'bg-warning text-dark', color: '#f59e0b', icono: 'bi bi-truck', bg: '#fef3c7' },
+        3: { texto: 'Entregado', clase: 'bg-success text-white', color: '#10b981', icono: 'bi bi-check-circle', bg: '#d1fae5' },
+        4: { texto: 'Cancelado', clase: 'bg-secondary text-white', color: '#6c757d', icono: 'bi bi-x-circle', bg: '#f3f4f6' }
+    };
+
+    let html = `<div class="row g-3">`;
+
+    pedidos.forEach(pedido => {
+        const estado = estados[pedido.estado] || { texto: 'Desconocido', clase: 'bg-secondary', color: '#6c757d', icono: 'bi bi-question-circle', bg: '#f3f4f6' };
+        const total = parseFloat(pedido.total || 0).toFixed(2);
+        const numeroPedido = pedido.numero_pedido || '#' + pedido.id;
+        const cantidadProductos = pedido.cantidad_productos || 0;
+        const usuarioRegistro = pedido.usuario_registro || '-';
+
+        html += `
+            <div class="col-12 col-md-6 col-xl-4">
+                <div class="card border-0 shadow-sm h-100" style="border-radius: 12px; overflow: hidden; background: white; transition: transform 0.2s;">
+                    <!-- Cabecera -->
+                    <div style="background: ${estado.bg}; padding: 12px 16px; border-bottom: 3px solid ${estado.color};">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="fw-bold text-dark" style="font-size: 0.95rem;">
+                                <i class="${estado.icono}" style="color: ${estado.color}; margin-right: 6px;"></i>
+                                ${numeroPedido}
+                            </span>
+                            <span class="badge ${estado.clase}" style="font-size: 0.7rem; padding: 4px 12px;">${estado.texto}</span>
+                        </div>
+                    </div>
+                    <!-- Cuerpo -->
+                    <div class="card-body p-3">
+                        <!-- Cliente + Total -->
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <div class="d-flex align-items-center gap-2">
+                                <i class="bi bi-person-circle text-muted" style="font-size: 1rem;"></i>
+                                <span class="text-dark fw-medium" style="font-size: 0.9rem;">${pedido.cliente || '-'}</span>
+                            </div>
+                            <span class="fw-bold" style="color: ${estado.color}; font-size: 1.1rem;">S/ ${total}</span>
+                        </div>
+                        <!-- Fecha + Cantidad Productos + Usuario Registro -->
+                        <div class="mt-2 pt-2 border-top d-flex justify-content-between align-items-center">
+                            <small class="text-muted">
+                                <i class="bi bi-calendar3 me-1"></i> ${pedido.fecha || '-'}
+                            </small>
+                            <div class="d-flex gap-3">
+                                <small class="text-muted" title="Cantidad de productos">
+                                    <i class="bi bi-box-seam me-1"></i> ${cantidadProductos}
+                                </small>
+                                <small class="text-muted" title="Usuario que registró el pedido">
+                                    <i class="bi bi-person-badge me-1"></i> ${usuarioRegistro}
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+
+    html += `</div>`;
+    container.innerHTML = html;
+}
+
+
+// stock critico
+function actualizarStockCritico(productos) {
+    const container = document.getElementById('stockCriticoContainer');
+    if (!container) return;
+
+    if (!productos || productos.length === 0) {
+        container.innerHTML = `
+            <div class="text-center py-4 text-success">
+                <i class="bi bi-check-circle fs-4 text-success"></i>
+                <p class="mb-0 mt-2 fw-medium" style="color: #10b981;">¡Todos los productos tienen stock suficiente!</p>
+                <small class="text-muted">No hay productos con stock crítico</small>
+            </div>
+        `;
+        return;
+    }
+
+    let html = `<div class="row g-3">`;
+
+    productos.forEach(producto => {
+        const stock = parseFloat(producto.stock).toFixed(2);
+        const minimo = parseFloat(producto.stock_minimo).toFixed(2);
+        const faltante = parseInt(producto.faltante) || 0;
+        
+        let color = '#ef4444';
+        let bg = '#fee2e2';
+        let nivel = 'Crítico';
+        
+        if (faltante <= 2) {
+            color = '#ef4444';
+            bg = '#fee2e2';
+            nivel = 'Urgente';
+        } else if (faltante <= 5) {
+            color = '#f59e0b';
+            bg = '#fef3c7';
+            nivel = 'Atención';
+        } else {
+            color = '#f59e0b';
+            bg = '#fef3c7';
+            nivel = 'Precaución';
+        }
+        
+        html += `
+            <div class="col-12 col-md-6 col-xl-4">
+                <div class="card border-0 shadow-sm h-100" style="border-radius: 12px; overflow: hidden; background: white;">
+                    <div class="card-body p-3">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <div style="min-width: 0; flex: 1;">
+                                <span class="fw-bold text-dark" style="font-size: 0.9rem; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${producto.nombre}</span>
+                                <small class="text-muted" style="font-size: 0.7rem;">${producto.categoria || 'Sin categoría'}</small>
+                            </div>
+                            <span class="badge" style="background: ${color}; color: white; font-size: 0.65rem; padding: 2px 10px; flex-shrink: 0;">${nivel}</span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mt-2">
+                            <div style="flex: 1; text-align: center;">
+                                <small class="text-muted" style="font-size: 0.65rem;">Stock</small>
+                                <div class="fw-bold" style="font-size: 0.95rem; color: ${color};">${stock} und</div>
+                            </div>
+                            <div style="flex: 1; text-align: center;">
+                                <small class="text-muted" style="font-size: 0.65rem;">Mínimo</small>
+                                <div class="fw-bold" style="font-size: 0.95rem;">${minimo} und</div>
+                            </div>
+                            <div style="flex: 1; text-align: center;">
+                                <small class="text-muted" style="font-size: 0.65rem;">Faltante</small>
+                                <div class="fw-bold" style="font-size: 0.95rem; color: ${color};">${faltante} und</div>
+                            </div>
+                        </div>
+                        <div class="mt-2">
+                            <div class="progress" style="height: 5px; border-radius: 4px; background: #e5e7eb;">
+                                <div class="progress-bar" style="width: ${Math.min((stock / minimo) * 100, 100)}%; background: ${color}; border-radius: 4px;"></div>
+                            </div>
+                            <small class="text-muted" style="font-size: 0.6rem;">
+                                ${stock} de ${minimo} unidades mínimas
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+
+    html += `</div>`;
+    container.innerHTML = html;
+}
+
+
+// ============================================
+// DASHBOARD - VISTA PRINCIPAL
+// ============================================
+
 async function cargarDashboardPrincipal() {
     const contenido = document.getElementById('contenido');
     if (!contenido) return;
 
     contenido.innerHTML = `
         <div class="fade-in">
-            <div class="d-flex justify-content-between align-items-center mb-4">
+            <!-- ========================================== -->
+            <!-- ENCABEZADO -->
+            <!-- ========================================== -->
+            <div class="d-flex flex-wrap justify-content-between align-items-center mb-4">
                 <div>
-                    <h2 class="mb-2">Panel de Control</h2>
-                    <p class="text-muted">Bienvenido al sistema de gestión de ferretería</p>
+                    <h2 class="mb-1">Panel de Control</h2>
+                    <p class="text-muted mb-0">Bienvenido de vuelta, <strong>${sesion.usuario.nombre}</strong></p>
                 </div>
-                <div class="text-end">
+                <div class="d-flex align-items-center gap-2 flex-wrap">
                     <span class="badge bg-dark p-2">
                         <i class="bi bi-calendar3 me-1"></i>
                         ${new Date().toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
                     </span>
+                    <button class="btn btn-outline-secondary btn-sm" id="btnRefrescarDashboard" title="Actualizar datos">
+                        <i class="bi bi-arrow-clockwise"></i>
+                    </button>
                 </div>
             </div>
 
-            <div class="row g-4 mb-4">
-                <div class="col-md-3">
-                    <div class="card stat-card shadow-sm border-0">
-                        <div class="card-body">
+            <!-- ========================================== -->
+            <!-- FILTROS DE FECHAS -->
+            <!-- ========================================== -->
+            <div class="card shadow-sm border-0 mb-4">
+                <div class="card-body py-3">
+                    <div class="row g-2 align-items-center">
+                        <div class="col-auto">
+                            <label class="fw-semibold me-2 mb-0"><i class="bi bi-funnel me-1"></i>Período:</label>
+                        </div>
+                        <div class="col-auto">
+                            <select id="filtroRango" class="form-select form-select-sm" style="min-width: 160px;">
+                                <option value="7" selected>Últimos 7 días</option>
+                                <option value="15">Últimos 15 días</option>
+                                <option value="30">Últimos 30 días</option>
+                                <option value="60">Últimos 60 días</option>
+                                <option value="90">Últimos 90 días</option>
+                                <option value="personalizado">Personalizado</option>
+                            </select>
+                        </div>
+                        <div class="col-auto" id="fechasPersonalizadas" style="display: none;">
+                            <div class="d-flex gap-2 align-items-center flex-wrap">
+                                <input type="date" id="fechaDesde" class="form-control form-control-sm" style="width: 150px;">
+                                <span class="text-muted small">a</span>
+                                <input type="date" id="fechaHasta" class="form-control form-control-sm" style="width: 150px;">
+                                <button class="btn btn-primary btn-sm" id="btnAplicarFechas">Aplicar</button>
+                            </div>
+                        </div>
+                        <div class="col-auto ms-auto">
+                            <span class="badge bg-light text-muted" id="totalVentasPeriodo">Total: S/ 0.00</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ========================================== -->
+            <!-- KPIS - TARJETAS DE ESTADÍSTICAS -->
+            <!-- ========================================== -->
+            <div class="row g-3 mb-4" id="kpiContainer">
+                <div class="col-6 col-xl-3">
+                    <div class="card stat-card border-0 shadow-sm h-100" style="background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);">
+                        <div class="card-body text-white">
                             <div class="d-flex justify-content-between align-items-center">
                                 <div>
-                                    <h6 class="text-muted mb-1">Total Ventas Hoy</h6>
+                                    <h6 class="text-white-50 mb-1">Ventas Hoy</h6>
                                     <h3 class="mb-0" id="totalVentasHoy">S/ 0.00</h3>
-                                    <small class="text-success" id="ventasVsAyer">
-                                        <i class="bi bi-arrow-up"></i> 0%
-                                    </small>
+                                    <small id="ventasVsAyer" class="text-success"><i class="bi bi-arrow-up"></i> 0%</small>
                                 </div>
-                                <div class="stat-icon">
-                                    <i class="bi bi-cart-check fs-1 text-success"></i>
-                                </div>
+                                <div><i class="bi bi-cart-check fs-1 text-white-50"></i></div>
                             </div>
                         </div>
                     </div>
                 </div>
-                
-                <div class="col-md-3">
-                    <div class="card stat-card shadow-sm border-0">
-                        <div class="card-body">
+                <div class="col-6 col-xl-3">
+                    <div class="card stat-card border-0 shadow-sm h-100" style="background: linear-gradient(135deg, #0d6efd 0%, #0b5ed7 100%);">
+                        <div class="card-body text-white">
                             <div class="d-flex justify-content-between align-items-center">
                                 <div>
-                                    <h6 class="text-muted mb-1">Total Clientes</h6>
+                                    <h6 class="text-white-50 mb-1">Clientes</h6>
                                     <h3 class="mb-0" id="totalClientes">0</h3>
-                                    <small class="text-muted">Registrados</small>
+                                    <small class="text-white-50">Registrados</small>
                                 </div>
-                                <div class="stat-icon">
-                                    <i class="bi bi-people fs-1 text-primary"></i>
-                                </div>
+                                <div><i class="bi bi-people fs-1 text-white-50"></i></div>
                             </div>
                         </div>
                     </div>
                 </div>
-                
-                <div class="col-md-3">
-                    <div class="card stat-card shadow-sm border-0">
-                        <div class="card-body">
+                <div class="col-6 col-xl-3">
+                    <div class="card stat-card border-0 shadow-sm h-100" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);">
+                        <div class="card-body text-white">
                             <div class="d-flex justify-content-between align-items-center">
                                 <div>
-                                    <h6 class="text-muted mb-1">Productos Activos</h6>
+                                    <h6 class="text-white-50 mb-1">Productos</h6>
                                     <h3 class="mb-0" id="totalProductos">0</h3>
-                                    <small class="text-muted">En inventario</small>
+                                    <small class="text-white-50">En inventario</small>
                                 </div>
-                                <div class="stat-icon">
-                                    <i class="bi bi-box-seam fs-1 text-warning"></i>
-                                </div>
+                                <div><i class="bi bi-box-seam fs-1 text-white-50"></i></div>
                             </div>
                         </div>
                     </div>
                 </div>
-                
-                <div class="col-md-3">
-                    <div class="card stat-card shadow-sm border-0">
-                        <div class="card-body">
+                <div class="col-6 col-xl-3">
+                    <div class="card stat-card border-0 shadow-sm h-100" style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);">
+                        <div class="card-body text-white">
                             <div class="d-flex justify-content-between align-items-center">
                                 <div>
-                                    <h6 class="text-muted mb-1">Stock Bajo</h6>
-                                    <h3 class="mb-0 text-danger" id="productosStockBajo">0</h3>
-                                    <small class="text-muted">Necesitan reposición</small>
+                                    <h6 class="text-white-50 mb-1">Stock Crítico</h6>
+                                    <h3 class="mb-0" id="productosStockBajo">0</h3>
+                                    <small class="text-white-50">Necesitan reposición</small>
                                 </div>
-                                <div class="stat-icon">
-                                    <i class="bi bi-exclamation-triangle fs-1 text-danger"></i>
-                                </div>
+                                <div><i class="bi bi-exclamation-triangle fs-1 text-white-50"></i></div>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <div class="card shadow-sm border-0">
-                <div class="card-body text-center py-5">
-                    <i class="bi bi-emoji-smile fs-1 text-muted"></i>
-                    <h4 class="mt-3">¡Bienvenido, ${sesion.usuario.nombre}!</h4>
-                    <p class="text-muted">Selecciona una opción del menú lateral para comenzar a gestionar el sistema.</p>
-                    <hr class="my-4">
-                    <div class="row mt-4">
-                        <div class="col-md-4">
-                            <div class="p-3 border rounded">
-                                <i class="bi bi-people fs-2 text-primary"></i>
-                                <h6 class="mt-2">Clientes</h6>
-                                <small class="text-muted">Gestión de clientes</small>
+            <!-- ========================================== -->
+            <!-- GRÁFICOS -->
+            <!-- ========================================== -->
+            <div class="row g-3 mb-4">
+                <div class="col-lg-8">
+                    <div class="card shadow-sm border-0">
+                        <div class="card-header bg-transparent border-0 pt-3 d-flex justify-content-between align-items-center">
+                            <h6 class="mb-0 fw-bold"><i class="bi bi-graph-up me-2 text-primary"></i>Ventas por Período</h6>
+                            <span class="badge bg-light text-muted" id="totalVentasPeriodo">Total: S/ 0.00</span>
+                        </div>
+                        <div class="card-body" style="height: 250px;">
+                            <canvas id="chartVentasSemana"></canvas>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-4">
+                    <div class="card shadow-sm border-0">
+                        <div class="card-header bg-transparent border-0 pt-3">
+                            <h6 class="mb-0 fw-bold"><i class="bi bi-pie-chart me-2 text-success"></i>Productos por Categoría</h6>
+                        </div>
+                        <div class="card-body" style="height: 250px;">
+                            <canvas id="chartCategorias"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ========================================== -->
+            <!-- TABLAS (ÚLTIMOS PEDIDOS + STOCK CRÍTICO) -->
+            <!-- ========================================== -->
+            <div class="row g-3">
+                <div class="col-12">
+                    <div class="card shadow-sm border-0">
+                        <div class="card-header bg-transparent border-0 pt-3 d-flex justify-content-between align-items-center">
+                            <h6 class="mb-0 fw-bold"><i class="bi bi-truck me-2 text-warning"></i>Últimos Pedidos</h6>
+                            <span class="badge bg-light text-muted">5 últimos</span>
+                        </div>
+                        <div class="card-body p-3" id="ultimosPedidosContainer">
+                            <div class="text-center py-4 text-muted">
+                                <i class="bi bi-hourglass-split fs-4"></i>
+                                <p class="mb-0 mt-2">Cargando pedidos...</p>
                             </div>
                         </div>
-                        <div class="col-md-4">
-                            <div class="p-3 border rounded">
-                                <i class="bi bi-box-seam fs-2 text-success"></i>
-                                <h6 class="mt-2">Productos</h6>
-                                <small class="text-muted">Inventario y precios</small>
-                            </div>
+                    </div>
+                </div>
+                <div class="col-12">
+                    <div class="card shadow-sm border-0">
+                        <div class="card-header bg-transparent border-0 pt-3 d-flex justify-content-between align-items-center">
+                            <h6 class="mb-0 fw-bold"><i class="bi bi-exclamation-triangle me-2 text-danger"></i>Stock Crítico</h6>
+                            <span class="badge bg-light text-muted">Productos bajo mínimos</span>
                         </div>
-                        <div class="col-md-4">
-                            <div class="p-3 border rounded">
-                                <i class="bi bi-cart-check fs-2 text-warning"></i>
-                                <h6 class="mt-2">Ventas</h6>
-                                <small class="text-muted">Registro de ventas</small>
+                        <div class="card-body p-3" id="stockCriticoContainer">
+                            <div class="text-center py-4 text-muted">
+                                <i class="bi bi-hourglass-split fs-4"></i>
+                                <p class="mb-0 mt-2">Cargando productos...</p>
                             </div>
                         </div>
                     </div>
@@ -289,23 +836,39 @@ async function cargarDashboardPrincipal() {
         </div>
     `;
 
-    setTimeout(() => {
-        const totalVentasHoy = document.getElementById('totalVentasHoy');
-        if (totalVentasHoy) totalVentasHoy.innerHTML = 'S/ 1,250.00';
+    // Configurar filtros
+    configurarFiltrosDashboard();
 
-        const totalClientes = document.getElementById('totalClientes');
-        if (totalClientes) totalClientes.innerHTML = '156';
+    // Cargar datos
+    await cargarDatosDashboard();
 
-        const totalProductos = document.getElementById('totalProductos');
-        if (totalProductos) totalProductos.innerHTML = '342';
+    // Botón refrescar
+    const btnRefrescar = document.getElementById('btnRefrescarDashboard');
+    if (btnRefrescar) {
+        btnRefrescar.addEventListener('click', async () => {
+            btnRefrescar.disabled = true;
+            btnRefrescar.innerHTML = '<span class="spinner-border spinner-border-sm" role="status"></span>';
+            await cargarDatosDashboard();
+            btnRefrescar.disabled = false;
+            btnRefrescar.innerHTML = '<i class="bi bi-arrow-clockwise"></i>';
+            mostrarToast('Dashboard actualizado', 'success');
+        });
+    }
 
-        const productosStockBajo = document.getElementById('productosStockBajo');
-        if (productosStockBajo) productosStockBajo.innerHTML = '8';
-    }, 100);
+    // Actualización automática cada 30 segundos
+    if (intervaloActualizacion) {
+        clearInterval(intervaloActualizacion);
+    }
+    intervaloActualizacion = setInterval(() => {
+        cargarDatosDashboard();
+    }, 30000);
 }
 
 
-// CARGAR MENÚ DESDE API
+// ============================================
+// MENÚ Y NAVEGACIÓN
+// ============================================
+
 async function cargarMenuDesdeAPI() {
     try {
         const response = await fetch('/api/autenticacion/menu');
@@ -328,7 +891,6 @@ async function cargarMenuDesdeAPI() {
         const opciones = await response.json();
         menuPermisos = opciones || [];
 
-        // Guardar en sesión solo para referencia (no para seguridad)
         sesion.permisos = menuPermisos;
         localStorage.setItem('sesion', JSON.stringify(sesion));
 
@@ -341,8 +903,6 @@ async function cargarMenuDesdeAPI() {
     }
 }
 
-
-// CONSTRUIR MENÚ DESDE API
 function construirMenuDesdeAPI() {
     if (menuItemsInicializados) return;
 
@@ -417,8 +977,6 @@ function construirMenuDesdeAPI() {
     menuItemsInicializados = true;
 }
 
-
-// CARGA DE VISTAS
 async function loadContent(view) {
     if (view === 'dashboard') {
         await cargarDashboardPrincipal();
@@ -481,8 +1039,6 @@ async function loadContent(view) {
     }
 }
 
-
-// INICIALIZACIÓN DE MÓDULOS
 async function inicializarModulo(view) {
     try {
         limpiarModuloAnterior();
@@ -542,8 +1098,6 @@ async function inicializarModulo(view) {
     }
 }
 
-
-// CONFIGURACIÓN DE EVENTOS DEL MENÚ
 function configurarEventosMenu() {
     const menuLinks = document.querySelectorAll('.sidebar-nav .menu-link');
 
@@ -565,7 +1119,6 @@ function configurarEventosMenu() {
             const view = newLink.dataset.view;
             if (!view) return;
 
-            // Validar permiso antes de cargar
             const tienePermiso = menuPermisos.some(p => {
                 const viewName = p.ruta?.replace('/', '') || '';
                 return viewName === view;
@@ -590,8 +1143,6 @@ function configurarEventosMenu() {
     });
 }
 
-
-// CONFIGURACIÓN DEL SIDEBAR
 function configurarSidebar() {
     const btnToggleSidebar = document.getElementById('btnToggleSidebar');
     const sidebar = document.getElementById('sidebar');
@@ -621,11 +1172,8 @@ function configurarSidebar() {
     });
 }
 
-
-// CONFIGURACIÓN DE MODALES GLOBALES
 function configurarModalesGlobales() {
     document.addEventListener('hidden.bs.modal', function (e) {
-        // Solo limpiar backdrops, NO cerrar otros modales
         limpiarModalesAbiertos();
     });
 
@@ -638,8 +1186,6 @@ function configurarModalesGlobales() {
     });
 }
 
-
-// CONFIGURACIÓN DE BOTONES
 function configurarBotones() {
     const btnLogout = document.getElementById('btnLogout');
     if (btnLogout) {
@@ -678,10 +1224,12 @@ function configurarBotones() {
 }
 
 
+// ============================================
 // INICIALIZACIÓN PRINCIPAL
+// ============================================
+
 async function initDashboard() {
     try {
-        // Cargar menú desde API
         const menuCargado = await cargarMenuDesdeAPI();
 
         if (!menuCargado) {
@@ -689,16 +1237,12 @@ async function initDashboard() {
             return;
         }
 
-        // Construir menú con los permisos obtenidos
         construirMenuDesdeAPI();
-
-        // Configurar eventos
         configurarEventosMenu();
         configurarSidebar();
         configurarModalesGlobales();
         configurarBotones();
 
-        // Cargar dashboard
         await cargarDashboardPrincipal();
 
         vistaActual = 'dashboard';
@@ -713,7 +1257,10 @@ async function initDashboard() {
 }
 
 
+// ============================================
 // EXPORTAR FUNCIONES GLOBALES
+// ============================================
+
 window.mostrarToast = mostrarToast;
 window.limpiarModalesAbiertos = limpiarModalesAbiertos;
 window.mostrarModalAdvertencia = mostrarModalAdvertencia;
@@ -735,12 +1282,10 @@ window.recargarMenuDashboard = async function () {
         const opciones = await response.json();
         menuPermisos = opciones || [];
 
-        // Actualizar sesión en localStorage
         const sesionActual = JSON.parse(localStorage.getItem('sesion') || '{}');
         sesionActual.permisos = menuPermisos;
         localStorage.setItem('sesion', JSON.stringify(sesionActual));
 
-        // Reconstruir el menú
         menuItemsInicializados = false;
         construirMenuDesdeAPI();
         configurarEventosMenu();
@@ -755,7 +1300,10 @@ window.recargarMenuDashboard = async function () {
 };
 
 
-// Iniciar dashboard
+// ============================================
+// INICIAR DASHBOARD
+// ============================================
+
 initDashboard();
 
 

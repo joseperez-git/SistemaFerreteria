@@ -56,29 +56,6 @@ function validarCorreo(correo) {
     return { valido: true, mensaje: '' };
 }
 
-// ==================== INICIALIZAR TOOLTIPS ====================
-function inicializarTooltips() {
-    setTimeout(function() {
-        const existingTooltips = document.querySelectorAll('.tooltip');
-        existingTooltips.forEach(tooltip => tooltip.remove());
-        
-        const elementsWithTooltip = document.querySelectorAll('[data-bs-toggle="tooltip"]');
-        elementsWithTooltip.forEach(el => {
-            if (el._tooltip) {
-                el._tooltip.dispose();
-            }
-        });
-        
-        const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-        tooltipTriggerList.forEach(function (tooltipTriggerEl) {
-            new bootstrap.Tooltip(tooltipTriggerEl, {
-                placement: 'top',
-                trigger: 'hover',
-                delay: { show: 300, hide: 100 }
-            });
-        });
-    }, 50);
-}
 
 // ==================== RENDERIZAR BOTONES DE ACCIÓN ====================
 function renderizarBotonesAccion() {
@@ -89,54 +66,36 @@ function renderizarBotonesAccion() {
     const esAdminSesion = sesion?.usuario?.id_perfil === PERFIL_ADMIN_ID;
     
     if (!esAdminSesion) {
-        contenedor.innerHTML = `
-            <span data-bs-toggle="tooltip" data-bs-title="Solo administradores pueden crear clientes">
-                <button class="btn btn-primary btnNuevoCliente" disabled style="pointer-events: none;">
-                    <i class="bi bi-plus-circle"></i> Nuevo Cliente
-                </button>
-            </span>
-        `;
+        // Usuario no admin - OCULTAR botón
+        contenedor.innerHTML = '';
     } else {
+        // Usuario admin - mostrar botón
         contenedor.innerHTML = `
-            <button class="btn btn-primary btnNuevoCliente">
+            <button class="btn btn-primary" id="btnNuevoClientePrincipal">
                 <i class="bi bi-plus-circle"></i> Nuevo Cliente
             </button>
         `;
-    }
-    
-    // Re-asignar el evento del botón Nuevo Cliente
-    const nuevoBtn = document.querySelector('.btnNuevoCliente');
-    if (nuevoBtn && !nuevoBtn.disabled) {
-        // Remover event listener anterior si existe
-        const nuevoBtnClone = nuevoBtn.cloneNode(true);
-        nuevoBtn.parentNode.replaceChild(nuevoBtnClone, nuevoBtn);
         
-        nuevoBtnClone.addEventListener('click', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            
-            // Limpiar completamente el formulario
-            limpiarFormulario();
-            
-            // Eliminar instancia anterior del modal
-            const modalElement = getElement('modalCliente');
-            if (modalElement) {
-                const existingModal = bootstrap.Modal.getInstance(modalElement);
-                if (existingModal) {
-                    existingModal.dispose();
+        const nuevoBtn = document.getElementById('btnNuevoClientePrincipal');
+        if (nuevoBtn) {
+            nuevoBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                limpiarFormulario();
+                
+                const modalElement = getElement('modalCliente');
+                if (modalElement) {
+                    const existingModal = bootstrap.Modal.getInstance(modalElement);
+                    if (existingModal) {
+                        existingModal.dispose();
+                    }
+                    const modal = new bootstrap.Modal(modalElement);
+                    modal.show();
                 }
-            }
-            
-            // Abrir modal nuevo
-            const modalElementFresh = getElement('modalCliente');
-            if (modalElementFresh) {
-                const modal = new bootstrap.Modal(modalElementFresh);
-                modal.show();
-            }
-        });
+            });
+        }
     }
-    
-    inicializarTooltips();
 }
 
 
@@ -274,6 +233,8 @@ function aplicarFiltros() {
     renderizar(clientesFiltrados);
 }
 
+
+// Renderizar
 function renderizar(clientes) {
     const tabla = getElement('tablaClientes');
     if (!tabla) return;
@@ -288,23 +249,73 @@ function renderizar(clientes) {
     const sesion = JSON.parse(localStorage.getItem('sesion') || '{}');
     const esAdminSesion = sesion?.usuario?.id_perfil === PERFIL_ADMIN_ID;
     
+    // ==========================================
+    // DETERMINAR SI HAY ALGÚN BOTÓN VISIBLE
+    // ==========================================
+    let hayBotonesVisibles = false;
+    
     clientes.forEach(cliente => {
-        let tooltipEditar = '';
-        let tooltipDesactivar = '';
-        let tooltipActivar = '';
-        let tooltipEliminar = '';
+        const editarVisible = esAdminSesion;
+        const desactivarVisible = esAdminSesion;
+        const activarVisible = esAdminSesion;
+        const eliminarVisible = esAdminSesion;
         
-        if (!esAdminSesion) {
-            tooltipEditar = 'Solo administradores pueden editar clientes';
-            tooltipDesactivar = 'Solo administradores pueden desactivar clientes';
-            tooltipActivar = 'Solo administradores pueden activar clientes';
-            tooltipEliminar = 'Solo administradores pueden eliminar clientes';
+        if (editarVisible || desactivarVisible || activarVisible || eliminarVisible) {
+            hayBotonesVisibles = true;
+        }
+    });
+    
+    // ==========================================
+    // RENDERIZAR FILAS
+    // ==========================================
+    clientes.forEach(cliente => {
+        // Lógica para OCULTAR botones
+        const editarVisible = esAdminSesion;
+        const desactivarVisible = esAdminSesion;
+        const activarVisible = esAdminSesion;
+        const eliminarVisible = esAdminSesion;
+        
+        // Construir columna de acciones
+        let accionesHtml = '';
+        
+        if (editarVisible) {
+            accionesHtml += `
+                <button class="btn btn-sm btn-warning btnEditarCliente" data-id="${cliente.id}">
+                    <i class="bi bi-pencil-square"></i>
+                </button>
+            `;
         }
         
-        const editarDeshabilitado = !esAdminSesion;
-        const desactivarDeshabilitado = !esAdminSesion;
-        const activarDeshabilitado = !esAdminSesion;
-        const eliminarDeshabilitado = !esAdminSesion;
+        if (cliente.estado === 1) {
+            if (desactivarVisible) {
+                accionesHtml += `
+                    <button class="btn btn-sm btn-secondary btnDesactivarCliente" data-id="${cliente.id}">
+                        <i class="bi bi-slash-circle"></i>
+                    </button>
+                `;
+            }
+        } else {
+            if (activarVisible) {
+                accionesHtml += `
+                    <button class="btn btn-sm btn-success btnActivarCliente" data-id="${cliente.id}">
+                        <i class="bi bi-check-circle"></i>
+                    </button>
+                `;
+            }
+        }
+        
+        if (eliminarVisible) {
+            accionesHtml += `
+                <button class="btn btn-sm btn-danger btnEliminarCliente" data-id="${cliente.id}">
+                    <i class="bi bi-trash"></i>
+                </button>
+            `;
+        }
+        
+        // Si no hay botones visibles, mostrar mensaje
+        if (!accionesHtml) {
+            accionesHtml = `<span class="text-muted small">Sin acciones</span>`;
+        }
         
         tabla.innerHTML += `
             <tr>
@@ -320,40 +331,51 @@ function renderizar(clientes) {
                         : '<span class="badge bg-secondary">Inactivo</span>'
                     }
                 </td>
-                <td class="text-center">
-                    <button class="btn btn-sm btn-warning btnEditarCliente" 
-                            data-id="${cliente.id}"
-                            ${editarDeshabilitado ? 'disabled' : ''}
-                            ${tooltipEditar ? `title="${tooltipEditar}" data-bs-toggle="tooltip"` : ''}>
-                        <i class="bi bi-pencil-square"></i>
-                    </button>
-                    ${cliente.estado === 1 
-                        ? `<button class="btn btn-sm btn-secondary btnDesactivarCliente" 
-                                   data-id="${cliente.id}"
-                                   ${desactivarDeshabilitado ? 'disabled' : ''}
-                                   ${tooltipDesactivar ? `title="${tooltipDesactivar}" data-bs-toggle="tooltip"` : ''}>
-                            <i class="bi bi-slash-circle"></i>
-                           </button>`
-                        : `<button class="btn btn-sm btn-success btnActivarCliente" 
-                                   data-id="${cliente.id}"
-                                   ${activarDeshabilitado ? 'disabled' : ''}
-                                   ${tooltipActivar ? `title="${tooltipActivar}" data-bs-toggle="tooltip"` : ''}>
-                            <i class="bi bi-check-circle"></i>
-                           </button>`
-                    }
-                    <button class="btn btn-sm btn-danger btnEliminarCliente" 
-                            data-id="${cliente.id}"
-                            ${eliminarDeshabilitado ? 'disabled' : ''}
-                            ${tooltipEliminar ? `title="${tooltipEliminar}" data-bs-toggle="tooltip"` : ''}>
-                        <i class="bi bi-trash"></i>
-                    </button>
-                </td>
+                <td class="text-center">${accionesHtml}</td>
             </tr>
         `;
     });
     
-    inicializarTooltips();
+    // ==========================================
+    // OCULTAR COLUMNA DE ACCIONES SI NO HAY BOTONES
+    // ==========================================
+    const table = tabla.closest('table');
+    if (table) {
+        const thead = table.querySelector('thead tr');
+        const allRows = table.querySelectorAll('tbody tr');
+        
+        if (!hayBotonesVisibles) {
+            // Ocultar la columna de acciones (índice 7)
+            if (thead) {
+                const ths = thead.querySelectorAll('th');
+                if (ths.length > 7) {
+                    ths[7].style.display = 'none';
+                }
+            }
+            allRows.forEach(row => {
+                const tds = row.querySelectorAll('td');
+                if (tds.length > 7) {
+                    tds[7].style.display = 'none';
+                }
+            });
+        } else {
+            // Mostrar la columna de acciones
+            if (thead) {
+                const ths = thead.querySelectorAll('th');
+                if (ths.length > 7) {
+                    ths[7].style.display = '';
+                }
+            }
+            allRows.forEach(row => {
+                const tds = row.querySelectorAll('td');
+                if (tds.length > 7) {
+                    tds[7].style.display = '';
+                }
+            });
+        }
+    }
 }
+
 
 // ==================== CARGAR DATOS ====================
 async function cargarClientes() {

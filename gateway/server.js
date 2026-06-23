@@ -48,6 +48,7 @@ app.use('/api/cotizaciones', validarPermiso('Cotizaciones'), require(path.join(_
 app.use('/api/catalogo', validarPermiso('Catálogo'), require(path.join(__dirname, '../services/catalogo/catalogo.routes')));
 app.use('/api/inventario', validarPermiso('Inventario'), require(path.join(__dirname, '../services/inventario/inventario.routes')));
 app.use('/Fotos', express.static(path.join(__dirname, 'public/Fotos')));
+app.use('/api/dashboard', soloAutenticacion, require(path.join(__dirname, '../services/dashboard/dashboard.routes')));
 
 app.use(express.static('public'));
 app.use('/uploads', express.static('public/uploads'));

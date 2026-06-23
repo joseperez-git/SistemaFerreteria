@@ -21,27 +21,6 @@ function validarSoloLetrasFrontend(event) {
 }
 
 
-// INICIALIZAR TOOLTIPS
-function inicializarTooltips() {
-    setTimeout(function() {
-        const existingTooltips = document.querySelectorAll('.tooltip');
-        existingTooltips.forEach(tooltip => tooltip.remove());
-        
-        const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-        tooltipTriggerList.forEach(function (tooltipTriggerEl) {
-            if (tooltipTriggerEl._tooltip) {
-                tooltipTriggerEl._tooltip.dispose();
-            }
-            new bootstrap.Tooltip(tooltipTriggerEl, {
-                placement: 'top',
-                trigger: 'hover',
-                delay: { show: 300, hide: 100 }
-            });
-        });
-    }, 100);
-}
-
-
 // ==================== RENDERIZAR BOTONES DE ACCIÓN (DINÁMICOS) ====================
 function renderizarBotonesAccion() {
     const contenedor = document.getElementById('botonesAccionUsuarios');
@@ -51,29 +30,10 @@ function renderizarBotonesAccion() {
     const esAdminSesion = sesion?.usuario?.id_perfil === PERFIL_ADMIN_ID;
     
     if (!esAdminSesion) {
-        // Usuario no admin - botones deshabilitados con tooltip en span wrapper
-        contenedor.innerHTML = `
-            <span data-bs-toggle="tooltip" data-bs-title="Solo administradores pueden realizar acciones masivas">
-                <button class="btn btn-outline-dark" 
-                        data-bs-toggle="modal" 
-                        data-bs-target="#modalAccionesMasivas" 
-                        disabled
-                        style="pointer-events: none;">
-                    <i class="bi bi-people-fill me-2"></i> Acciones Masivas
-                </button>
-            </span>
-            <span data-bs-toggle="tooltip" data-bs-title="Solo administradores pueden crear usuarios">
-                <button class="btn btn-primary" 
-                        data-bs-toggle="modal" 
-                        data-bs-target="#modalUsuario" 
-                        disabled
-                        style="pointer-events: none;">
-                    <i class="bi bi-plus-circle"></i> Nuevo Usuario
-                </button>
-            </span>
-        `;
+        // Usuario no admin - OCULTAR botones
+        contenedor.innerHTML = '';
     } else {
-        // Usuario admin - botones habilitados sin tooltip
+        // Usuario admin - mostrar botones
         contenedor.innerHTML = `
             <button class="btn btn-outline-dark" 
                     data-bs-toggle="modal" 
@@ -87,8 +47,6 @@ function renderizarBotonesAccion() {
             </button>
         `;
     }
-    
-    inicializarTooltips();
 }
 
 
@@ -147,7 +105,7 @@ function renderizar(usuarios) {
     tabla.innerHTML = '';
     
     if (usuarios.length === 0) {
-        tabla.innerHTML = `<td><td colspan="8" class="text-center text-muted py-4">No hay usuarios registrados</td></tr>`;
+        tabla.innerHTML = `<tr><td colspan="8" class="text-center text-muted py-4">No hay usuarios registrados</td></tr>`;
         return;
     }
     
@@ -155,46 +113,79 @@ function renderizar(usuarios) {
     const esAdminSesion = sesion?.usuario?.id_perfil === PERFIL_ADMIN_ID;
     const usuarioLogueadoId = sesion?.usuario?.id;
     
+    // ==========================================
+    // DETERMINAR SI HAY ALGÚN BOTÓN VISIBLE
+    // ==========================================
+    let hayBotonesVisibles = false;
+    
     usuarios.forEach(usuario => {
         const esUsuarioLogueado = usuarioLogueadoId === usuario.id;
         const esAdminObjetivo = usuario.id_perfil === PERFIL_ADMIN_ID;
         
-        // Lógica para deshabilitar botones
-        const editarDeshabilitado = !esAdminSesion || esAdminObjetivo;
-        const desactivarDeshabilitado = !esAdminSesion || esUsuarioLogueado || esAdminObjetivo;
-        const activarDeshabilitado = !esAdminSesion || esAdminObjetivo;
-        const eliminarDeshabilitado = !esAdminSesion || esUsuarioLogueado || esAdminObjetivo;
+        // Determinar si este usuario tiene algún botón visible
+        const editarVisible = esAdminSesion && !esAdminObjetivo;
+        const desactivarVisible = esAdminSesion && !esUsuarioLogueado && !esAdminObjetivo;
+        const activarVisible = esAdminSesion && !esAdminObjetivo;
+        const eliminarVisible = esAdminSesion && !esUsuarioLogueado && !esAdminObjetivo;
         
-        // Textos para tooltips - EDITAR
-        let tooltipEditar = '';
-        if (!esAdminSesion) {
-            tooltipEditar = 'Solo administradores pueden editar usuarios';
-        } else if (esAdminObjetivo) {
-            tooltipEditar = 'No se puede editar el usuario Administrador';
+        if (editarVisible || desactivarVisible || activarVisible || eliminarVisible) {
+            hayBotonesVisibles = true;
+        }
+    });
+    
+    // ==========================================
+    // RENDERIZAR FILAS
+    // ==========================================
+    usuarios.forEach(usuario => {
+        const esUsuarioLogueado = usuarioLogueadoId === usuario.id;
+        const esAdminObjetivo = usuario.id_perfil === PERFIL_ADMIN_ID;
+        
+        // Lógica para OCULTAR botones (no deshabilitar)
+        const editarVisible = esAdminSesion && !esAdminObjetivo;
+        const desactivarVisible = esAdminSesion && !esUsuarioLogueado && !esAdminObjetivo;
+        const activarVisible = esAdminSesion && !esAdminObjetivo;
+        const eliminarVisible = esAdminSesion && !esUsuarioLogueado && !esAdminObjetivo;
+        
+        // Construir columna de acciones
+        let accionesHtml = '';
+        
+        if (editarVisible) {
+            accionesHtml += `
+                <button class="btn btn-sm btn-warning btnEditar" data-id="${usuario.id}">
+                    <i class="bi bi-pencil-square"></i>
+                </button>
+            `;
         }
         
-        // Textos para tooltips - DESACTIVAR
-        let tooltipDesactivar = '';
-        if (!esAdminSesion) {
-            tooltipDesactivar = 'Solo administradores pueden desactivar usuarios';
-        } else if (esAdminObjetivo) {
-            tooltipDesactivar = 'No se puede desactivar el usuario Administrador';
+        if (usuario.estado === 1) {
+            if (desactivarVisible) {
+                accionesHtml += `
+                    <button class="btn btn-sm btn-secondary btnDesactivar" data-id="${usuario.id}">
+                        <i class="bi bi-slash-circle"></i>
+                    </button>
+                `;
+            }
+        } else {
+            if (activarVisible) {
+                accionesHtml += `
+                    <button class="btn btn-sm btn-success btnActivar" data-id="${usuario.id}">
+                        <i class="bi bi-check-circle"></i>
+                    </button>
+                `;
+            }
         }
         
-        // Textos para tooltips - ACTIVAR
-        let tooltipActivar = '';
-        if (!esAdminSesion) {
-            tooltipActivar = 'Solo administradores pueden activar usuarios';
-        } else if (esAdminObjetivo) {
-            tooltipActivar = 'No se puede activar el usuario Administrador';
+        if (eliminarVisible) {
+            accionesHtml += `
+                <button class="btn btn-sm btn-danger btnEliminar" data-id="${usuario.id}">
+                    <i class="bi bi-trash"></i>
+                </button>
+            `;
         }
         
-        // Textos para tooltips - ELIMINAR
-        let tooltipEliminar = '';
-        if (!esAdminSesion) {
-            tooltipEliminar = 'Solo administradores pueden eliminar usuarios';
-        } else if (esAdminObjetivo) {
-            tooltipEliminar = 'No se puede eliminar el usuario Administrador';
+        // Si no hay botones visibles, mostrar un mensaje
+        if (!accionesHtml) {
+            accionesHtml = `<span class="text-muted small">Sin acciones</span>`;
         }
         
         tabla.innerHTML += `
@@ -206,39 +197,50 @@ function renderizar(usuarios) {
                 <td class="text-start">${usuario.correo}</td>
                 <td class="text-center">${usuario.estado === 1 ? '<span class="badge bg-success">Activo</span>' : '<span class="badge bg-secondary">Inactivo</span>'}</td>
                 <td class="text-center">${usuario.fecha_creacion || '-'}</td>
-                <td class="text-center">
-                    <button class="btn btn-sm btn-warning btnEditar" 
-                            data-id="${usuario.id}"
-                            ${editarDeshabilitado ? 'disabled' : ''}
-                            ${tooltipEditar ? `title="${tooltipEditar}" data-bs-toggle="tooltip"` : ''}>
-                        <i class="bi bi-pencil-square"></i>
-                    </button>
-                    ${usuario.estado === 1 
-                        ? `<button class="btn btn-sm btn-secondary btnDesactivar" 
-                                   data-id="${usuario.id}"
-                                   ${desactivarDeshabilitado ? 'disabled' : ''}
-                                   ${tooltipDesactivar ? `title="${tooltipDesactivar}" data-bs-toggle="tooltip"` : ''}>
-                            <i class="bi bi-slash-circle"></i>
-                           </button>`
-                        : `<button class="btn btn-sm btn-success btnActivar" 
-                                   data-id="${usuario.id}"
-                                   ${activarDeshabilitado ? 'disabled' : ''}
-                                   ${tooltipActivar ? `title="${tooltipActivar}" data-bs-toggle="tooltip"` : ''}>
-                            <i class="bi bi-check-circle"></i>
-                           </button>`
-                    }
-                    <button class="btn btn-sm btn-danger btnEliminar" 
-                            data-id="${usuario.id}"
-                            ${eliminarDeshabilitado ? 'disabled' : ''}
-                            ${tooltipEliminar ? `title="${tooltipEliminar}" data-bs-toggle="tooltip"` : ''}>
-                        <i class="bi bi-trash"></i>
-                    </button>
-                 </td>
-             </tr>
+                <td class="text-center">${accionesHtml}</td>
+            </tr>
         `;
     });
     
-    inicializarTooltips();
+    // ==========================================
+    // OCULTAR COLUMNA DE ACCIONES SI NO HAY BOTONES
+    // ==========================================
+    const table = tabla.closest('table');
+    if (table) {
+        const thead = table.querySelector('thead tr');
+        const allRows = table.querySelectorAll('tbody tr');
+        
+        if (!hayBotonesVisibles) {
+            // Ocultar la columna de acciones (índice 7)
+            if (thead) {
+                const ths = thead.querySelectorAll('th');
+                if (ths.length > 7) {
+                    ths[7].style.display = 'none';
+                }
+            }
+            allRows.forEach(row => {
+                const tds = row.querySelectorAll('td');
+                if (tds.length > 7) {
+                    tds[7].style.display = 'none';
+                }
+            });
+        } else {
+            // Mostrar la columna de acciones
+            if (thead) {
+                const ths = thead.querySelectorAll('th');
+                if (ths.length > 7) {
+                    ths[7].style.display = '';
+                }
+            }
+            allRows.forEach(row => {
+                const tds = row.querySelectorAll('td');
+                if (tds.length > 7) {
+                    tds[7].style.display = '';
+                }
+            });
+        }
+    }
+    
 }
 
 
@@ -668,7 +670,6 @@ export async function init() {
         await cargarUsuarios();
         await cargarPerfiles();
         renderizarBotonesAccion();
-        inicializarTooltips();
         return;
     }
     
@@ -683,7 +684,6 @@ export async function init() {
     await cargarUsuarios();
     await cargarPerfiles();
     renderizarBotonesAccion();
-    inicializarTooltips();
 }
 
 export { destroy };
