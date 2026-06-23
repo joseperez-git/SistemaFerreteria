@@ -1,3 +1,6 @@
+// ============================================
+// FUNCIÓN PARA MOSTRAR TOAST
+// ============================================
 export function mostrarToast(mensaje, tipo = 'success') {
     const toast = document.getElementById('toastMensaje');
     const body = document.getElementById('toastBody');
@@ -56,9 +59,9 @@ export function mostrarToast(mensaje, tipo = 'success') {
     bsToast.show();
 }
 
-
+// ============================================
 // FUNCIÓN PARA LIMPIAR BACKDROPS
-
+// ============================================
 export function limpiarBackdrops() {
     const backdrops = document.querySelectorAll('.modal-backdrop');
     const modalesAbiertos = document.querySelectorAll('.modal.show');
@@ -79,7 +82,9 @@ export function limpiarBackdrops() {
     }
 }
 
+// ============================================
 // FUNCIÓN PARA ARREGLAR MODALES ANTES DE ABRIR
+// ============================================
 export function prepararModal(modalElement) {
     if (!modalElement) return;
 
@@ -96,8 +101,9 @@ export function prepararModal(modalElement) {
     modalElement.removeAttribute('style');
 }
 
-
+// ============================================
 // FUNCIÓN PARA CERRAR MODAL LIMPIAMENTE
+// ============================================
 export function cerrarModal(modalElement) {
     if (!modalElement) return;
 
@@ -118,16 +124,18 @@ export function cerrarModal(modalElement) {
     }, 150);
 }
 
-
-// MODAL DE CONFIRMACIÓN
+// ============================================
+// MODAL DE CONFIRMACIÓN PROFESIONAL
+// ============================================
 export function mostrarModalConfirmacionProfesional(titulo, mensaje, onConfirm, tipo = 'warning', textoBoton = 'Confirmar') {
 
+    // Eliminar modal existente si hay uno
     const modalExistente = document.getElementById('modalConfirmacionProfesional');
     if (modalExistente) {
         modalExistente.remove();
     }
 
-    // Configuración según el tipo de acción 
+    // Configuración según el tipo de acción
     const config = {
         warning: {
             color: '#f59e0b',
@@ -199,47 +207,13 @@ export function mostrarModalConfirmacionProfesional(titulo, mensaje, onConfirm, 
                     </div>
                 </div>
             </div>
-<<<<<<< HEAD
-        `;
-        document.body.appendChild(modalElement);
-    }
-    
-    // Configuración según tipo
-    const config = {
-        danger: {
-            icon: 'bi-exclamation-octagon-fill',
-            iconColor: 'text-danger',
-            btnClass: 'btn-danger',
-            btnIcon: 'bi-trash',
-            btnText: 'Eliminar'
-        },
-        warning: {
-            icon: 'bi-exclamation-triangle-fill',
-            iconColor: 'text-warning',
-            btnClass: 'btn-warning',
-            btnIcon: 'bi-shield-exclamation',
-            btnText: 'Anular'
-        },
-        success: {
-            icon: 'bi-check-circle-fill',
-            iconColor: 'text-success',
-            btnClass: 'btn-success',
-            btnIcon: 'bi-check-lg',
-            btnText: 'Activar'
-        },
-        info: {
-            icon: 'bi-info-circle-fill',
-            iconColor: 'text-info',
-            btnClass: 'btn-info',
-            btnIcon: 'bi-info-lg',
-            btnText: 'Confirmar'
-=======
         </div>
     `;
 
     // Agregar modal al body
     document.body.insertAdjacentHTML('beforeend', modalHTML);
 
+    // Estilos CSS para animaciones y hover
     const style = document.createElement('style');
     style.textContent = `
         @keyframes fadeInScale {
@@ -251,7 +225,6 @@ export function mostrarModalConfirmacionProfesional(titulo, mensaje, onConfirm, 
                 opacity: 1;
                 transform: scale(1);
             }
->>>>>>> 5d50a9d8cfd126b6012c772d692dda9a516ed521
         }
         .btn-cancelar-modal:hover {
             background: #f9fafb !important;
@@ -299,5 +272,3 @@ export function mostrarModalConfirmacionProfesional(titulo, mensaje, onConfirm, 
         limpiarBackdrops();
     });
 }
-
-
