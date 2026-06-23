@@ -25,7 +25,8 @@
                 <label class="form-label text-muted small">Buscar</label>
                 <div class="input-group">
                     <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
-                    <input type="text" id="buscarVenta" class="form-control border-start-0" placeholder="Número de nota o cliente...">
+                    <input type="text" id="buscarVenta" class="form-control border-start-0"
+                        placeholder="Número de nota o cliente...">
                 </div>
             </div>
             <div class="col-md-4">
@@ -68,31 +69,37 @@
 <div class="modal fade" id="modalVenta" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
     <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable" style="max-width: 800px;">
         <div class="modal-content shadow-lg border-0" style="border-radius: 24px; overflow: hidden; max-height: 90vh;">
-            <div class="modal-header border-0 p-3" style="background: linear-gradient(135deg, #1a2a3a 0%, #0f1724 100%);">
+            <div class="modal-header border-0 p-3"
+                style="background: linear-gradient(135deg, #1a2a3a 0%, #0f1724 100%);">
                 <div class="d-flex align-items-center gap-2">
                     <div class="me-2">
                         <i class="bi bi-cart-check fs-3 text-white"></i>
                     </div>
                     <div>
                         <h5 class="modal-title text-white fw-bold mb-0 fs-6" id="tituloModalVenta">Nueva Venta</h5>
-                        <p class="text-white-50 small mb-0" style="font-size: 0.65rem;">Complete la información de la venta</p>
+                        <p class="text-white-50 small mb-0" style="font-size: 0.65rem;">Complete la información de la
+                            venta</p>
                     </div>
                 </div>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
-            
+
             <div class="modal-body p-3" style="background: #f8fafc; overflow-y: auto; max-height: calc(90vh - 130px);">
                 <form id="formVenta">
                     <input type="hidden" id="ventaId">
-                    
+
+                    <!-- Botón Cargar Cotización - Agregar después de ventaId -->
                     <div class="row g-2 mb-3">
                         <div class="col-md-4">
                             <label class="form-label fw-semibold text-secondary mb-0 small">N° Nota de Venta</label>
-                            <input type="text" class="form-control form-control-sm bg-light" id="numero_nota_venta" required readonly style="background-color: #eef2ff !important; font-family: monospace; font-weight: bold; font-size: 0.8rem;">
+                            <input type="text" class="form-control form-control-sm bg-light" id="numero_nota_venta"
+                                required readonly
+                                style="background-color: #eef2ff !important; font-family: monospace; font-weight: bold; font-size: 0.8rem;">
                         </div>
                         <div class="col-md-4">
                             <label class="form-label fw-semibold text-secondary mb-0 small">Fecha</label>
-                            <input type="date" class="form-control form-control-sm" id="fecha_venta" required>
+                            <input type="date" class="form-control form-control-sm bg-light" id="fecha_venta" required
+                                readonly style="background-color: #eef2ff !important;">
                         </div>
                         <div class="col-md-4">
                             <label class="form-label fw-semibold text-secondary mb-0 small">Modalidad de Pago</label>
@@ -104,18 +111,39 @@
                         </div>
                     </div>
 
+                    <!-- NUEVO: Botón Cargar Cotización -->
+                    <div class="row g-2 mb-3" id="rowCargarCotizacion">
+                        <div class="col-12">
+                            <button type="button" class="btn btn-outline-primary btn-sm w-100" id="btnCargarCotizacion">
+                                <i class="bi bi-file-text me-1"></i> Cargar desde Cotización
+                            </button>
+                            <input type="hidden" id="id_cotizacion_origen" value="">
+                            <div id="cotizacionCargadaInfo" style="display: none;"
+                                class="alert alert-info mt-2 mb-0 py-1 small">
+                                <i class="bi bi-check-circle me-1"></i>
+                                Cotización cargada: <strong id="cotizacionCargadaNumero"></strong>
+                                <button type="button" class="btn btn-sm btn-outline-danger ms-2 py-0 px-1"
+                                    id="btnQuitarCotizacion" title="Quitar cotización">
+                                    <i class="bi bi-x-circle"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="card border-0 shadow-sm mb-3" style="border-radius: 16px;">
                         <div class="card-header bg-white border-0 pt-2 pb-0" style="border-radius: 16px 16px 0 0;">
                             <h6 class="fw-bold mb-0 small">
                                 <i class="bi bi-person-badge text-primary me-1"></i> Datos del Cliente
                             </h6>
-                            <small class="text-muted" style="font-size: 0.6rem;">Ingrese DNI (8 dígitos) o RUC (11 dígitos)</small>
+                            <small class="text-muted" style="font-size: 0.6rem;">Ingrese DNI (8 dígitos) o RUC (11
+                                dígitos)</small>
                         </div>
                         <div class="card-body p-2">
                             <div class="row g-1 align-items-end">
                                 <div class="col-md-3">
                                     <label class="form-label mb-0 small text-muted">Tipo Doc.</label>
-                                    <select class="form-select form-select-sm" id="tipo_documento_cliente" style="font-size: 0.75rem;">
+                                    <select class="form-select form-select-sm" id="tipo_documento_cliente"
+                                        style="font-size: 0.75rem;">
                                         <option value="">Seleccione</option>
                                         <option value="DNI">DNI</option>
                                         <option value="RUC">RUC</option>
@@ -124,18 +152,21 @@
                                 <div class="col-md-5">
                                     <label class="form-label mb-0 small text-muted">Número de Documento</label>
                                     <div class="input-group input-group-sm">
-                                        <span class="input-group-text bg-white"><i class="bi bi-upc-scan text-muted"></i></span>
-                                        <input type="text" class="form-control" id="numero_documento_cliente" 
-                                            placeholder="Ej: 12345678" maxlength="11" autocomplete="off" style="font-size: 0.75rem;">
-                                        <button class="btn btn-sunat-search" type="button" id="btnBuscarClienteVenta" 
-                                                title="Consultar datos en SUNAT" style="padding: 0 0.5rem;">
+                                        <span class="input-group-text bg-white"><i
+                                                class="bi bi-upc-scan text-muted"></i></span>
+                                        <input type="text" class="form-control" id="numero_documento_cliente"
+                                            placeholder="Ej: 12345678" maxlength="11" autocomplete="off"
+                                            style="font-size: 0.75rem;">
+                                        <button class="btn btn-sunat-search" type="button" id="btnBuscarClienteVenta"
+                                            title="Consultar datos en SUNAT" style="padding: 0 0.5rem;">
                                             <i class="bi bi-building-check"></i>
                                         </button>
                                     </div>
                                 </div>
                                 <div class="col-md-4">
                                     <label class="form-label mb-0 small text-muted">&nbsp;</label>
-                                    <button type="button" class="btn btn-outline-secondary btn-sm w-100" id="btnLimpiarCliente" style="font-size: 0.7rem;">
+                                    <button type="button" class="btn btn-outline-secondary btn-sm w-100"
+                                        id="btnLimpiarCliente" style="font-size: 0.7rem;">
                                         <i class="bi bi-arrow-repeat me-1"></i> Limpiar
                                     </button>
                                 </div>
@@ -143,34 +174,41 @@
                             <div class="row g-1 mt-2">
                                 <div class="col-md-6">
                                     <label class="form-label mb-0 small text-muted">Nombre / Razón Social</label>
-                                    <input type="text" class="form-control form-control-sm" id="nombre_cliente" placeholder="Nombre del cliente" style="font-size: 0.75rem;">
+                                    <input type="text" class="form-control form-control-sm" id="nombre_cliente"
+                                        placeholder="Nombre del cliente" style="font-size: 0.75rem;">
                                 </div>
                                 <div class="col-md-6">
                                     <label class="form-label mb-0 small text-muted">Apellido</label>
-                                    <input type="text" class="form-control form-control-sm" id="apellido_cliente" placeholder="Apellido del cliente" style="font-size: 0.75rem;">
+                                    <input type="text" class="form-control form-control-sm" id="apellido_cliente"
+                                        placeholder="Apellido del cliente" style="font-size: 0.75rem;">
                                 </div>
                                 <div class="col-md-6">
                                     <label class="form-label mb-0 small text-muted">
                                         <i class="bi bi-telephone me-1"></i> Teléfono
                                     </label>
-                                    <input type="text" class="form-control form-control-sm" id="telefono_cliente" placeholder="Ej: 987654321" maxlength="9" style="font-size: 0.75rem;">
+                                    <input type="text" class="form-control form-control-sm" id="telefono_cliente"
+                                        placeholder="Ej: 987654321" maxlength="9" style="font-size: 0.75rem;">
                                 </div>
                                 <div class="col-md-6">
                                     <label class="form-label mb-0 small text-muted">
                                         <i class="bi bi-envelope me-1"></i> Correo
                                     </label>
-                                    <input type="email" class="form-control form-control-sm" id="correo_cliente" placeholder="cliente@email.com" style="font-size: 0.75rem;">
+                                    <input type="email" class="form-control form-control-sm" id="correo_cliente"
+                                        placeholder="cliente@email.com" style="font-size: 0.75rem;">
                                 </div>
                             </div>
                             <input type="hidden" id="id_cliente" value="">
-                            <div id="clienteNoExistenteAlert" class="alert alert-warning mt-1 mb-0 py-1" style="display: none; font-size: 0.65rem;">
-                                <i class="bi bi-info-circle me-1"></i> Este cliente no está registrado. Se registrará automáticamente al guardar.
+                            <div id="clienteNoExistenteAlert" class="alert alert-warning mt-1 mb-0 py-1"
+                                style="display: none; font-size: 0.65rem;">
+                                <i class="bi bi-info-circle me-1"></i> Este cliente no está registrado. Se registrará
+                                automáticamente al guardar.
                             </div>
                         </div>
                     </div>
 
                     <div class="card border-0 shadow-sm mb-3" style="border-radius: 16px;">
-                        <div class="card-header bg-white border-0 pt-2 pb-0 d-flex justify-content-between align-items-center" style="border-radius: 16px 16px 0 0;">
+                        <div class="card-header bg-white border-0 pt-2 pb-0 d-flex justify-content-between align-items-center"
+                            style="border-radius: 16px 16px 0 0;">
                             <h6 class="fw-bold mb-0 small">
                                 <i class="bi bi-box-seam text-success me-1"></i> Productos
                             </h6>
@@ -179,11 +217,13 @@
                             <div class="row g-1 mb-2">
                                 <div class="col-md-6">
                                     <label class="form-label mb-0 small text-muted">Buscar Producto</label>
-                                    <input type="text" class="form-control form-control-sm" id="buscarProductoInput" placeholder="Escriba para buscar..." style="font-size: 0.75rem;">
+                                    <input type="text" class="form-control form-control-sm" id="buscarProductoInput"
+                                        placeholder="Escriba para buscar..." style="font-size: 0.75rem;">
                                 </div>
                                 <div class="col-md-6">
                                     <label class="form-label mb-0 small text-muted">Seleccionar</label>
-                                    <select class="form-select form-select-sm" id="selectProducto" style="font-size: 0.75rem;">
+                                    <select class="form-select form-select-sm" id="selectProducto"
+                                        style="font-size: 0.75rem;">
                                         <option value="">-- Seleccione un producto --</option>
                                     </select>
                                 </div>
@@ -193,20 +233,24 @@
                                     <label class="form-label mb-0 small text-muted">Precio</label>
                                     <div class="input-group input-group-sm">
                                         <span class="input-group-text bg-white" style="font-size: 0.7rem;">S/</span>
-                                        <input type="number" step="0.01" class="form-control bg-light" id="precioUnitario" readonly style="font-size: 0.75rem;">
+                                        <input type="number" step="0.01" class="form-control bg-light"
+                                            id="precioUnitario" readonly style="font-size: 0.75rem;">
                                     </div>
                                 </div>
                                 <div class="col-md-3">
                                     <label class="form-label mb-0 small text-muted">Stock</label>
-                                    <input type="text" class="form-control form-control-sm bg-light" id="stockDisponible" readonly style="font-size: 0.75rem;">
+                                    <input type="text" class="form-control form-control-sm bg-light"
+                                        id="stockDisponible" readonly style="font-size: 0.75rem;">
                                 </div>
                                 <div class="col-md-3">
                                     <label class="form-label mb-0 small text-muted">Cantidad</label>
-                                    <input type="number" step="0.01" class="form-control form-control-sm" id="cantidadProducto" value="1" min="0.01" style="font-size: 0.75rem;">
+                                    <input type="number" step="0.01" class="form-control form-control-sm"
+                                        id="cantidadProducto" value="1" min="0.01" style="font-size: 0.75rem;">
                                 </div>
                                 <div class="col-md-3">
                                     <label class="form-label mb-0 small text-muted">&nbsp;</label>
-                                    <button type="button" class="btn btn-primary btn-sm w-100" id="btnAgregarProductoLista" style="font-size: 0.7rem;">
+                                    <button type="button" class="btn btn-primary btn-sm w-100"
+                                        id="btnAgregarProductoLista" style="font-size: 0.7rem;">
                                         <i class="bi bi-plus-circle me-1"></i> Agregar
                                     </button>
                                 </div>
@@ -226,7 +270,8 @@
                                     <tfoot class="table-light">
                                         <tr>
                                             <td colspan="3" class="text-end fw-bold small">TOTAL:</td>
-                                            <td class="fw-bold text-primary" id="totalVenta" style="font-size: 0.9rem;">S/ 0.00</td>
+                                            <td class="fw-bold text-primary" id="totalVenta" style="font-size: 0.9rem;">
+                                                S/ 0.00</td>
                                             <td></td>
                                         </tr>
                                     </tfoot>
@@ -235,7 +280,8 @@
                         </div>
                     </div>
 
-                    <div id="div_credito_fields" class="card border-0 shadow-sm mb-3" style="border-radius: 16px; display: none;">
+                    <div id="div_credito_fields" class="card border-0 shadow-sm mb-3"
+                        style="border-radius: 16px; display: none;">
                         <div class="card-header bg-white border-0 pt-2 pb-0" style="border-radius: 16px 16px 0 0;">
                             <h6 class="fw-bold mb-0 small">
                                 <i class="bi bi-calendar-check text-warning me-1"></i> Configuración de Crédito
@@ -247,16 +293,19 @@
                                     <label class="form-label mb-0 small text-muted">Pago Inicial</label>
                                     <div class="input-group input-group-sm">
                                         <span class="input-group-text" style="font-size: 0.7rem;">S/</span>
-                                        <input type="number" step="0.01" class="form-control" id="pago_inicial" value="0" min="0" style="font-size: 0.75rem;">
+                                        <input type="number" step="0.01" class="form-control" id="pago_inicial"
+                                            value="0" min="0" style="font-size: 0.75rem;">
                                     </div>
                                 </div>
                                 <div class="col-md-4">
                                     <label class="form-label mb-0 small text-muted">Cantidad Cuotas</label>
-                                    <input type="number" class="form-control form-control-sm" id="cantidad_cuotas" value="0" min="0" style="font-size: 0.75rem;">
+                                    <input type="number" class="form-control form-control-sm" id="cantidad_cuotas"
+                                        value="0" min="0" style="font-size: 0.75rem;">
                                 </div>
                                 <div class="col-md-4">
                                     <label class="form-label mb-0 small text-muted">Intervalo (días)</label>
-                                    <input type="number" class="form-control form-control-sm" id="intervalo_dias" value="0" min="0" style="font-size: 0.75rem;">
+                                    <input type="number" class="form-control form-control-sm" id="intervalo_dias"
+                                        value="0" min="0" style="font-size: 0.75rem;">
                                 </div>
                             </div>
                             <div class="mt-2" id="panelCuotas" style="display: none;">
@@ -279,14 +328,39 @@
                             </div>
                         </div>
                     </div>
-                    
+
+                    <!-- Medios de Pago -->
+                    <div class="card border-0 shadow-sm mb-3" style="border-radius:16px;">
+                        <div
+                            class="card-header bg-white border-0 pt-2 pb-0 d-flex justify-content-between align-items-center">
+                            <h6 class="fw-bold mb-0 small"><i class="bi bi-cash-coin text-success me-1"></i> Medios de
+                                Pago</h6>
+                            <button type="button" class="btn btn-outline-success btn-sm" id="btnAgregarPago">
+                                <i class="bi bi-plus-circle me-1"></i> Pago Mixto
+                            </button>
+                        </div>
+                        <div class="card-body p-2">
+                            <div id="pagosContainer"></div>
+                            <div class="d-flex justify-content-between align-items-center mt-2 pt-2 border-top">
+                                <small class="text-muted" id="cantidadPagos">1 medio de pago</small>
+                                <div class="text-end">
+                                    <small class="d-block">Total pagado: <span id="totalPagadoPagos"
+                                            class="fw-bold text-success">S/ 0.00</span></small>
+                                    <small class="d-block">Pendiente: <span id="pendientePago"
+                                            class="fw-bold text-danger">S/ 0.00</span></small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="mb-2">
                         <label class="form-label fw-semibold text-secondary mb-0 small">Observación</label>
-                        <textarea class="form-control form-control-sm" id="observacion" rows="2" placeholder="Observaciones adicionales..." style="font-size: 0.75rem;"></textarea>
+                        <textarea class="form-control form-control-sm" id="observacion" rows="2"
+                            placeholder="Observaciones adicionales..." style="font-size: 0.75rem;"></textarea>
                     </div>
                 </form>
             </div>
-            
+
             <div class="modal-footer border-0 p-2 bg-light" style="border-top: 1px solid #e9ecef;">
                 <button type="button" class="btn btn-light border btn-sm px-3" data-bs-dismiss="modal">
                     <i class="bi bi-x-circle me-1"></i> Cancelar
@@ -320,7 +394,8 @@
 <div class="modal fade" id="modalDetalleVenta" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
     <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable" style="max-width: 750px;">
         <div class="modal-content border-0 shadow-lg" style="border-radius: 20px; overflow: hidden;">
-            <div class="modal-header border-0 p-2" style="background: linear-gradient(135deg, #1a2a3a 0%, #0f1724 100%);">
+            <div class="modal-header border-0 p-2"
+                style="background: linear-gradient(135deg, #1a2a3a 0%, #0f1724 100%);">
                 <div class="d-flex align-items-center gap-2">
                     <i class="bi bi-receipt text-white fs-5"></i>
                     <div>
@@ -330,7 +405,7 @@
                 </div>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
-            
+
             <div class="modal-body p-2" style="background: #f8fafc; max-height: 70vh; overflow-y: auto;">
                 <div class="row g-1 mb-2">
                     <div class="col-6">
@@ -359,7 +434,12 @@
                                 <span class="text-muted">Total:</span>
                                 <span class="fw-bold text-primary" id="detalleTotal">S/ 0.00</span>
                             </div>
+<<<<<<< HEAD
                             <div id="detalleSaldoRow" style="display: none;" class="d-flex justify-content-between small mt-1">
+=======
+                            <div id="detalleSaldoRow" style="display: none;"
+                                class="d-flex justify-content-between small mt-1">
+>>>>>>> 5d50a9d8cfd126b6012c772d692dda9a516ed521
                                 <span class="text-muted">Saldo Pendiente:</span>
                                 <span class="fw-bold text-warning" id="detalleSaldo">S/ 0.00</span>
                             </div>
@@ -367,14 +447,15 @@
                                 <span class="text-muted">Estado:</span>
                                 <span id="detalleEstado" class="badge bg-success">Pagada</span>
                             </div>
-                            <div class="d-flex justify-content-between small mt-1" id="detalleOrigenRow" style="display: none;">
+                            <div class="d-flex justify-content-between small mt-1" id="detalleOrigenRow"
+                                style="display: none;">
                                 <span class="text-muted">Origen:</span>
                                 <span class="fw-semibold" id="detalleOrigen">-</span>
                             </div>
                         </div>
                     </div>
                 </div>
-                
+
                 <div class="card border-0 shadow-sm mb-2">
                     <div class="card-header bg-white border-0 pt-1 pb-0">
                         <h6 class="fw-bold mb-0 small">Productos</h6>
@@ -394,14 +475,15 @@
                                 <tfoot class="table-light">
                                     <tr>
                                         <td colspan="3" class="text-end fw-bold">TOTAL:</td>
-                                        <td class="text-end fw-bold text-primary" id="detalleProductosTotal">S/ 0.00</td>
+                                        <td class="text-end fw-bold text-primary" id="detalleProductosTotal">S/ 0.00
+                                        </td>
                                     </tr>
                                 </tfoot>
                             </table>
                         </div>
                     </div>
                 </div>
-                
+
                 <div id="detallePagosSection" style="display: none;" class="mb-2">
                     <div class="card border-0 shadow-sm">
                         <div class="card-header bg-white border-0 pt-1 pb-0">
@@ -416,7 +498,7 @@
                         </div>
                     </div>
                 </div>
-                
+
                 <div id="detalleCuotasSection" style="display: none;">
                     <div class="card border-0 shadow-sm">
                         <div class="card-header bg-white border-0 pt-1 pb-0">
@@ -440,7 +522,7 @@
                         </div>
                     </div>
                 </div>
-                
+
                 <div id="formPagoCuotaContainer" style="display: none;" class="mt-2">
                     <div class="card border-0 shadow-sm" style="border-left: 4px solid #0d6efd;">
                         <div class="card-header bg-white border-0 pt-2 pb-0">
@@ -475,7 +557,8 @@
                                     <label class="form-label small fw-semibold mb-0">Monto a Pagar</label>
                                     <div class="input-group input-group-sm">
                                         <span class="input-group-text">S/</span>
-                                        <input type="number" step="0.01" class="form-control" id="pagoMontoPagar" value="0" min="0">
+                                        <input type="number" step="0.01" class="form-control" id="pagoMontoPagar"
+                                            value="0" min="0">
                                     </div>
                                 </div>
                             </div>
@@ -506,13 +589,15 @@
                                         <label class="form-label small mb-0">Monto Adicional</label>
                                         <div class="input-group input-group-sm">
                                             <span class="input-group-text">S/</span>
-                                            <input type="number" step="0.01" class="form-control" id="pagoMontoPagar2" value="0" min="0">
+                                            <input type="number" step="0.01" class="form-control" id="pagoMontoPagar2"
+                                                value="0" min="0">
                                         </div>
                                     </div>
                                 </div>
                             </div>
                             <div class="mt-2">
-                                <button type="button" class="btn btn-primary btn-sm w-100" id="btnConfirmarPagoCuotaIntegrado">
+                                <button type="button" class="btn btn-primary btn-sm w-100"
+                                    id="btnConfirmarPagoCuotaIntegrado">
                                     <i class="bi bi-check-circle me-1"></i> Confirmar Pago
                                 </button>
                             </div>
@@ -527,7 +612,8 @@
                             <label class="form-label small fw-semibold">Monto a Pagar</label>
                             <div class="input-group input-group-sm">
                                 <span class="input-group-text">S/</span>
-                                <input type="number" step="0.01" class="form-control" id="montoPagoAdicional" value="0" min="0">
+                                <input type="number" step="0.01" class="form-control" id="montoPagoAdicional" value="0"
+                                    min="0">
                             </div>
                         </div>
                         <div class="col-md-6">
@@ -548,7 +634,7 @@
                         </div>
                     </div>
                 </div>
-                
+
                 <div class="modal-footer border-0 py-1 bg-light">
                     <div class="btn-group me-auto" role="group">
                         <button type="button" class="btn btn-sm btn-outline-info" id="btnReenviarNotaCorreo">
@@ -557,13 +643,14 @@
                         <button type="button" class="btn btn-sm btn-outline-success" id="btnReenviarNotaWhatsApp">
                             <i class="bi bi-whatsapp"></i> Enviar WhatsApp
                         </button>
-                        <button type="button" class="btn btn-sm btn-outline-secondary" id="btnVerPedidoOrigen" style="display: none;">
+                        <button type="button" class="btn btn-sm btn-outline-secondary" id="btnVerPedidoOrigen"
+                            style="display: none;">
                             <i class="bi bi-truck"></i> Ver Pedido
                         </button>
                     </div>
                     <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cerrar</button>
                 </div>
-                
+
             </div>
         </div>
     </div>
@@ -574,7 +661,8 @@
 <div class="modal fade" id="modalDetallePedidoVenta" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
     <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable" style="max-width: 700px;">
         <div class="modal-content border-0 shadow-lg" style="border-radius: 20px; overflow: hidden;">
-            <div class="modal-header border-0 p-2" style="background: linear-gradient(135deg, #1a2a3a 0%, #0f1724 100%);">
+            <div class="modal-header border-0 p-2"
+                style="background: linear-gradient(135deg, #1a2a3a 0%, #0f1724 100%);">
                 <div class="d-flex align-items-center gap-2">
                     <i class="bi bi-truck text-white fs-5"></i>
                     <div>
@@ -584,7 +672,7 @@
                 </div>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
-            
+
             <div class="modal-body p-2" style="background: #f8fafc; max-height: 70vh; overflow-y: auto;">
                 <div class="row g-1 mb-2">
                     <div class="col-6">
@@ -620,7 +708,11 @@
                         </div>
                     </div>
                 </div>
+<<<<<<< HEAD
                 
+=======
+
+>>>>>>> 5d50a9d8cfd126b6012c772d692dda9a516ed521
                 <div id="detallePedidoEntregaSection" class="card border-0 shadow-sm mb-2">
                     <div class="card-header bg-white border-0 pt-1 pb-0">
                         <h6 class="fw-bold mb-0 small" id="detallePedidoTipoEntregaTitulo">Información de Entrega</h6>
@@ -652,7 +744,11 @@
                         </div>
                     </div>
                 </div>
+<<<<<<< HEAD
                 
+=======
+
+>>>>>>> 5d50a9d8cfd126b6012c772d692dda9a516ed521
                 <div class="card border-0 shadow-sm mb-2">
                     <div class="card-header bg-white border-0 pt-1 pb-0">
                         <h6 class="fw-bold mb-0 small">Productos</h6>
@@ -672,7 +768,8 @@
                                 <tfoot class="table-light">
                                     <tr>
                                         <td colspan="3" class="text-end fw-bold">TOTAL:</td>
-                                        <td class="text-end fw-bold text-primary" id="detallePedidoProductosTotal">S/ 0.00</td>
+                                        <td class="text-end fw-bold text-primary" id="detallePedidoProductosTotal">S/
+                                            0.00</td>
                                     </tr>
                                 </tfoot>
                             </table>
@@ -680,7 +777,7 @@
                     </div>
                 </div>
             </div>
-            
+
             <div class="modal-footer border-0 py-1 bg-light">
                 <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cerrar</button>
             </div>
@@ -688,4 +785,69 @@
     </div>
 </div>
 
+<!-- Modal Seleccionar Cotización (FUERA de cualquier otro modal) -->
+<div class="modal fade" id="modalSeleccionarCotizacion" tabindex="-1" data-bs-backdrop="true" data-bs-keyboard="true"
+    style="z-index: 9999;">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 20px; overflow: hidden;">
+            <div class="modal-header border-0 p-3"
+                style="background: linear-gradient(135deg, #1a2a3a 0%, #0f1724 100%);">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="bi bi-file-text fs-5 text-white"></i>
+                    <div>
+                        <h6 class="modal-title text-white fw-bold mb-0">Seleccionar Cotización</h6>
+                        <p class="text-white-50 small mb-0" style="font-size: 0.65rem;">Elija una cotización activa para
+                            cargar sus datos</p>
+                    </div>
+                </div>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
 
+<<<<<<< HEAD
+=======
+            <div class="modal-body p-3" style="background: #f8fafc;">
+                <div class="row g-2 mb-3">
+                    <div class="col-md-8">
+                        <label class="form-label small text-muted mb-0">Buscar</label>
+                        <input type="text" class="form-control form-control-sm" id="buscarCotizacionModal"
+                            placeholder="Número de cotización o cliente...">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label small text-muted mb-0">Mostrar</label>
+                        <select class="form-select form-select-sm" id="filtroCantidadCotModal">
+                            <option value="10">10 registros</option>
+                            <option value="20">20 registros</option>
+                            <option value="50">50 registros</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                    <table class="table table-sm table-hover mb-0">
+                        <thead class="table-light sticky-top">
+                            <tr style="font-size: 0.7rem;">
+                                <th>N° Cotización</th>
+                                <th>Cliente</th>
+                                <th>Fecha</th>
+                                <th>Vencimiento</th>
+                                <th class="text-end">Total</th>
+                                <th class="text-center">Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tablaCotizacionesModal"></tbody>
+                    </table>
+                </div>
+                <div id="sinCotizacionesModal" class="text-center py-3 text-muted small" style="display: none;">
+                    No hay cotizaciones activas disponibles
+                </div>
+            </div>
+
+            <div class="modal-footer border-0 p-2 bg-light">
+                <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">
+                    <i class="bi bi-x-circle me-1"></i> Cancelar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+>>>>>>> 5d50a9d8cfd126b6012c772d692dda9a516ed521

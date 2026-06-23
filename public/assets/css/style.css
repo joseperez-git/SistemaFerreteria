@@ -138,9 +138,11 @@ body {
 .sidebar::-webkit-scrollbar {
     width: 5px;
 }
+
 .sidebar::-webkit-scrollbar-track {
     background: #0f0f1a;
 }
+
 .sidebar::-webkit-scrollbar-thumb {
     background: #2d3748;
     border-radius: 5px;
@@ -249,19 +251,24 @@ body {
         transform: translateX(-100%);
         width: 280px;
     }
+
     .sidebar.active {
         transform: translateX(0);
     }
+
     .content {
         margin-left: 0;
         width: 100%;
     }
+
     .btn-toggle-sidebar {
         display: inline-block;
     }
+
     h2 {
         font-size: 1.4rem;
     }
+
     .btn {
         font-size: .9rem;
     }
@@ -290,9 +297,11 @@ body {
     transition: transform 0.2s;
     cursor: pointer;
 }
+
 .stat-card:hover {
     transform: translateY(-5px);
 }
+
 .stat-icon {
     font-size: 2.5rem;
     opacity: 0.3;
@@ -320,17 +329,22 @@ body {
 
 /* En desktop, texto sin saltos de línea */
 @media (min-width: 992px) {
-    .table th, .table td {
+
+    .table th,
+    .table td {
         white-space: nowrap;
     }
 }
 
 /* En tablet y móvil, texto normal y ancho mínimo reducido */
 @media (max-width: 991px) {
-    .table th, .table td {
+
+    .table th,
+    .table td {
         white-space: normal;
         min-width: auto;
     }
+
     table {
         min-width: 600px;
     }
@@ -340,6 +354,7 @@ body {
     .table-responsive {
         overflow-x: auto;
     }
+
     table {
         min-width: 600px;
     }
@@ -360,6 +375,7 @@ body {
     color: white;
     font-weight: 600;
 }
+
 .btn-primary:hover {
     transform: translateY(-1px);
     box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
@@ -371,6 +387,7 @@ body {
     color: white;
     font-weight: 600;
 }
+
 .btn-guardar:hover {
     transform: translateY(-1px);
     box-shadow: 0 5px 15px rgba(25, 135, 84, 0.3);
@@ -382,6 +399,7 @@ body {
     color: white;
     font-weight: 600;
 }
+
 .btn-actualizar:hover {
     transform: translateY(-1px);
     box-shadow: 0 5px 15px rgba(245, 158, 11, 0.3);
@@ -393,6 +411,7 @@ body {
     color: white;
     font-weight: 600;
 }
+
 .btn-permisos:hover {
     transform: translateY(-1px);
     box-shadow: 0 5px 15px rgba(13, 110, 253, 0.3);
@@ -402,6 +421,7 @@ body {
     background: #334155;
     border: none;
 }
+
 .btn-dark:hover {
     background: #475569;
 }
@@ -429,6 +449,7 @@ body {
         padding: 0.4rem 0.8rem;
         font-size: 0.85rem;
     }
+
     .btn-sm {
         padding: 0.25rem 0.5rem;
         font-size: 0.75rem;
@@ -441,18 +462,23 @@ body {
 .modal {
     z-index: 1050;
 }
+
 .modal-backdrop {
     z-index: 1040;
 }
+
 .modal.show {
     background-color: rgba(0, 0, 0, 0.5);
 }
+
 .modal-backdrop.show {
     opacity: 0.5;
 }
-.modal-backdrop + .modal-backdrop {
+
+.modal-backdrop+.modal-backdrop {
     display: none;
 }
+
 .modal-content {
     border-radius: 20px;
     overflow: hidden;
@@ -490,6 +516,7 @@ body {
     transform: scale(.95);
     transition: .2s ease;
 }
+
 .modal.show .modal-dialog {
     transform: scale(1);
 }
@@ -497,11 +524,13 @@ body {
 .modal-dialog-scrollable {
     margin: 1rem auto;
 }
+
 .modal-dialog-scrollable .modal-content {
     max-height: 90vh;
     display: flex;
     flex-direction: column;
 }
+
 .modal-dialog-scrollable .modal-body {
     overflow-y: auto;
     flex: 1;
@@ -510,10 +539,12 @@ body {
 .modal-dialog-scrollable .modal-body::-webkit-scrollbar {
     width: 6px;
 }
+
 .modal-dialog-scrollable .modal-body::-webkit-scrollbar-track {
     background: #f1f5f9;
     border-radius: 10px;
 }
+
 .modal-dialog-scrollable .modal-body::-webkit-scrollbar-thumb {
     background: #cbd5e1;
     border-radius: 10px;
@@ -530,12 +561,15 @@ body {
     .modal-dialog .modal-content {
         max-height: 95vh;
     }
+
     .modal-body {
         padding: 1rem !important;
     }
+
     .modal-header {
         padding: 0.75rem 1rem;
     }
+
     .modal-footer {
         padding: 0.75rem 1rem;
     }
@@ -566,20 +600,24 @@ body {
     margin-bottom: 0;
     cursor: pointer;
 }
+
 #listaPermisos .form-check:hover {
     background-color: #f1f5f9;
     border-radius: 8px;
 }
+
 #listaPermisos .form-check-input {
     width: 16px;
     height: 16px;
     margin-top: 2px;
     cursor: pointer;
 }
+
 #listaPermisos .form-check-input:checked {
     background-color: #0d6efd;
     border-color: #0d6efd;
 }
+
 #listaPermisos .form-check-label {
     cursor: pointer;
     font-size: 0.9rem;
@@ -598,22 +636,26 @@ body {
     border-radius: 12px;
     padding: 8px 12px;
 }
+
 .permiso-item:hover {
     background-color: #f8fafc;
     border-color: #cbd5e1;
     transform: translateX(4px);
 }
+
 .permiso-item .form-check {
     cursor: pointer;
     margin: 0;
     display: flex;
     align-items: center;
 }
+
 .permiso-item .form-check-input {
     cursor: pointer;
     margin-right: 12px;
     transform: scale(1.1);
 }
+
 .permiso-item .form-check-label {
     cursor: pointer;
     flex: 1;
@@ -621,6 +663,7 @@ body {
     align-items: center;
     gap: 12px;
 }
+
 .permiso-item .form-check-label i {
     font-size: 1.2rem;
     width: 28px;
@@ -629,6 +672,7 @@ body {
 .select-all-card {
     transition: all 0.2s ease;
 }
+
 .select-all-card:hover {
     background: #e2e8f0 !important;
 }
@@ -638,9 +682,11 @@ body {
     .permiso-item {
         padding: 6px 10px;
     }
+
     .permiso-item .form-check-label {
         font-size: 0.85rem;
     }
+
     .permiso-item .form-check-label i {
         font-size: 1rem;
         width: 24px;
@@ -650,12 +696,15 @@ body {
 /* ============================================
    FORMULARIOS GENERALES
    ============================================ */
-.form-control, .form-select {
+.form-control,
+.form-select {
     border-radius: 10px;
     padding: 10px 15px;
     transition: all 0.2s ease;
 }
-.form-control:focus, .form-select:focus {
+
+.form-control:focus,
+.form-select:focus {
     border-color: #198754;
     box-shadow: 0 0 0 0.2rem rgba(25, 135, 84, 0.25);
 }
@@ -665,7 +714,9 @@ body {
     .row.g-3 {
         --bs-gutter-y: 0.75rem;
     }
-    .form-control, .form-select {
+
+    .form-control,
+    .form-select {
         padding: 8px 12px;
     }
 }
@@ -690,6 +741,7 @@ body {
         flex-direction: column;
         gap: 0.75rem;
     }
+
     .filtros-container .filtro-item {
         width: 100%;
         min-width: auto;
@@ -705,12 +757,16 @@ body {
         padding: 1.5rem;
         min-height: auto;
     }
+
     .login-header h2 {
         font-size: 1.5rem;
     }
-    .form-control, .btn-login {
+
+    .form-control,
+    .btn-login {
         padding: 0.6rem 0.8rem;
     }
+
     .alert-message {
         padding: 0.5rem 0.7rem;
         font-size: 0.75rem;
@@ -724,6 +780,7 @@ body {
     h2 {
         font-size: 1.4rem;
     }
+
     .text-muted {
         font-size: 0.85rem;
     }
@@ -744,6 +801,7 @@ body {
         flex-direction: column;
         gap: 4px;
     }
+
     .table .btn-group-actions .btn {
         width: 100%;
     }
@@ -753,9 +811,17 @@ body {
    ANIMACIONES
    ============================================ */
 @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
+
 .fade-in {
     animation: fadeIn 0.3s ease-out;
 }
@@ -786,7 +852,7 @@ body {
    Botón de búsqueda SUNAT (siempre visible)
    ============================================ */
 .btn-sunat-search {
-    background: #ff8c42; 
+    background: #ff8c42;
     border: 1px solid #ff8c42;
     border-left: none;
     color: white;
@@ -930,6 +996,168 @@ body {
     text-align: left;
 }
 
+/* Estilos para tooltips en botones deshabilitados */
+button[disabled] {
+    pointer-events: auto !important;
+}
+
+.btn[disabled] {
+    pointer-events: auto !important;
+    position: relative;
+}
+
+.tooltip {
+    pointer-events: none !important;
+}
+
+/* Tooltip personalizado como respaldo */
+button[disabled]:hover::after {
+    content: attr(title);
+    position: absolute;
+    background: #333;
+    color: #fff;
+    padding: 5px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    white-space: nowrap;
+    z-index: 9999;
+    bottom: 120%;
+    left: 50%;
+    transform: translateX(-50%);
+    pointer-events: none;
+}
+
+button[disabled]:hover::before {
+    content: '';
+    position: absolute;
+    bottom: 105%;
+    left: 50%;
+    transform: translateX(-50%);
+    border-width: 5px;
+    border-style: solid;
+    border-color: #333 transparent transparent transparent;
+    z-index: 9999;
+}
 
 
+/* Fondo gris para selects deshabilitados */
+select:disabled {
+    background-color: #e9ecef !important;
+    cursor: not-allowed !important;
+    opacity: 0.8;
+}
 
+/* Fondo gris para inputs deshabilitados o readonly */
+input:disabled,
+input:read-only,
+textarea:disabled,
+textarea:read-only {
+    background-color: #e9ecef !important;
+    cursor: not-allowed !important;
+}
+
+/* Fondo gris para botones deshabilitados */
+button:disabled {
+    background-color: #adb5bd !important;
+    cursor: not-allowed !important;
+    opacity: 0.7;
+}
+
+/* Clase específica para campos bloqueados en el modal de clientes */
+#modalCliente input:disabled,
+#modalCliente input:read-only,
+#modalCliente select:disabled,
+#modalCliente select:read-only {
+    background-color: #e9ecef !important;
+    cursor: not-allowed !important;
+}
+
+/* Asegurar que el select deshabilitado en nuevo cliente NO tenga fondo gris al inicio */
+#modalCliente select:not(:disabled) {
+    background-color: white !important;
+    cursor: pointer !important;
+}
+
+
+/* ============================================
+   ESTILOS ESPECÍFICOS PARA CHECKBOX DE PERMISOS
+   ============================================ */
+
+/* Resetear cursor para checkboxes de permisos (habilitados) */
+.permiso-item .form-check-input:not(:disabled) {
+    cursor: pointer !important;
+}
+
+/* Mantener cursor de bloqueo solo para checkboxes deshabilitados */
+.permiso-item .form-check-input:disabled {
+    cursor: not-allowed !important;
+    opacity: 0.6;
+}
+
+/* Asegurar que el checkbox seleccionado se vea bien */
+.permiso-item .form-check-input:checked {
+    background-color: #0d6efd !important;
+    border-color: #0d6efd !important;
+}
+
+/* Checkbox seleccionado y deshabilitado (obligatorios) */
+.permiso-item .form-check-input:checked:disabled {
+    background-color: #0d6efd !important;
+    border-color: #0d6efd !important;
+    opacity: 0.6;
+}
+
+/* Hover en checkbox habilitado */
+.permiso-item .form-check-input:not(:disabled):hover {
+    transform: scale(1.05);
+    box-shadow: 0 0 0 2px rgba(13, 110, 253, 0.25);
+}
+
+/* Asegurar que el label no herede cursor not-allowed */
+.permiso-item .form-check-label {
+    cursor: pointer !important;
+}
+
+/* Label para checkbox deshabilitado */
+.permiso-item .form-check-input:disabled+.form-check-label {
+    cursor: not-allowed !important;
+}
+
+/* Quitar cualquier estilo conflictivo de input:disabled general */
+#listaPermisos input:disabled,
+#listaPermisos input:read-only {
+    cursor: default !important;
+}
+
+#listaPermisos .form-check-input:not(:disabled) {
+    cursor: pointer !important;
+}
+
+
+/* ============================================
+   ESTILOS ESPECÍFICOS PARA CHECKBOX "SELECCIONAR TODOS"
+   ============================================ */
+
+/* Checkbox "Seleccionar todos" - siempre debe tener cursor pointer */
+#seleccionarTodosPermisos {
+    cursor: pointer !important;
+}
+
+#seleccionarTodosPermisos:not(:disabled) {
+    cursor: pointer !important;
+}
+
+#seleccionarTodosPermisos:checked {
+    background-color: #0d6efd !important;
+    border-color: #0d6efd !important;
+}
+
+#seleccionarTodosPermisos:hover {
+    transform: scale(1.05);
+    box-shadow: 0 0 0 2px rgba(13, 110, 253, 0.25);
+}
+
+/* Asegurar que el label asociado también tenga cursor pointer */
+.select-all-card .form-check-label {
+    cursor: pointer !important;
+}

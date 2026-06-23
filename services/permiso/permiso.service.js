@@ -1,5 +1,6 @@
 const db = require('../../config/db');
 
+
 exports.getPermisos = async (idPerfil) => {
     const [rows] = await db.query('CALL sp_listar_opciones_por_perfil(?)', [idPerfil]);
     
@@ -14,6 +15,7 @@ exports.getPermisos = async (idPerfil) => {
     
     return [];
 };
+
 
 exports.savePermisos = async (body, idUsuarioSesion = null) => {
     const { id_perfil, opciones } = body;
@@ -30,6 +32,20 @@ exports.savePermisos = async (body, idUsuarioSesion = null) => {
         throw new Error('La lista de opciones debe ser un array');
     }
 
+    // Permisos obligatorios para administrador
+    const PERFIL_ADMIN_ID = 1;
+    const OPCIONES_OBLIGATORIAS = [1, 3]; // Dashboard y Perfiles
+    
+    if (parseInt(id_perfil) === PERFIL_ADMIN_ID) {
+        const opcionesSet = new Set(opciones.map(o => parseInt(o)));
+        
+        for (const opcionId of OPCIONES_OBLIGATORIAS) {
+            if (!opcionesSet.has(opcionId)) {
+                throw new Error('El perfil Administrador debe tener acceso a los módulos Dashboard y Perfiles obligatoriamente');
+            }
+        }
+    }
+    
     const opcionesStr = opciones.join(',');
     await db.query('CALL sp_reemplazar_permisos_perfil(?, ?)', [id_perfil, opcionesStr]);
 

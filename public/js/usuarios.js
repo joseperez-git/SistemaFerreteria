@@ -1,13 +1,98 @@
 import { mostrarToast, limpiarBackdrops, prepararModal, cerrarModal, mostrarModalConfirmacionProfesional } from './helpers.js';
 
 
+// ID del perfil Administrador
+const PERFIL_ADMIN_ID = 1; 
+
 // VARIABLES GLOBALES
 let usuariosGlobal = [];
 let eventosInicializados = false;
 let elementos = {};
 
 
-// FUNCIONES DE UTILIDAD
+// VALIDACIÓN 
+function validarSoloLetrasFrontend(event) {
+    const regex = /^[a-zA-ZáéíóúñÁÉÍÓÚÑüÜ\s]*$/;
+    const valor = event.target.value;
+    if (!regex.test(valor)) {
+        event.target.value = valor.slice(0, -1);
+        mostrarToast('Solo se permiten letras y espacios', 'warning');
+    }
+}
+
+
+// INICIALIZAR TOOLTIPS
+function inicializarTooltips() {
+    setTimeout(function() {
+        const existingTooltips = document.querySelectorAll('.tooltip');
+        existingTooltips.forEach(tooltip => tooltip.remove());
+        
+        const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+        tooltipTriggerList.forEach(function (tooltipTriggerEl) {
+            if (tooltipTriggerEl._tooltip) {
+                tooltipTriggerEl._tooltip.dispose();
+            }
+            new bootstrap.Tooltip(tooltipTriggerEl, {
+                placement: 'top',
+                trigger: 'hover',
+                delay: { show: 300, hide: 100 }
+            });
+        });
+    }, 100);
+}
+
+
+// ==================== RENDERIZAR BOTONES DE ACCIÓN (DINÁMICOS) ====================
+function renderizarBotonesAccion() {
+    const contenedor = document.getElementById('botonesAccionUsuarios');
+    if (!contenedor) return;
+    
+    const sesion = JSON.parse(localStorage.getItem('sesion') || '{}');
+    const esAdminSesion = sesion?.usuario?.id_perfil === PERFIL_ADMIN_ID;
+    
+    if (!esAdminSesion) {
+        // Usuario no admin - botones deshabilitados con tooltip en span wrapper
+        contenedor.innerHTML = `
+            <span data-bs-toggle="tooltip" data-bs-title="Solo administradores pueden realizar acciones masivas">
+                <button class="btn btn-outline-dark" 
+                        data-bs-toggle="modal" 
+                        data-bs-target="#modalAccionesMasivas" 
+                        disabled
+                        style="pointer-events: none;">
+                    <i class="bi bi-people-fill me-2"></i> Acciones Masivas
+                </button>
+            </span>
+            <span data-bs-toggle="tooltip" data-bs-title="Solo administradores pueden crear usuarios">
+                <button class="btn btn-primary" 
+                        data-bs-toggle="modal" 
+                        data-bs-target="#modalUsuario" 
+                        disabled
+                        style="pointer-events: none;">
+                    <i class="bi bi-plus-circle"></i> Nuevo Usuario
+                </button>
+            </span>
+        `;
+    } else {
+        // Usuario admin - botones habilitados sin tooltip
+        contenedor.innerHTML = `
+            <button class="btn btn-outline-dark" 
+                    data-bs-toggle="modal" 
+                    data-bs-target="#modalAccionesMasivas">
+                <i class="bi bi-people-fill me-2"></i> Acciones Masivas
+            </button>
+            <button class="btn btn-primary" 
+                    data-bs-toggle="modal" 
+                    data-bs-target="#modalUsuario">
+                <i class="bi bi-plus-circle"></i> Nuevo Usuario
+            </button>
+        `;
+    }
+    
+    inicializarTooltips();
+}
+
+
+// FUNCIONES DE UTILIDAD 
 function isCurrentPage() {
     const tabla = document.getElementById('tablaUsuarios');
     return tabla !== null;
@@ -28,7 +113,7 @@ function limpiarAccionesMasivas() {
 }
 
 
-// RENDERIZADO Y FILTRADO
+// RENDERIZADO Y FILTRADO 
 function aplicarFiltros() {
     if (!isCurrentPage()) return;
     
@@ -53,6 +138,8 @@ function aplicarFiltros() {
     renderizar(usuariosFiltrados);
 }
 
+
+// Renderizar
 function renderizar(usuarios) {
     const tabla = getElement('tablaUsuarios');
     if (!tabla) return;
@@ -60,46 +147,98 @@ function renderizar(usuarios) {
     tabla.innerHTML = '';
     
     if (usuarios.length === 0) {
-        tabla.innerHTML = `<tr><td colspan="8" class="text-center text-muted py-4">No hay usuarios registrados</td></tr>`;
+        tabla.innerHTML = `<td><td colspan="8" class="text-center text-muted py-4">No hay usuarios registrados</td></tr>`;
         return;
     }
     
     const sesion = JSON.parse(localStorage.getItem('sesion') || '{}');
+    const esAdminSesion = sesion?.usuario?.id_perfil === PERFIL_ADMIN_ID;
+    const usuarioLogueadoId = sesion?.usuario?.id;
     
     usuarios.forEach(usuario => {
-        const esUsuarioLogueado = sesion?.usuario?.id === usuario.id;
-        const esAdminObjetivo = usuario.id_perfil === 1;
-        const esAdminSesion = sesion?.usuario?.id_perfil === 1;
-        const bloquearAdmin = esAdminObjetivo && !esAdminSesion;
+        const esUsuarioLogueado = usuarioLogueadoId === usuario.id;
+        const esAdminObjetivo = usuario.id_perfil === PERFIL_ADMIN_ID;
+        
+        // Lógica para deshabilitar botones
+        const editarDeshabilitado = !esAdminSesion || esAdminObjetivo;
+        const desactivarDeshabilitado = !esAdminSesion || esUsuarioLogueado || esAdminObjetivo;
+        const activarDeshabilitado = !esAdminSesion || esAdminObjetivo;
+        const eliminarDeshabilitado = !esAdminSesion || esUsuarioLogueado || esAdminObjetivo;
+        
+        // Textos para tooltips - EDITAR
+        let tooltipEditar = '';
+        if (!esAdminSesion) {
+            tooltipEditar = 'Solo administradores pueden editar usuarios';
+        } else if (esAdminObjetivo) {
+            tooltipEditar = 'No se puede editar el usuario Administrador';
+        }
+        
+        // Textos para tooltips - DESACTIVAR
+        let tooltipDesactivar = '';
+        if (!esAdminSesion) {
+            tooltipDesactivar = 'Solo administradores pueden desactivar usuarios';
+        } else if (esAdminObjetivo) {
+            tooltipDesactivar = 'No se puede desactivar el usuario Administrador';
+        }
+        
+        // Textos para tooltips - ACTIVAR
+        let tooltipActivar = '';
+        if (!esAdminSesion) {
+            tooltipActivar = 'Solo administradores pueden activar usuarios';
+        } else if (esAdminObjetivo) {
+            tooltipActivar = 'No se puede activar el usuario Administrador';
+        }
+        
+        // Textos para tooltips - ELIMINAR
+        let tooltipEliminar = '';
+        if (!esAdminSesion) {
+            tooltipEliminar = 'Solo administradores pueden eliminar usuarios';
+        } else if (esAdminObjetivo) {
+            tooltipEliminar = 'No se puede eliminar el usuario Administrador';
+        }
         
         tabla.innerHTML += `
             <tr>
-                <td>${usuario.id}</td>
-                <td>${usuario.nombre} ${usuario.apellido}</td>
-                <td>${usuario.username}</td>
-                <td><span class="badge badge-perfil">${usuario.perfil_nombre || 'Sin perfil'}</span></td>
-                <td>${usuario.correo}</td>
-                <td>${usuario.estado === 1 ? '<span class="badge bg-success">Activo</span>' : '<span class="badge bg-secondary">Inactivo</span>'}</td>
+                <td class="text-center">${usuario.id}</td>
+                <td class="text-start">${usuario.nombre} ${usuario.apellido}</td>
+                <td class="text-start">${usuario.username}</td>
+                <td class="text-center"><span class="badge badge-perfil">${usuario.perfil_nombre || 'Sin perfil'}</span></td>
+                <td class="text-start">${usuario.correo}</td>
+                <td class="text-center">${usuario.estado === 1 ? '<span class="badge bg-success">Activo</span>' : '<span class="badge bg-secondary">Inactivo</span>'}</td>
                 <td class="text-center">${usuario.fecha_creacion || '-'}</td>
                 <td class="text-center">
-                    <button class="btn btn-sm btn-warning btnEditar" data-id="${usuario.id}" ${bloquearAdmin ? 'disabled' : ''}>
+                    <button class="btn btn-sm btn-warning btnEditar" 
+                            data-id="${usuario.id}"
+                            ${editarDeshabilitado ? 'disabled' : ''}
+                            ${tooltipEditar ? `title="${tooltipEditar}" data-bs-toggle="tooltip"` : ''}>
                         <i class="bi bi-pencil-square"></i>
                     </button>
                     ${usuario.estado === 1 
-                        ? `<button class="btn btn-sm btn-secondary btnDesactivar" data-id="${usuario.id}" ${esUsuarioLogueado || bloquearAdmin ? 'disabled' : ''}>
+                        ? `<button class="btn btn-sm btn-secondary btnDesactivar" 
+                                   data-id="${usuario.id}"
+                                   ${desactivarDeshabilitado ? 'disabled' : ''}
+                                   ${tooltipDesactivar ? `title="${tooltipDesactivar}" data-bs-toggle="tooltip"` : ''}>
                             <i class="bi bi-slash-circle"></i>
-                        </button>`
-                        : `<button class="btn btn-sm btn-success btnActivar" data-id="${usuario.id}">
+                           </button>`
+                        : `<button class="btn btn-sm btn-success btnActivar" 
+                                   data-id="${usuario.id}"
+                                   ${activarDeshabilitado ? 'disabled' : ''}
+                                   ${tooltipActivar ? `title="${tooltipActivar}" data-bs-toggle="tooltip"` : ''}>
                             <i class="bi bi-check-circle"></i>
-                        </button>`
+                           </button>`
                     }
-                    <button class="btn btn-sm btn-danger btnEliminar" data-id="${usuario.id}" ${esUsuarioLogueado || bloquearAdmin ? 'disabled' : ''}>
+                    <button class="btn btn-sm btn-danger btnEliminar" 
+                            data-id="${usuario.id}"
+                            ${eliminarDeshabilitado ? 'disabled' : ''}
+                            ${tooltipEliminar ? `title="${tooltipEliminar}" data-bs-toggle="tooltip"` : ''}>
                         <i class="bi bi-trash"></i>
                     </button>
-                </td>
-            </tr>
+                 </td>
+             </tr>
         `;
     });
+    
+    inicializarTooltips();
 }
 
 
@@ -119,6 +258,8 @@ async function cargarUsuarios() {
     }
 }
 
+
+// Cargar perfiles
 async function cargarPerfiles() {
     if (!isCurrentPage()) return;
     
@@ -184,10 +325,28 @@ async function cambiarEstado(id, estado, mensajeExito, tipoToast) {
 }
 
 
-// INICIALIZACIÓN DE COMPONENTES
+// INICIALIZACIÓN DE COMPONENTES 
 function initFormUsuario() {
     const btnGuardar = getElement('btnGuardarUsuario');
     if (!btnGuardar) return;
+
+    // Validación en tiempo real para nombre y apellido
+    const inputNombre = getElement('nombre');
+    const inputApellido = getElement('apellido');
+    
+    if (inputNombre) {
+        const nuevoNombre = inputNombre.cloneNode(true);
+        inputNombre.parentNode.replaceChild(nuevoNombre, inputNombre);
+        nuevoNombre.addEventListener('input', validarSoloLetrasFrontend);
+        elementos['nombre'] = nuevoNombre;
+    }
+    
+    if (inputApellido) {
+        const nuevoApellido = inputApellido.cloneNode(true);
+        inputApellido.parentNode.replaceChild(nuevoApellido, inputApellido);
+        nuevoApellido.addEventListener('input', validarSoloLetrasFrontend);
+        elementos['apellido'] = nuevoApellido;
+    }
     
     if (btnGuardar.parentNode) {
         const newBtn = btnGuardar.cloneNode(true);
@@ -253,6 +412,8 @@ function initFormUsuario() {
     }
 }
 
+
+// Acciones masivas
 function initAccionesMasivas() {
     const btnAplicar = getElement('btnAplicarAccionMasiva');
     if (!btnAplicar) return;
@@ -302,6 +463,7 @@ function initAccionesMasivas() {
     }
 }
 
+
 function initBuscadorFiltros() {
     const buscarInput = getElement('buscarUsuario');
     if (buscarInput && buscarInput.parentNode) {
@@ -319,6 +481,7 @@ function initBuscadorFiltros() {
         elementos['filtroCantidad'] = newFiltro;
     }
 }
+
 
 function initNuevoUsuario() {
     const nuevoBtn = document.querySelector('[data-bs-target="#modalUsuario"]');
@@ -342,16 +505,33 @@ function initNuevoUsuario() {
 }
 
 
-// EVENTOS GLOBALES (DELEGACIÓN)
+// EVENTOS GLOBALES 
 function setupEventListeners() {
     document.body.addEventListener('click', async (e) => {
         if (!isCurrentPage()) return;
         
-        // Editar
+        const sesion = JSON.parse(localStorage.getItem('sesion') || '{}');
+        const esAdminSesion = sesion?.usuario?.id_perfil === PERFIL_ADMIN_ID;
+        const usuarioLogueadoId = sesion?.usuario?.id;
+        
+        // EDITAR
         const btnEditar = e.target.closest('.btnEditar');
-        if (btnEditar && !btnEditar.disabled) {
+        if (btnEditar) {
+            if (btnEditar.disabled) return;
+            
             const id = parseInt(btnEditar.dataset.id);
             const usuario = usuariosGlobal.find(u => u.id === id);
+            
+            // Validación de seguridad
+            if (!esAdminSesion && usuarioLogueadoId !== id) {
+                mostrarToast('No tiene permisos para editar otros usuarios', 'warning');
+                return;
+            }
+            
+            if (usuario && usuario.id_perfil === PERFIL_ADMIN_ID && !esAdminSesion) {
+                mostrarToast('No tiene permisos para modificar administradores', 'warning');
+                return;
+            }
             
             if (usuario) {
                 const usuarioId = getElement('usuarioId');
@@ -387,41 +567,78 @@ function setupEventListeners() {
             return;
         }
         
-        // Desactivar
+        // DESACTIVAR
         const btnDesactivar = e.target.closest('.btnDesactivar');
-        if (btnDesactivar && !btnDesactivar.disabled) {
+        if (btnDesactivar) {
+            if (btnDesactivar.disabled) return;
+            
             const id = parseInt(btnDesactivar.dataset.id);
+            
+            if (!esAdminSesion) {
+                mostrarToast('No tiene permisos para desactivar usuarios', 'warning');
+                return;
+            }
+            
+            if (usuarioLogueadoId === id) {
+                mostrarToast('No puede desactivar su propio usuario', 'warning');
+                return;
+            }
+            
             mostrarModalConfirmacionProfesional(
                 'Desactivar Usuario',
                 '¿Desea desactivar este usuario?',
                 () => cambiarEstado(id, 0, 'Usuario desactivado', 'warning'),
-                'warning'
+                'warning',
+                'Desactivar'
             );
             return;
         }
         
-        // Activar
+        // ACTIVAR
         const btnActivar = e.target.closest('.btnActivar');
         if (btnActivar) {
+            if (btnActivar.disabled) return;
+            
             const id = parseInt(btnActivar.dataset.id);
+            
+            if (!esAdminSesion) {
+                mostrarToast('No tiene permisos para activar usuarios', 'warning');
+                return;
+            }
+            
             mostrarModalConfirmacionProfesional(
                 'Activar Usuario',
                 '¿Desea activar este usuario?',
                 () => cambiarEstado(id, 1, 'Usuario activado', 'success'),
-                'success'
+                'success',
+                'Activar'
             );
             return;
         }
         
-        // Eliminar
+        // ELIMINAR
         const btnEliminar = e.target.closest('.btnEliminar');
-        if (btnEliminar && !btnEliminar.disabled) {
+        if (btnEliminar) {
+            if (btnEliminar.disabled) return;
+            
             const id = parseInt(btnEliminar.dataset.id);
+            
+            if (!esAdminSesion) {
+                mostrarToast('No tiene permisos para eliminar usuarios', 'warning');
+                return;
+            }
+            
+            if (usuarioLogueadoId === id) {
+                mostrarToast('No puede eliminar su propio usuario', 'warning');
+                return;
+            }
+            
             mostrarModalConfirmacionProfesional(
                 'Eliminar Usuario',
                 '¿Desea eliminar este usuario?',
                 () => cambiarEstado(id, 2, 'Usuario eliminado', 'danger'),
-                'danger'
+                'danger',
+                'Eliminar'
             );
             return;
         }
@@ -435,7 +652,7 @@ function setupEventListeners() {
 }
 
 
-// DESTRUCCIÓN DEL MÓDULO
+// DESTRUCCIÓN DEL MÓDULO 
 function destroy() {
     eventosInicializados = false;
     elementos = {};
@@ -443,13 +660,15 @@ function destroy() {
 }
 
 
-// INICIALIZACIÓN PRINCIPAL
+// INICIALIZACIÓN PRINCIPAL 
 export async function init() {
     if (!isCurrentPage()) return;
     
     if (eventosInicializados) {
         await cargarUsuarios();
         await cargarPerfiles();
+        renderizarBotonesAccion();
+        inicializarTooltips();
         return;
     }
     
@@ -463,11 +682,11 @@ export async function init() {
     
     await cargarUsuarios();
     await cargarPerfiles();
+    renderizarBotonesAccion();
+    inicializarTooltips();
 }
 
 export { destroy };
-
-
 
 
 

@@ -1,0 +1,343 @@
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="mb-2">Cotizaciones</h2>
+        <p class="text-muted">Gestión de cotizaciones: cree y administre cotizaciones para sus clientes.</p>
+    </div>
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalCotizacion">
+        <i class="bi bi-plus-circle"></i> Nueva Cotización
+    </button>
+</div>
+
+<!-- Filtros -->
+<div class="card shadow-sm mb-4">
+    <div class="card-body">
+        <div class="row g-3 align-items-end">
+            <div class="col-md-3">
+                <label class="form-label text-muted small">Mostrar</label>
+                <select id="filtroCantidad" class="form-select">
+                    <option value="5" selected>5 registros</option>
+                    <option value="10">10 registros</option>
+                    <option value="15">15 registros</option>
+                    <option value="20">20 registros</option>
+                </select>
+            </div>
+            <div class="col-md-5">
+                <label class="form-label text-muted small">Buscar</label>
+                <div class="input-group">
+                    <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
+                    <input type="text" id="buscarCotizacion" class="form-control border-start-0" placeholder="Número de cotización o cliente...">
+                </div>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label text-muted small">Estado</label>
+                <select id="filtroEstado" class="form-select">
+                    <option value="">Todos</option>
+                    <option value="1">Activo</option>
+                    <option value="0">Inactivo</option>
+                    <option value="3">Procesado</option>
+                </select>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Tabla -->
+<div class="card shadow-sm">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-dark">
+                    <tr>
+                        <th style="width: 50px;">ID</th>
+                        <th>N° Cotización</th>
+                        <th>Cliente</th>
+                        <th>Vendedor</th>
+                        <th>Vencimiento</th>
+                        <th>Total</th>
+                        <th>Estado</th>
+                        <th style="width: 130px;">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="tablaCotizaciones"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Cotización -->
+<div class="modal fade" id="modalCotizacion" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable" style="max-width: 900px;">
+        <div class="modal-content shadow-lg border-0" style="border-radius: 24px; overflow: hidden; max-height: 90vh;">
+            <div class="modal-header border-0 p-3" style="background: linear-gradient(135deg, #1a2a3a 0%, #0f1724 100%);">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="bi bi-file-text fs-5 text-white"></i>
+                    <div>
+                        <h5 class="modal-title text-white fw-bold mb-0 fs-6" id="tituloModalCotizacion">Nueva Cotización</h5>
+                        <p class="text-white-50 small mb-0" style="font-size: 0.65rem;">Complete la información de la cotización</p>
+                    </div>
+                </div>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            
+            <div class="modal-body p-3" style="background: #f8fafc; overflow-y: auto; max-height: calc(90vh - 130px);">
+                <form id="formCotizacion">
+                    <input type="hidden" id="cotizacionId">
+                    
+                    <div class="row g-2 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold text-secondary mb-0 small">N° Cotización</label>
+                            <input type="text" class="form-control form-control-sm bg-light" id="numero_cotizacion" readonly style="background-color: #eef2ff !important; font-family: monospace; font-weight: bold; font-size: 0.8rem;">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold text-secondary mb-0 small">Fecha de Vencimiento</label>
+                            <input type="date" class="form-control form-control-sm" id="fecha_vencimiento" required>
+                        </div>
+                    </div>
+
+                    <!-- Sección Cliente -->
+                    <div class="card border-0 shadow-sm mb-3" style="border-radius: 16px;">
+                        <div class="card-header bg-white border-0 pt-2 pb-0" style="border-radius: 16px 16px 0 0;">
+                            <h6 class="fw-bold mb-0 small">
+                                <i class="bi bi-person-badge text-primary me-1"></i> Datos del Cliente
+                            </h6>
+                        </div>
+                        <div class="card-body p-2">
+                            <div class="row g-1 align-items-end">
+                                <div class="col-md-3">
+                                    <label class="form-label mb-0 small text-muted">Tipo Doc.</label>
+                                    <select class="form-select form-select-sm" id="tipo_documento_cliente">
+                                        <option value="">Seleccione</option>
+                                        <option value="DNI">DNI</option>
+                                        <option value="RUC">RUC</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-5">
+                                    <label class="form-label mb-0 small text-muted">Número de Documento</label>
+                                    <div class="input-group input-group-sm">
+                                        <span class="input-group-text bg-white"><i class="bi bi-upc-scan text-muted"></i></span>
+                                        <input type="text" class="form-control" id="numero_documento_cliente" 
+                                            placeholder="Ej: 12345678" maxlength="11" autocomplete="off">
+                                        <button class="btn btn-sunat-search" type="button" id="btnBuscarClienteCot" 
+                                                title="Consultar datos en SUNAT">
+                                            <i class="bi bi-building-check"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label mb-0 small text-muted">&nbsp;</label>
+                                    <button type="button" class="btn btn-outline-secondary btn-sm w-100" id="btnLimpiarCliente">
+                                        <i class="bi bi-arrow-repeat me-1"></i> Limpiar
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="row g-1 mt-2">
+                                <div class="col-md-6">
+                                    <label class="form-label mb-0 small text-muted">Nombre / Razón Social</label>
+                                    <input type="text" class="form-control form-control-sm" id="nombre_cliente" readonly style="background-color: #f0fdf4;">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label mb-0 small text-muted">Apellido</label>
+                                    <input type="text" class="form-control form-control-sm" id="apellido_cliente" readonly style="background-color: #f0fdf4;">
+                                </div>
+                            </div>
+                            <input type="hidden" id="id_cliente" value="">
+                            <div id="clienteNoExistenteAlert" class="alert alert-warning mt-1 mb-0 py-1" style="display: none; font-size: 0.65rem;">
+                                <i class="bi bi-info-circle me-1"></i> Este cliente no está registrado. Se registrará automáticamente al guardar.
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Sección Productos -->
+                    <div class="card border-0 shadow-sm mb-3" style="border-radius: 16px;">
+                        <div class="card-header bg-white border-0 pt-2 pb-0" style="border-radius: 16px 16px 0 0;">
+                            <h6 class="fw-bold mb-0 small">
+                                <i class="bi bi-box-seam text-success me-1"></i> Productos
+                            </h6>
+                        </div>
+                        <div class="card-body p-2">
+                            <div class="row g-1 mb-2">
+                                <div class="col-md-6">
+                                    <label class="form-label mb-0 small text-muted">Buscar Producto</label>
+                                    <input type="text" class="form-control form-control-sm" id="buscarProductoCot" placeholder="Escriba para buscar...">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label mb-0 small text-muted">Seleccionar</label>
+                                    <select class="form-select form-select-sm" id="selectProducto">
+                                        <option value="">-- Seleccione un producto --</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="row g-1 mb-2">
+                                <div class="col-md-3">
+                                    <label class="form-label mb-0 small text-muted">Precio</label>
+                                    <div class="input-group input-group-sm">
+                                        <span class="input-group-text bg-white" style="font-size: 0.7rem;">S/</span>
+                                        <input type="number" step="0.01" class="form-control bg-light" id="precioUnitario" readonly style="font-size: 0.75rem;">
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label mb-0 small text-muted">Stock</label>
+                                    <input type="text" class="form-control form-control-sm bg-light" id="stockDisponible" readonly style="font-size: 0.75rem;">
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label mb-0 small text-muted">Cantidad</label>
+                                    <input type="number" class="form-control form-control-sm" id="cantidadProducto" value="1" min="1" style="font-size: 0.75rem;">
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label mb-0 small text-muted">&nbsp;</label>
+                                    <button type="button" class="btn btn-primary btn-sm w-100" id="btnAgregarProductoLista" style="font-size: 0.7rem;">
+                                        <i class="bi bi-plus-circle me-1"></i> Agregar
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <div class="table-responsive mt-2">
+                                <table class="table table-sm table-hover mb-0">
+                                    <thead class="table-light">
+                                        <tr style="font-size: 0.7rem;">
+                                            <th>Producto</th>
+                                            <th class="text-center">Cant.</th>
+                                            <th class="text-end">P. Unit.</th>
+                                            <th class="text-end">Desc.</th>
+                                            <th class="text-end">Subtotal</th>
+                                            <th class="text-center"></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="tablaProductosCotizacion"></tbody>
+                                    <tfoot class="table-light">
+                                        <tr>
+                                            <td colspan="4" class="text-end fw-bold small">TOTAL:</td>
+                                            <td class="fw-bold text-primary" id="totalCotizacion" style="font-size: 0.9rem;">S/ 0.00</td>
+                                            <td></td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-2">
+                        <label class="form-label fw-semibold text-secondary mb-0 small">Observación</label>
+                        <textarea class="form-control form-control-sm" id="observacion" rows="2" placeholder="Observaciones adicionales..."></textarea>
+                    </div>
+                </form>
+            </div>
+            
+            <div class="modal-footer border-0 p-2 bg-light" style="border-top: 1px solid #e9ecef;">
+                <button type="button" class="btn btn-light border btn-sm px-3" data-bs-dismiss="modal">
+                    <i class="bi bi-x-circle me-1"></i> Cancelar
+                </button>
+                <button type="button" class="btn btn-success btn-sm px-3" id="btnGuardarCotizacion">
+                    <i class="bi bi-check-circle me-1"></i> Guardar Cotización
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Detalle de Cotización -->
+<div class="modal fade" id="modalDetalleCotizacion" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable" style="max-width: 800px;">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 20px; overflow: hidden;">
+            <div class="modal-header border-0 p-2" style="background: linear-gradient(135deg, #1a2a3a 0%, #0f1724 100%);">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="bi bi-file-text text-white fs-5"></i>
+                    <div>
+                        <h6 class="modal-title text-white fw-bold mb-0">Detalle de Cotización</h6>
+                        <small class="text-white-50" id="detalleNumeroCotizacion" style="font-size: 0.7rem;">-</small>
+                    </div>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <span id="detalleEstadoBadge" class="badge px-3 py-2 rounded-pill">-</span>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+            </div>
+            
+            <div class="modal-body p-2" style="background: #f8fafc; max-height: 70vh; overflow-y: auto;">
+                <div class="row g-1 mb-2">
+                    <div class="col-4">
+                        <div class="bg-white rounded p-1 shadow-sm text-center">
+                            <small class="text-muted d-block">Vendedor</small>
+                            <span class="fw-semibold" id="detalleVendedor">-</span>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div class="bg-white rounded p-1 shadow-sm text-center">
+                            <small class="text-muted d-block">Fecha Emisión</small>
+                            <span class="fw-semibold" id="detalleFecha">-</span>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div class="bg-white rounded p-1 shadow-sm text-center">
+                            <small class="text-muted d-block">Vencimiento</small>
+                            <span class="fw-semibold" id="detalleVencimiento">-</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row g-1 mb-2">
+                    <div class="col-6">
+                        <div class="bg-white rounded p-1 shadow-sm">
+                            <small class="text-muted d-block">Cliente</small>
+                            <span class="fw-semibold" id="detalleClienteNombre">-</span>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="bg-white rounded p-1 shadow-sm">
+                            <small class="text-muted d-block">Documento</small>
+                            <span class="fw-semibold" id="detalleClienteDoc">-</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Productos -->
+                <div class="card border-0 shadow-sm mb-2">
+                    <div class="card-header bg-white border-0 pt-1 pb-0">
+                        <h6 class="fw-bold mb-0 small">Productos Cotizados</h6>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-sm mb-0" style="font-size: 0.7rem;">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th class="text-center">#</th>
+                                        <th>Producto</th>
+                                        <th class="text-end">P. Unit.</th>
+                                        <th class="text-center">Cant.</th>
+                                        <th class="text-end">Subtotal</th>
+                                        <th class="text-end pe-3">Dto.</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="detalleTablaProductosCot"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="card-footer bg-white border-top py-2 px-3">
+                        <div class="d-flex justify-content-between align-items-center py-1">
+                            <span class="text-muted small">Subtotal (sin desc.)</span>
+                            <span class="fw-semibold" id="detalleSubtotalSinDescuento">S/ 0.00</span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center py-1">
+                            <span class="text-success small">Descuento aplicado</span>
+                            <span class="fw-semibold text-success" id="detalleDescuentoTotal">- S/ 0.00</span>
+                        </div>
+                        <hr class="my-1">
+                        <div class="d-flex justify-content-between align-items-center py-1">
+                            <span class="fw-bold">TOTAL COTIZACIÓN</span>
+                            <span class="fw-bold text-primary fs-6" id="detalleTotal">S/ 0.00</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mb-2">
+                    <small class="text-muted">Observación:</small>
+                    <p class="mb-0 small" id="detalleObservacion">-</p>
+                </div>
+            </div>
+            
+            <div class="modal-footer border-0 py-1 bg-light">
+                <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>

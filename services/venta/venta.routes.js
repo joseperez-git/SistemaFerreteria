@@ -3,6 +3,7 @@ const router = express.Router();
 const controller = require('./venta.controller');
 
 router.get('/', controller.getAll);
+router.get('/generar-numero', controller.generarNumero);
 router.get('/:id', controller.getById);
 router.post('/', controller.create);
 router.put('/:id', controller.update);

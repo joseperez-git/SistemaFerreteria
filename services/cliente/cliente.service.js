@@ -1,25 +1,35 @@
 const db = require('../../config/db');
+const { consultarAplicloud } = require('../consultas-externas/consulta.service');
 
+const PERFIL_ADMIN_ID = 1;
 
-// LISTAR CLIENTES
+function validarPermisoAdmin(usuarioSesion, accion) {
+    if (!usuarioSesion || usuarioSesion.id_perfil !== PERFIL_ADMIN_ID) {
+        throw new Error(`No tiene permisos para ${accion} clientes. Solo administradores.`);
+    }
+    return true;
+}
+
 exports.getClientes = async () => {
     const [rows] = await db.query('CALL sp_listar_clientes()');
     return rows[0];
 };
 
-
-//OBTENER CLIENTE POR ID
 exports.getClienteById = async (id) => {
     const [rows] = await db.query('CALL sp_obtener_cliente(?)', [id]);
     return rows[0][0];
 };
 
+exports.buscarClientePorDocumento = async (numero_documento) => {
+    const [rows] = await db.query('CALL sp_buscar_cliente_por_documento(?)', [numero_documento]);
+    return rows[0][0] || null;
+};
 
-// CREAR CLIENTE
-exports.createCliente = async (body) => {
+exports.createCliente = async (body, usuarioSesion) => {
     const { tipo_documento, numero_documento, nombre, apellido, telefono, correo } = body;
 
-    // Validar campos obligatorios
+    validarPermisoAdmin(usuarioSesion, 'crear');
+
     if (!tipo_documento || tipo_documento.trim() === '') {
         throw new Error('El tipo de documento es obligatorio');
     }
@@ -32,7 +42,6 @@ exports.createCliente = async (body) => {
         throw new Error('El nombre es obligatorio');
     }
 
-    // Ejecutar procedimiento
     await db.query(
         'CALL sp_registrar_cliente(?, ?, ?, ?, ?, ?)',
         [
@@ -45,77 +54,60 @@ exports.createCliente = async (body) => {
         ]
     );
 
-    return {
-        message: 'Cliente registrado correctamente'
-    };
+    return { message: 'Cliente registrado correctamente' };
 };
 
+exports.updateCliente = async (id, body, usuarioSesion) => {
+    const { telefono, correo, estado } = body;
 
-// ACTUALIZAR CLIENTE
-exports.updateCliente = async (id, body) => {
-    const { tipo_documento, numero_documento, nombre, apellido, telefono, correo, estado } = body;
+    validarPermisoAdmin(usuarioSesion, 'editar');
 
-    // Validar estado si viene
-    if (estado !== undefined && ![0, 1, 2].includes(Number(estado))) {
-        throw new Error('Estado inválido');
-    }
-
-    // Si solo viene estado, cambiar estado
     if (estado !== undefined && Object.keys(body).length === 1) {
+        if (![0, 1, 2].includes(Number(estado))) {
+            throw new Error('Estado inválido');
+        }
         await db.query('CALL sp_cambiar_estado_cliente(?, ?)', [id, estado]);
-        return { message: 'Estado del cliente actualizado correctamente' };
+        
+        const mensajes = {
+            0: 'Cliente desactivado correctamente',
+            1: 'Cliente activado correctamente',
+            2: 'Cliente eliminado correctamente'
+        };
+        return { message: mensajes[estado] };
     }
 
-    // Validar campos obligatorios para actualización completa
-    if (!tipo_documento || tipo_documento.trim() === '') {
-        throw new Error('El tipo de documento es obligatorio');
+    if (body.tipo_documento || body.numero_documento || body.nombre || body.apellido) {
+        throw new Error('No se puede modificar tipo de documento, número, nombre o apellido. Solo teléfono y correo.');
     }
 
-    if (!numero_documento || numero_documento.trim() === '') {
-        throw new Error('El número de documento es obligatorio');
-    }
-
-    if (!nombre || nombre.trim() === '') {
-        throw new Error('El nombre es obligatorio');
-    }
-
-    // Ejecutar actualización
     await db.query(
-        'CALL sp_actualizar_cliente(?, ?, ?, ?, ?, ?, ?)',
+        'CALL sp_actualizar_cliente(?, ?, ?)',
         [
             id,
-            tipo_documento.trim(),
-            numero_documento.trim(),
-            nombre.trim(),
-            apellido ? apellido.trim() : null,
             telefono ? telefono.trim() : null,
             correo ? correo.trim() : null
         ]
     );
 
-    return {
-        message: 'Cliente actualizado correctamente'
-    };
+    return { message: 'Cliente actualizado correctamente' };
 };
 
+exports.cambiarEstadoCliente = async (id, estado, usuarioSesion) => {
+    validarPermisoAdmin(usuarioSesion, 'cambiar estado');
 
-// ELIMINAR CLIENTE (LÓGICO)
-exports.deleteCliente = async (id) => {
-    // Verificar si existe
-    const [rows] = await db.query('CALL sp_obtener_cliente(?)', [id]);
-    const cliente = rows[0][0];
-
-    if (!cliente) {
-        throw new Error('Cliente no encontrado');
+    if (![0, 1, 2].includes(Number(estado))) {
+        throw new Error('Estado inválido');
     }
 
-    // Eliminación lógica (estado = 2)
-    await db.query('CALL sp_cambiar_estado_cliente(?, ?)', [id, 2]);
+    await db.query('CALL sp_cambiar_estado_cliente(?, ?)', [id, estado]);
 
-    return {
-        message: 'Cliente eliminado correctamente'
+    const mensajes = {
+        0: 'Cliente desactivado correctamente',
+        1: 'Cliente activado correctamente',
+        2: 'Cliente eliminado correctamente'
     };
-};
 
+    return { message: mensajes[estado] };
+};
 
 

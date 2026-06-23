@@ -656,7 +656,8 @@ function setupEventListeners() {
             mostrarModalConfirmacionProfesional(
                 'Entregar Pedido', 
                 '¿Desea marcar este pedido como entregado? El cliente ha recogido el pedido.', 
-                () => cambiarEstado(id, 3, 'Pedido marcado como entregado', 'success'), 
+                () => cambiarEstado(id, 3, 'Pedido marcado como entregado', 'success', 'Entregar'), 
+
                 'success'
             );
             return;
@@ -665,21 +666,23 @@ function setupEventListeners() {
         const btnPreparar = e.target.closest('.btnPreparar');
         if (btnPreparar) {
             const id = parseInt(btnPreparar.dataset.id);
-            mostrarModalConfirmacionProfesional('Marcar en Preparación', '¿Desea marcar este pedido como "En Preparación"?', () => cambiarEstado(id, 1, 'Pedido marcado como "En Preparación"', 'success'), 'success');
+
+            mostrarModalConfirmacionProfesional('Marcar en Preparación', '¿Desea marcar este pedido como "En Preparación"?', () => cambiarEstado(id, 1, 'Pedido marcado como "En Preparación"', 'success'), 'success', 'Preparar');
             return;
         }
         
         const btnCancelar = e.target.closest('.btnCancelarPedido');
         if (btnCancelar) {
             const id = parseInt(btnCancelar.dataset.id);
-            mostrarModalConfirmacionProfesional('Cancelar Pedido', '¿Desea cancelar este pedido? Se liberará el stock reservado.', () => cambiarEstado(id, 4, 'Pedido cancelado', 'warning'), 'warning');
+            mostrarModalConfirmacionProfesional('Rechazar Pedido', '¿Desea rechazar este pedido? Se liberará el stock reservado.', () => cambiarEstado(id, 4, 'Pedido rechazado', 'warning'), 'warning', 'Rechazar');
+
             return;
         }
         
         const btnReactivar = e.target.closest('.btnReactivarPedido');
         if (btnReactivar) {
             const id = parseInt(btnReactivar.dataset.id);
-            mostrarModalConfirmacionProfesional('Reactivar Pedido', '¿Desea reactivar este pedido? Se reservará el stock nuevamente.', () => cambiarEstado(id, 0, 'Pedido reactivado', 'success'), 'success');
+            mostrarModalConfirmacionProfesional('Reactivar Pedido', '¿Desea reactivar este pedido? Se reservará el stock nuevamente.', () => cambiarEstado(id, 0, 'Pedido reactivado', 'success'), 'success', 'Reactivar');
             return;
         }
         
@@ -759,5 +762,3 @@ export function destroy() {
 }
 
 export { mostrarDetallePedido };
-
-

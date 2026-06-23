@@ -7,12 +7,12 @@ async function loadView(view) {
     document.getElementById('app').innerHTML = html;
 
     // login
-    if(view === 'login'){
+    if (view === 'login') {
         import('./login.js');
     }
 
     // dashboard
-    if(view === 'dashboard'){
+    if (view === 'dashboard') {
         import('./dashboard.js');
     }
 }
@@ -25,9 +25,9 @@ window.loadDashboard = () => {
 // verificar sesión
 const sesion = localStorage.getItem('sesion');
 
-if(sesion){
+if (sesion) {
     loadView('dashboard');
-}else{
+} else {
     loadView('login');
 }
 

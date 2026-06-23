@@ -10,8 +10,6 @@ exports.getAll = async (req, res) => {
     }
 };
 
-
-// Crear cliente
 exports.create = async (req, res) => {
     try {
         const { tipo_documento, numero_documento, nombre, apellido, telefono, correo } = req.body;
@@ -22,7 +20,7 @@ exports.create = async (req, res) => {
             });
         }
 
-        const nuevo = await service.createCliente(req.body);
+        const nuevo = await service.createCliente(req.body, req.session.usuario);
         res.json(nuevo);
 
     } catch (error) {
@@ -30,20 +28,16 @@ exports.create = async (req, res) => {
     }
 };
 
-
-// Actualizar cliente
 exports.update = async (req, res) => {
     try {
         const id = parseInt(req.params.id);
-        const actualizado = await service.updateCliente(id, req.body);
+        const actualizado = await service.updateCliente(id, req.body, req.session.usuario);
         res.json(actualizado);
     } catch (error) {
         res.status(400).json({ error: error.message });
     }
 };
 
-
-// Cambiar estado (desactivar/activar/eliminar)
 exports.cambiarEstado = async (req, res) => {
     try {
         const id = parseInt(req.params.id);
@@ -53,7 +47,7 @@ exports.cambiarEstado = async (req, res) => {
             return res.status(400).json({ error: "Estado inválido" });
         }
 
-        const resultado = await service.updateCliente(id, { estado });
+        const resultado = await service.cambiarEstadoCliente(id, estado, req.session.usuario);
         res.json(resultado);
 
     } catch (error) {
@@ -61,27 +55,61 @@ exports.cambiarEstado = async (req, res) => {
     }
 };
 
-
-//Consultar documento externo (DNI/RUC)
 exports.consultarDocumento = async (req, res) => {
     try {
         const { numero, tipo } = req.query;
+        
         if (!numero || !tipo) {
             return res.status(400).json({ error: 'Número y tipo de documento son requeridos' });
         }
-        
-        const resultado = await consultarAplicloud(numero, tipo);
-        
-        if (!resultado.success) {
-            return res.status(404).json({ error: resultado.message });
+
+        const clienteLocal = await service.buscarClientePorDocumento(numero);
+
+        if (clienteLocal) {
+            return res.json({
+                success: true,
+                encontrado: true,
+                origen: 'local',
+                cliente: {
+                    id: clienteLocal.id,
+                    nombre: clienteLocal.nombre,
+                    apellido: clienteLocal.apellido || '',
+                    tipo_documento: clienteLocal.tipo_documento,
+                    numero_documento: clienteLocal.numero_documento,
+                    telefono: clienteLocal.telefono || '',
+                    correo: clienteLocal.correo || ''
+                }
+            });
         }
-        
-        res.json(resultado.data);
+
+        const resultadoAPI = await consultarAplicloud(numero, tipo);
+
+        if (!resultadoAPI.success) {
+            return res.status(404).json({ 
+                success: false,
+                error: resultadoAPI.message || 'Documento no encontrado en SUNAT',
+                encontrado: false
+            });
+        }
+
+        return res.json({
+            success: true,
+            encontrado: false,
+            origen: 'sunat',
+            cliente: {
+                nombre: resultadoAPI.data.nombre || '',
+                apellido: resultadoAPI.data.apellido || '',
+                tipo_documento: tipo,
+                numero_documento: numero,
+                telefono: '',
+                correo: ''
+            }
+        });
+
     } catch (error) {
+        console.error('Error en consultarDocumento:', error);
         res.status(500).json({ error: 'Error al consultar el documento' });
     }
 };
-
-
 
 
