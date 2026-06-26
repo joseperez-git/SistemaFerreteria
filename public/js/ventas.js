@@ -1,89 +1,116 @@
-import { mostrarToast, mostrarModalConfirmacionProfesional, limpiarBackdrops } from './helpers.js';
+import { mostrarToast, limpiarBackdrops, mostrarModalConfirmacionProfesional } from './helpers.js';
 
 // ============================================
-// VARIABLES GLOBALES
+// ESTADO CENTRALIZADO
 // ============================================
-let ventasGlobal = [];
-let productosGlobal = [];
-let clientesGlobal = [];
-let eventosInicializados = false;
-let elementos = {};
-let productosSeleccionados = [];
-let totalVenta = 0;
-let cuotaSeleccionada = null;
-let ventaActualId = null;
-let cotizacionCargada = null;
-let modalSeleccionCotizacion = null;
+const estado = {
+    ventas: [],
+    productos: [],
+    ventaActual: null,
+    productosSeleccionados: [],
+    totalVenta: 0,
+    cotizacionCargada: null,
+    modalSeleccionCotizacion: null,
+    pagoMixtoActivo: false,
+    pagoMixtoInicialActivo: false,
+    inicializado: false
+};
 
-// ============================================
-// VALIDACIONES
-// ============================================
-function soloAlfanumerico(input) { input.value = input.value.replace(/[^A-Za-z0-9]/g, ''); }
-function soloNumeros(input) { input.value = input.value.replace(/[^0-9]/g, ''); }
-function soloLetrasYEspacios(input) { input.value = input.value.replace(/[^A-Za-záéíóúñÁÉÍÓÚÑ\s]/g, ''); }
-
-function validarDocumento(tipo, numero) {
-    const num = numero.trim();
-    if (tipo === 'DNI' && !/^\d{8}$/.test(num)) return { valido: false, mensaje: 'El DNI debe tener 8 dígitos' };
-    if (tipo === 'RUC' && !/^\d{11}$/.test(num)) return { valido: false, mensaje: 'El RUC debe tener 11 dígitos' };
-    return { valido: true, mensaje: '' };
-}
-
-function validarTelefono(telefono) {
-    if (!telefono) return { valido: true, mensaje: '' };
-    if (!/^\d{9}$/.test(telefono.trim())) return { valido: false, mensaje: 'El teléfono debe tener 9 dígitos' };
-    return { valido: true, mensaje: '' };
-}
-
-function validarCorreo(correo) {
-    if (!correo) return { valido: true, mensaje: '' };
-    if (!/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(correo.trim())) return { valido: false, mensaje: 'Ingrese un correo electrónico válido' };
-    return { valido: true, mensaje: '' };
-}
-
-// ============================================
-// HELPERS
-// ============================================
 function isCurrentPage() { return document.getElementById('tablaVentas') !== null; }
-
-function getElement(id) {
-    if (!elementos[id]) elementos[id] = document.getElementById(id);
-    return elementos[id];
-}
-
+function $(id) { return document.getElementById(id); }
 function formatearFecha(fechaISO) {
     if (!fechaISO) return '-';
     const f = new Date(fechaISO);
-    return `${f.getDate().toString().padStart(2, '0')}/${(f.getMonth() + 1).toString().padStart(2, '0')}/${f.getFullYear()}`;
+    return `${String(f.getDate()).padStart(2, '0')}/${String(f.getMonth() + 1).padStart(2, '0')}/${f.getFullYear()}`;
+}
+function soloNumeros(input) { input.value = input.value.replace(/[^0-9]/g, ''); }
+
+async function apiCall(url, options = {}) {
+    const response = await fetch(url, { headers: { 'Content-Type': 'application/json' }, ...options });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || 'Error en la solicitud');
+    return data;
 }
 
 // ============================================
-// GENERAR NÚMERO DE NOTA
+// CARGA DE DATOS
 // ============================================
+async function cargarVentas() {
+    if (!isCurrentPage()) return;
+    try { estado.ventas = await apiCall('/api/ventas'); aplicarFiltros(); } catch (e) { console.error(e); }
+}
+async function cargarProductos() {
+    if (!isCurrentPage()) return;
+    try { estado.productos = await apiCall('/api/productos'); } catch (e) { console.error(e); }
+}
 async function generarNumeroNota() {
-    try { const resp = await (await fetch('/api/ventas/generar-numero')).json(); return resp.numero_nota_venta || ''; }
-    catch (e) { const f = new Date(); return `NV${f.getFullYear()}${String(f.getMonth() + 1).padStart(2, '0')}${String(f.getDate()).padStart(2, '0')}-${String(Math.floor(Math.random() * 10000)).padStart(4, '0')}`; }
+    try { return (await apiCall('/api/ventas/generar-numero')).numero_nota_venta; }
+    catch (e) { const f = new Date(); return `NV-${f.getFullYear()}${String(f.getMonth() + 1).padStart(2, '0')}${String(f.getDate()).padStart(2, '0')}-${String(Math.floor(Math.random() * 10000)).padStart(4, '0')}`; }
 }
 
 // ============================================
-// MEDIOS DE PAGO (VENTA)
+// FILTROS Y RENDERIZADO
 // ============================================
-function resetearPagos() {
-    const container = document.getElementById('pagosContainer');
+function aplicarFiltros() {
+    if (!isCurrentPage()) return;
+    const buscar = ($('buscarVenta')?.value || '').toLowerCase();
+    const estadoFiltro = $('filtroEstadoVentas')?.value || '';
+    const cantidad = parseInt($('filtroCantidadVentas')?.value || 10);
+    let filtradas = estado.ventas.filter(v => v.estado != 3);
+    if (estadoFiltro !== '') filtradas = filtradas.filter(v => v.estado == estadoFiltro);
+    if (buscar) filtradas = filtradas.filter(v => v.numero_nota_venta?.toLowerCase().includes(buscar) || v.cliente?.toLowerCase().includes(buscar));
+    filtradas.sort((a, b) => b.id - a.id);
+    renderizarTabla(filtradas.slice(0, cantidad));
+}
+
+function renderizarTabla(ventas) {
+    const tbody = $('tablaVentas');
+    if (!tbody) return;
+    if (ventas.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-4">No hay ventas registradas</td></tr>';
+        return;
+    }
+    const badges = { 0: '<span class="badge bg-warning text-dark">Pago Parcial</span>', 1: '<span class="badge bg-success">Pagada</span>', 2: '<span class="badge bg-secondary">Anulada</span>' };
+    tbody.innerHTML = ventas.map(v => {
+        let botones = `<div class="btn-group btn-group-sm">`;
+        botones += `<button class="btn btn-sm btn-info btnVerVenta" data-id="${v.id}" title="Ver detalle"><i class="bi bi-eye"></i></button>`;
+        if (v.estado !== 2) botones += `<button class="btn btn-sm btn-warning btnEditarVenta" data-id="${v.id}" title="Editar"><i class="bi bi-pencil-square"></i></button>`;
+        if (v.estado === 0) botones += `<button class="btn btn-sm btn-danger btnAnularVenta" data-id="${v.id}" title="Anular"><i class="bi bi-slash-circle"></i></button>`;
+        else if (v.estado === 2) {
+            botones += `<button class="btn btn-sm btn-success btnReactivarVenta" data-id="${v.id}" title="Reactivar"><i class="bi bi-arrow-repeat"></i></button>`;
+            botones += `<button class="btn btn-sm btn-dark btnEliminarVenta" data-id="${v.id}" title="Eliminar"><i class="bi bi-trash"></i></button>`;
+        }
+        botones += `<button class="btn btn-sm btn-outline-dark btnHistorialPagos" data-id="${v.id}" title="Historial de Pagos"><i class="bi bi-clock-history"></i></button>`;
+        if (v.modalidad_pago === 'CREDITO' && v.estado === 0) {
+            botones += `<button class="btn btn-sm btn-outline-warning btnCronogramaPagos" data-id="${v.id}" title="Cronograma"><i class="bi bi-calendar-check"></i></button>`;
+        }
+        botones += `</div>`;
+        return `<tr><td class="text-center">${v.id}</td><td><strong>${v.numero_nota_venta}</strong></td><td>${v.cliente || '-'}</td><td class="text-center">${formatearFecha(v.fecha_venta)}</td><td class="text-end fw-bold text-primary">S/ ${parseFloat(v.total_venta).toFixed(2)}</td><td class="text-center"><span class="badge bg-info">${v.modalidad_pago}</span></td><td class="text-center">${badges[v.estado] || '-'}</td><td class="text-center">${botones}</td></tr>`;
+    }).join('');
+}
+
+// ============================================
+// PAGOS MIXTOS (CHECKBOX)
+// ============================================
+function resetearPagosMixtos() {
+    const container = $('pagosContainer');
     if (!container) return;
     container.innerHTML = `
         <div class="row g-2 pago-item mb-2 align-items-end">
-            <div class="col-md-3"><label class="form-label small">Medio de Pago <span class="text-danger">*</span></label><select class="form-select form-select-sm medio-pago-select" required><option value="">Seleccione...</option><option value="EFECTIVO">💵 Efectivo</option><option value="YAPE">📱 Yape</option><option value="PLIN">📱 Plin</option><option value="TARJETA">💳 Tarjeta</option><option value="TRANSFERENCIA">🏦 Transferencia</option></select></div>
-            <div class="col-md-2"><label class="form-label small">Monto S/ <span class="text-danger">*</span></label><input type="number" class="form-control form-control-sm monto-pago" value="0" min="0" step="0.01" required></div>
+            <div class="col-md-5"><label class="form-label small">Medio de Pago <span class="text-danger">*</span></label><select class="form-select form-select-sm medio-pago-select" required><option value="">Seleccione...</option><option value="EFECTIVO">Efectivo</option><option value="YAPE">Yape</option><option value="PLIN">Plin</option><option value="TARJETA">Tarjeta</option><option value="TRANSFERENCIA">Transferencia</option></select></div>
+            <div class="col-md-4"><label class="form-label small">Monto S/ <span class="text-danger">*</span></label><input type="number" class="form-control form-control-sm monto-pago" value="0" min="0" step="0.01" required></div>
             <div class="col-md-3"><label class="form-label small">N° Operación <span class="operacion-required text-danger">*</span></label><input type="text" class="form-control form-control-sm numero-operacion" placeholder="Obligatorio" maxlength="50"></div>
-            <div class="col-md-3"><label class="form-label small">Observación</label><input type="text" class="form-control form-control-sm obs-pago" placeholder="Opcional" maxlength="255"></div>
-            <div class="col-md-1"><button type="button" class="btn btn-sm btn-outline-danger btn-eliminar-pago" title="Eliminar" style="display:none;"><i class="bi bi-trash"></i></button></div>
-        </div>`;
+        </div>
+        <div class="form-check mt-2">
+            <input class="form-check-input" type="checkbox" id="checkSegundoMetodoPago">
+            <label class="form-check-label small" for="checkSegundoMetodoPago">Agregar segundo método de pago</label>
+        </div>
+        <div id="segundoPagoContainer" style="display:none;"></div>`;
+    configurarEventosPago();
     actualizarResumenPagos();
-    setupPagoEvents();
 }
 
-function setupPagoEvents() {
+function configurarEventosPago() {
     document.querySelectorAll('.medio-pago-select').forEach(sel => {
         sel.addEventListener('change', function () {
             const row = this.closest('.pago-item');
@@ -94,964 +121,1003 @@ function setupPagoEvents() {
         });
     });
     document.querySelectorAll('.monto-pago').forEach(inp => inp.addEventListener('input', actualizarResumenPagos));
-}
 
-function agregarPago() {
-    const container = document.getElementById('pagosContainer');
-    const filas = container.querySelectorAll('.pago-item');
-    if (filas.length >= 2) { mostrarToast('Máximo 2 métodos de pago permitidos', 'warning'); return; }
-    const nuevo = container.querySelector('.pago-item').cloneNode(true);
-    nuevo.querySelector('.medio-pago-select').value = '';
-    nuevo.querySelector('.monto-pago').value = '0';
-    nuevo.querySelector('.numero-operacion').value = '';
-    nuevo.querySelector('.obs-pago').value = '';
-    nuevo.querySelector('.btn-eliminar-pago').style.display = 'block';
-    container.appendChild(nuevo);
-    actualizarResumenPagos();
-    setupPagoEvents();
+    const checkSegundo = $('checkSegundoMetodoPago');
+    if (checkSegundo) {
+        checkSegundo.addEventListener('change', function () {
+            const container = $('segundoPagoContainer');
+            if (this.checked) {
+                container.style.display = 'block';
+                container.innerHTML = `
+                    <div class="row g-2 pago-item mb-2 align-items-end mt-2">
+                        <div class="col-md-5"><label class="form-label small">Segundo Medio <span class="text-danger">*</span></label><select class="form-select form-select-sm medio-pago-select" required><option value="">Seleccione...</option><option value="EFECTIVO">Efectivo</option><option value="YAPE">Yape</option><option value="PLIN">Plin</option><option value="TARJETA">Tarjeta</option><option value="TRANSFERENCIA">Transferencia</option></select></div>
+                        <div class="col-md-4"><label class="form-label small">Monto S/ <span class="text-danger">*</span></label><input type="number" class="form-control form-control-sm monto-pago" value="0" min="0" step="0.01" required></div>
+                        <div class="col-md-3"><label class="form-label small">N° Operación <span class="operacion-required text-danger">*</span></label><input type="text" class="form-control form-control-sm numero-operacion" placeholder="Obligatorio" maxlength="50"></div>
+                    </div>`;
+                configurarEventosPago();
+            } else {
+                container.style.display = 'none';
+                container.innerHTML = '';
+            }
+            actualizarResumenPagos();
+        });
+    }
 }
 
 function actualizarResumenPagos() {
+    const modalidad = $('modalidad_pago')?.value;
+
+    if (modalidad === 'CREDITO') {
+        actualizarVistaPago();
+        return;
+    }
+
+    // CONTADO
     let total = 0;
     document.querySelectorAll('.monto-pago').forEach(inp => total += parseFloat(inp.value) || 0);
-    const totalPagado = document.getElementById('totalPagadoPagos');
-    const pendiente = document.getElementById('pendientePago');
+
+    const totalPagado = $('totalPagadoSpan');
+    const pendiente = $('pendienteSpan');
     if (totalPagado) totalPagado.textContent = `S/ ${total.toFixed(2)}`;
     if (pendiente) {
-        const pend = totalVenta - total;
+        const pend = estado.totalVenta - total;
         pendiente.textContent = `S/ ${Math.max(0, pend).toFixed(2)}`;
         pendiente.style.color = pend > 0.01 ? '#dc2626' : '#059669';
     }
-    const cantEl = document.getElementById('cantidadPagos');
-    if (cantEl) cantEl.textContent = `${document.querySelectorAll('.pago-item').length} medio(s) de pago`;
+    const efectivoSpan = $('totalEfectivoSpan');
+    if (efectivoSpan && !estado.pagoMixtoActivo) {
+        efectivoSpan.textContent = `S/ ${estado.totalVenta.toFixed(2)}`;
+    }
 }
-
-function obtenerPagos() {
+function obtenerPagosMixtos() {
     const pagos = [];
     document.querySelectorAll('.pago-item').forEach(row => {
         const metodo = row.querySelector('.medio-pago-select')?.value;
         const monto = parseFloat(row.querySelector('.monto-pago')?.value) || 0;
         const numOp = row.querySelector('.numero-operacion')?.value || '';
-        const obs = row.querySelector('.obs-pago')?.value || '';
-        if (metodo && monto > 0) pagos.push({ metodo_pago: metodo, monto, numero_operacion: numOp, observacion: obs });
+        if (metodo && monto > 0) pagos.push({ metodo_pago: metodo, monto, numero_operacion: numOp });
     });
     return pagos;
 }
 
 // ============================================
-// TABLA DE PRODUCTOS
+// PAGOS INICIALES (CRÉDITO)
 // ============================================
-function actualizarTablaProductos() {
-    const tbody = document.getElementById('tablaProductosVenta');
-    if (!tbody) return;
-    tbody.innerHTML = '';
-    totalVenta = 0;
-    productosSeleccionados.forEach((item, idx) => {
-        const precio = parseFloat(item.precio_unitario) || 0;
-        const cantidad = parseFloat(item.cantidad) || 0;
-        const subtotal = precio * cantidad;
-        totalVenta += subtotal;
-        tbody.innerHTML += `<tr style="font-size:0.8rem"><td>${item.producto_nombre || '-'}</td><td class="text-end">S/ ${precio.toFixed(2)}</td><td class="text-center">${cantidad}</td><td class="text-end">S/ ${subtotal.toFixed(2)}</td><td class="text-center"><button class="btn btn-sm btn-danger btn-eliminar-producto" data-idx="${idx}"><i class="bi bi-trash"></i></button></td></tr>`;
+function resetearPagosIniciales() {
+    const container = $('pagosInicialContainer');
+    if (!container) return;
+    container.innerHTML = `
+        <div class="row g-2 pago-inicial-item mb-2 align-items-end">
+            <div class="col-md-5"><label class="form-label small">Medio <span class="text-danger">*</span></label><select class="form-select form-select-sm medio-pago-inicial-select" required><option value="">Seleccione...</option><option value="EFECTIVO">Efectivo</option><option value="YAPE">Yape</option><option value="PLIN">Plin</option><option value="TARJETA">Tarjeta</option><option value="TRANSFERENCIA">Transferencia</option></select></div>
+            <div class="col-md-4"><label class="form-label small">Monto S/ <span class="text-danger">*</span></label><input type="number" class="form-control form-control-sm monto-pago-inicial" value="0" min="0" step="0.01" required></div>
+            <div class="col-md-3"><label class="form-label small">N° Operación</label><input type="text" class="form-control form-control-sm numero-operacion-inicial" placeholder="Obligatorio" maxlength="50"></div>
+        </div>
+        <div class="form-check mt-2">
+            <input class="form-check-input" type="checkbox" id="checkSegundoPagoInicial">
+            <label class="form-check-label small" for="checkSegundoPagoInicial">Agregar segundo método</label>
+        </div>
+        <div id="segundoPagoInicialContainer" style="display:none;"></div>`;
+    configurarEventosPagoInicial();
+}
+
+function configurarEventosPagoInicial() {
+    document.querySelectorAll('.medio-pago-inicial-select').forEach(sel => {
+        sel.addEventListener('change', function () {
+            const row = this.closest('.pago-inicial-item');
+            const numOp = row.querySelector('.numero-operacion-inicial');
+            if (this.value === 'EFECTIVO') { numOp.required = false; numOp.placeholder = 'No requerido'; }
+            else { numOp.required = true; numOp.placeholder = 'Obligatorio'; }
+        });
     });
-    const totalEl = document.getElementById('totalVenta');
-    if (totalEl) totalEl.innerHTML = `S/ ${totalVenta.toFixed(2)}`;
-    actualizarResumenPagos();
-    setTimeout(() => {
-        document.querySelectorAll('.btn-eliminar-producto').forEach(btn => {
-            btn.onclick = function () {
-                productosSeleccionados.splice(parseInt(this.dataset.idx), 1);
-                actualizarTablaProductos();
-                mostrarToast('Producto eliminado', 'info');
-            };
-        });
-    }, 100);
-}
+    document.querySelectorAll('.monto-pago-inicial').forEach(inp => inp.addEventListener('input', actualizarResumenPagosIniciales));
 
-// ✅ FUNCIÓN QUE FALTABA #1
-function manejarEliminarProducto(e) {
-    const idx = parseInt(e.currentTarget.dataset.idx);
-    productosSeleccionados.splice(idx, 1);
-    actualizarTablaProductos();
-    mostrarToast('Producto eliminado', 'info');
-}
-
-// ============================================
-// LIMPIAR FORMULARIO DE VENTA
-// ============================================
-async function limpiarFormulario() {
-    const form = getElement('formVenta');
-    if (form) form.reset();
-    getElement('ventaId').value = '';
-    getElement('tituloModalVenta').textContent = 'Nueva Venta';
-    const hoy = new Date();
-    getElement('fecha_venta').value = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}-${String(hoy.getDate()).padStart(2, '0')}`;
-    cotizacionCargada = null;
-    const idCot = document.getElementById('id_cotizacion_origen');
-    if (idCot) idCot.value = '';
-    const infoDiv = document.getElementById('cotizacionCargadaInfo');
-    if (infoDiv) infoDiv.style.display = 'none';
-    const btnCargar = document.getElementById('btnCargarCotizacion');
-    if (btnCargar) btnCargar.style.display = 'block';
-    ['tipo_documento_cliente', 'numero_documento_cliente', 'nombre_cliente', 'apellido_cliente', 'telefono_cliente', 'correo_cliente', 'id_cliente'].forEach(id => {
-        const el = document.getElementById(id); if (el) el.value = '';
-    });
-    const alertEl = document.getElementById('clienteNoExistenteAlert');
-    if (alertEl) alertEl.style.display = 'none';
-    const divCredito = document.getElementById('div_credito_fields');
-    if (divCredito) divCredito.style.display = 'none';
-    getElement('modalidad_pago').value = '';
-    const panelCuotas = document.getElementById('panelCuotas');
-    if (panelCuotas) panelCuotas.style.display = 'none';
-    resetearPagos();
-    productosSeleccionados = [];
-    totalVenta = 0;
-    actualizarTablaProductos();
-    const numero = await generarNumeroNota();
-    getElement('numero_nota_venta').value = numero;
-}
-
-// ============================================
-// CARGAR DATOS DESDE API
-// ============================================
-async function cargarVentas() {
-    if (!isCurrentPage()) return;
-    try { ventasGlobal = await (await fetch('/api/ventas')).json(); aplicarFiltros(); } catch (e) { console.error(e); }
-}
-async function cargarClientes() {
-    if (!isCurrentPage()) return;
-    try { clientesGlobal = await (await fetch('/api/clientes')).json(); } catch (e) { console.error(e); }
-}
-async function cargarProductos() {
-    if (!isCurrentPage()) return;
-    try { productosGlobal = await (await fetch('/api/productos')).json(); cargarSelectProductos(''); } catch (e) { console.error(e); }
-}
-
-// ============================================
-// FILTROS Y RENDERIZADO
-// ============================================
-function aplicarFiltros() {
-    if (!isCurrentPage()) return;
-    const b = getElement('buscarVenta')?.value?.toLowerCase() || '';
-    const e = getElement('filtroEstado')?.value || '';
-    const c = parseInt(getElement('filtroCantidad')?.value || 5);
-    let f = ventasGlobal.filter(v => v.estado != 3);
-    if (e !== '') f = f.filter(v => v.estado == e);
-    if (b) f = f.filter(v => v.numero_nota_venta?.toLowerCase().includes(b) || v.cliente?.toLowerCase().includes(b));
-    f.sort((a, b) => b.id - a.id);
-    renderizar(f.slice(0, c));
-}
-
-function renderizar(ventas) {
-    const t = getElement('tablaVentas'); if (!t) return;
-    t.innerHTML = ventas.length ? ventas.map(v => {
-        let eb = '';
-        if (v.estado === 0) eb = '<span class="badge bg-warning text-dark">Pago Parcial</span>';
-        else if (v.estado === 1) eb = '<span class="badge bg-success">Pagada</span>';
-        else if (v.estado === 2) eb = '<span class="badge bg-secondary">Anulada</span>';
-        else if (v.estado === 3) eb = '<span class="badge bg-dark">Eliminada</span>';
-        let bt = '';
-        if (v.estado === 0) bt = `<button class="btn btn-sm btn-danger btnAnularVenta" data-id="${v.id}"><i class="bi bi-slash-circle"></i></button>`;
-        else if (v.estado === 1) bt = '';
-        else if (v.estado === 2) bt = `<button class="btn btn-sm btn-success btnActivarVenta" data-id="${v.id}"><i class="bi bi-arrow-repeat"></i></button><button class="btn btn-sm btn-danger btnEliminarVenta" data-id="${v.id}"><i class="bi bi-trash"></i></button>`;
-        return `<tr><td class="text-center">${v.id}</td><td><strong>${v.numero_nota_venta}</strong></td><td>${v.cliente || '-'}</td><td>${formatearFecha(v.fecha_venta)}</td><td class="fw-bold text-primary">S/ ${parseFloat(v.total_venta).toFixed(2)}</td><td><span class="badge bg-info">${v.modalidad_pago}</span></td><td>${eb}</td><td class="text-nowrap"><button class="btn btn-sm btn-warning btnVerVenta" data-id="${v.id}"><i class="bi bi-eye"></i></button>${bt}</td></tr>`;
-    }).join('') : `<tr><td colspan="8" class="text-center text-muted py-4">No hay ventas registradas</td></tr>`;
-}
-
-// ============================================
-// CAMBIAR ESTADO DE VENTA
-// ============================================
-async function cambiarEstado(id, estado, mensajeExito, tipoToast) {
-    try {
-        const response = await fetch(`/api/ventas/${id}/estado`, {
-            method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ estado })
-        });
-        const data = await response.json();
-        if (!response.ok) throw new Error(data.error);
-        await cargarVentas();
-        const modalDetalle = document.getElementById('modalDetalleVenta');
-        if (modalDetalle && modalDetalle.classList.contains('show')) await mostrarDetalleVenta(id);
-        mostrarToast(mensajeExito, tipoToast);
-    } catch (error) { mostrarToast(error.message, 'danger'); }
-}
-
-// ============================================
-// ENVÍOS Y RECORDATORIOS
-// ============================================
-async function reenviarNotaVenta(idVenta, canal, correoPersonalizado = null) {
-    mostrarToast(`Enviando nota por ${canal === 'email' ? 'correo' : 'WhatsApp'}...`, 'info');
-    try {
-        const response = await fetch(`/api/ventas/${idVenta}/reenviar-nota`, {
-            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ canal, correo: correoPersonalizado })
-        });
-        const data = await response.json();
-        if (!response.ok) throw new Error(data.error);
-        mostrarToast('Nota enviada correctamente', 'success');
-    } catch (error) { mostrarToast(error.message, 'danger'); }
-}
-
-// ✅ FUNCIÓN QUE FALTABA #9
-async function enviarRecordatorioCuota(idCuota, idVenta, canal) {
-    mostrarToast(`Enviando recordatorio por ${canal === 'email' ? 'correo' : 'WhatsApp'}...`, 'info');
-    try {
-        const response = await fetch(`/api/ventas/${idVenta}/cuotas/${idCuota}/recordatorio`, {
-            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ canal })
-        });
-        const data = await response.json();
-        if (!response.ok) throw new Error(data.error);
-        mostrarToast('Recordatorio enviado correctamente', 'success');
-    } catch (error) { mostrarToast(error.message, 'danger'); }
-}
-
-// ============================================
-// PAGO ADICIONAL
-// ============================================
-async function registrarPagoAdicional() {
-    const idVenta = ventaActualId;
-    const monto = parseFloat(document.getElementById('montoPagoAdicional')?.value) || 0;
-    const metodoPago = document.getElementById('metodoPagoAdicional')?.value;
-    if (!idVenta) return mostrarToast('No hay una venta seleccionada', 'warning');
-    if (!metodoPago) return mostrarToast('Seleccione un método de pago', 'warning');
-    if (monto <= 0) return mostrarToast('Ingrese un monto válido', 'warning');
-    try {
-        const response = await fetch(`/api/ventas/${idVenta}/pago-adicional`, {
-            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ monto, metodo_pago: metodoPago })
-        });
-        const data = await response.json();
-        if (!response.ok) throw new Error(data.error);
-        mostrarToast('Pago registrado correctamente', 'success');
-        await mostrarDetalleVenta(idVenta);
-        document.getElementById('montoPagoAdicional').value = '0';
-        document.getElementById('metodoPagoAdicional').value = '';
-    } catch (error) { mostrarToast(error.message, 'danger'); }
-}
-
-// ✅ FUNCIONES QUE FALTABAN #3, #4, #5, #6, #7, #8
-function mostrarFormularioPagoCuota(idCuota, montoCuota, numeroCuota, idVenta) {
-    cuotaSeleccionada = { id: parseInt(idCuota), monto: parseFloat(montoCuota), numero: parseInt(numeroCuota), ventaId: parseInt(idVenta) };
-    const container = document.getElementById('formPagoCuotaContainer');
-    if (container) {
-        document.getElementById('pagoMontoCuota').value = cuotaSeleccionada.monto.toFixed(2);
-        document.getElementById('pagoMontoPagar').value = cuotaSeleccionada.monto;
-        document.getElementById('pagoMontoPagar').max = cuotaSeleccionada.monto;
-        document.getElementById('pagoMetodoPago').value = '';
-        container.style.display = 'block';
-        container.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
-}
-
-function ocultarFormularioPagoCuota() {
-    const container = document.getElementById('formPagoCuotaContainer');
-    if (container) container.style.display = 'none';
-    cuotaSeleccionada = null;
-}
-
-async function confirmarPagoCuotaIntegrado() {
-    if (!cuotaSeleccionada) return mostrarToast('No hay una cuota seleccionada', 'warning');
-    const metodoPago = document.getElementById('pagoMetodoPago')?.value;
-    let montoPago = parseFloat(document.getElementById('pagoMontoPagar')?.value) || 0;
-    if (!metodoPago) return mostrarToast('Seleccione un método de pago', 'warning');
-    if (montoPago <= 0) return mostrarToast('Ingrese un monto válido', 'warning');
-    if (montoPago > cuotaSeleccionada.monto) return mostrarToast(`El monto no puede exceder S/ ${cuotaSeleccionada.monto.toFixed(2)}`, 'warning');
-    try {
-        const response = await fetch('/api/pago-cuota/', {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id_cuota_venta: cuotaSeleccionada.id, metodo_pago: metodoPago, monto: montoPago })
-        });
-        const data = await response.json();
-        if (!response.ok) throw new Error(data.error);
-        mostrarToast('Pago registrado correctamente', 'success');
-        ocultarFormularioPagoCuota();
-        await mostrarDetalleVenta(cuotaSeleccionada.ventaId);
-        await cargarVentas();
-    } catch (error) { mostrarToast(error.message, 'danger'); }
-}
-
-function manejarPagoCuota(e) {
-    e.preventDefault(); e.stopPropagation();
-    const btn = e.currentTarget;
-    if (!btn.dataset.idCuota || !btn.dataset.monto || !btn.dataset.idVenta) return mostrarToast('Error: Datos incompletos', 'danger');
-    mostrarFormularioPagoCuota(btn.dataset.idCuota, btn.dataset.monto, btn.dataset.numero, btn.dataset.idVenta);
-}
-
-function manejarEnvioCorreoCuota(e) {
-    e.preventDefault(); e.stopPropagation();
-    const btn = e.currentTarget;
-    if (!btn.dataset.idCuota || !btn.dataset.idVenta) return mostrarToast('Error: Datos incompletos', 'danger');
-    enviarRecordatorioCuota(btn.dataset.idCuota, btn.dataset.idVenta, 'email');
-}
-
-function manejarEnvioWhatsAppCuota(e) {
-    e.preventDefault(); e.stopPropagation();
-    const btn = e.currentTarget;
-    if (!btn.dataset.idCuota || !btn.dataset.idVenta) return mostrarToast('Error: Datos incompletos', 'danger');
-    if (!btn.dataset.telefono) return mostrarToast('El cliente no tiene teléfono registrado', 'warning');
-    enviarRecordatorioCuota(btn.dataset.idCuota, btn.dataset.idVenta, 'whatsapp');
-}
-
-// ============================================
-// MOSTRAR DETALLE DE VENTA
-// ============================================
-async function mostrarDetalleVenta(id) {
-    ventaActualId = id;
-    try {
-        const response = await fetch(`/api/ventas/${id}`);
-        if (!response.ok) throw new Error('Error al obtener detalles');
-        const venta = await response.json();
-        const totalPagado = venta.pagos?.reduce((sum, p) => sum + parseFloat(p.monto), 0) || 0;
-        const saldoPendiente = venta.total_venta - totalPagado;
-        limpiarBackdrops();
-
-        const setText = (idEl, value) => { const el = document.getElementById(idEl); if (el) el.textContent = value; };
-        const setHtml = (idEl, value) => { const el = document.getElementById(idEl); if (el) el.innerHTML = value; };
-
-        const tbodyProductos = document.getElementById('detalleProductos');
-        const tbodyPagos = document.getElementById('detallePagos');
-        const tbodyCuotas = document.getElementById('detalleCuotas');
-
-        const origenRow = document.getElementById('detalleOrigenRow');
-        const origenText = document.getElementById('detalleOrigen');
-        if (venta.id_pedido) {
-            if (origenRow) origenRow.style.display = 'flex';
-            if (origenText) origenText.innerHTML = `<i class="bi bi-truck me-1"></i> Pedido N°: ${venta.numero_pedido || venta.id_pedido}`;
-        } else {
-            if (origenRow) origenRow.style.display = 'flex';
-            if (origenText) origenText.innerHTML = `<i class="bi bi-cart-check me-1"></i> Venta directa`;
-        }
-
-        const pagoAdicionalRow = document.getElementById('detallePagoAdicionalRow');
-        if (venta.id_pedido && venta.modalidad_pago === 'CREDITO' && saldoPendiente > 0 && venta.estado !== 2) {
-            if (pagoAdicionalRow) pagoAdicionalRow.style.display = 'block';
-        } else { if (pagoAdicionalRow) pagoAdicionalRow.style.display = 'none'; }
-
-        if (tbodyProductos) tbodyProductos.innerHTML = '';
-        if (tbodyPagos) tbodyPagos.innerHTML = '';
-        if (tbodyCuotas) tbodyCuotas.innerHTML = '';
-
-        setText('detalleNumeroNota', venta.numero_nota_venta || '-');
-        setText('detalleCliente', venta.cliente || '-');
-        setText('detalleFecha', formatearFecha(venta.fecha_venta));
-        setText('detalleUsuario', venta.usuario || '-');
-
-        const modalidadBadge = document.getElementById('detalleModalidad');
-        if (modalidadBadge) {
-            modalidadBadge.textContent = venta.modalidad_pago;
-            modalidadBadge.className = venta.modalidad_pago === 'CONTADO' ? 'badge bg-success' : 'badge bg-warning';
-        }
-
-        setHtml('detalleTotal', `S/ ${parseFloat(venta.total_venta).toFixed(2)}`);
-        const saldoRow = document.getElementById('detalleSaldoRow');
-        if (venta.modalidad_pago === 'CREDITO' && saldoPendiente > 0) {
-            if (saldoRow) saldoRow.style.display = 'flex';
-            setHtml('detalleSaldo', `S/ ${saldoPendiente.toFixed(2)}`);
-        } else { if (saldoRow) saldoRow.style.display = 'none'; }
-
-        const estadoBadge = document.getElementById('detalleEstado');
-        if (estadoBadge) {
-            if (venta.estado === 0) { estadoBadge.textContent = 'Pago Parcial'; estadoBadge.className = 'badge bg-warning text-dark'; }
-            else if (venta.estado === 1) { estadoBadge.textContent = 'Pagada'; estadoBadge.className = 'badge bg-success'; }
-            else if (venta.estado === 2) { estadoBadge.textContent = 'Anulada'; estadoBadge.className = 'badge bg-secondary'; }
-        }
-
-        let totalProductos = 0;
-        if (tbodyProductos && venta.detalles && venta.detalles.length > 0) {
-            venta.detalles.forEach(det => {
-                const subtotal = det.precio_unitario * det.cantidad;
-                totalProductos += subtotal;
-                tbodyProductos.innerHTML += `<tr class="small"><td>${det.producto || '-'}</td><td class="text-end">S/ ${parseFloat(det.precio_unitario).toFixed(2)}</td><td class="text-center">${det.cantidad}</td><td class="text-end">S/ ${subtotal.toFixed(2)}</td></tr>`;
-            });
-        }
-        setHtml('detalleProductosTotal', `S/ ${totalProductos.toFixed(2)}`);
-
-        const pagosSection = document.getElementById('detallePagosSection');
-        if (tbodyPagos && venta.pagos && venta.pagos.length > 0) {
-            if (pagosSection) pagosSection.style.display = 'block';
-            venta.pagos.forEach(pago => {
-                tbodyPagos.innerHTML += `<tr class="small"><td><span class="badge bg-secondary">${pago.metodo_pago}</span></td><td class="text-end">S/ ${parseFloat(pago.monto).toFixed(2)}</td><td class="text-end">${pago.fecha_pago ? formatearFecha(pago.fecha_pago) : '-'}</td><td class="text-muted small">${pago.numero_operacion || '-'}</td></tr>`;
-            });
-        } else { if (pagosSection) pagosSection.style.display = 'none'; }
-
-        const cuotasSection = document.getElementById('detalleCuotasSection');
-        if (tbodyCuotas && venta.modalidad_pago === 'CREDITO' && venta.cuotas && venta.cuotas.length > 0) {
-            if (cuotasSection) cuotasSection.style.display = 'block';
-            venta.cuotas.forEach(cuota => {
-                const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
-                const fechaVenc = new Date(cuota.fecha_vencimiento);
-                const diasRestantes = Math.ceil((fechaVenc - hoy) / (1000 * 60 * 60 * 24));
-                let estadoBadge;
-                if (cuota.estado === 1) estadoBadge = '<span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Pagada</span>';
-                else if (diasRestantes < 0) estadoBadge = '<span class="badge bg-danger"><i class="bi bi-exclamation-circle me-1"></i>Vencida</span>';
-                else if (diasRestantes <= 3) estadoBadge = '<span class="badge bg-warning text-dark"><i class="bi bi-clock me-1"></i>Por vencer</span>';
-                else estadoBadge = '<span class="badge bg-info"><i class="bi bi-hourglass-split me-1"></i>Pendiente</span>';
-                tbodyCuotas.innerHTML += `<tr class="small"><td class="text-center fw-bold">#${cuota.numero_cuota}</td><td class="text-end">S/ ${parseFloat(cuota.monto).toFixed(2)}</td><td class="text-center">${cuota.fecha_vencimiento || '-'}</td><td class="text-center">${estadoBadge}</td><td class="text-center text-muted small">${cuota.fecha_pago ? formatearFecha(cuota.fecha_pago) : '-'}</td></tr>`;
-            });
-        } else { if (cuotasSection) cuotasSection.style.display = 'none'; }
-
-        ocultarFormularioPagoCuota();
-
-        const modalElement = document.getElementById('modalDetalleVenta');
-        const modalFooter = modalElement.querySelector('.modal-footer');
-        if (modalFooter) {
-            const tieneCuotas = venta.modalidad_pago === 'CREDITO' && venta.cuotas && venta.cuotas.length > 0 && venta.estado !== 2;
-            modalFooter.innerHTML = `
-                <div class="btn-group me-auto" role="group">
-                    <button type="button" class="btn btn-sm btn-outline-info" id="btnReenviarNotaCorreo"><i class="bi bi-envelope me-1"></i> Correo</button>
-                    <button type="button" class="btn btn-sm btn-outline-success" id="btnReenviarNotaWhatsApp"><i class="bi bi-whatsapp me-1"></i> WhatsApp</button>
-                    ${tieneCuotas ? `<button type="button" class="btn btn-sm btn-warning" id="btnCronogramaPagos"><i class="bi bi-calendar-check me-1"></i> Cronograma</button>` : ''}
-                    ${venta.id_pedido ? `<button type="button" class="btn btn-sm btn-outline-secondary" id="btnVerPedidoOrigen" data-id-pedido="${venta.id_pedido}"><i class="bi bi-truck me-1"></i> Ver Pedido</button>` : ''}
-                </div>
-                <div class="btn-group" role="group">
-                    <button type="button" class="btn btn-sm btn-primary" id="btnImprimirVentaModal"><i class="bi bi-printer me-1"></i> Imprimir</button>
-                    <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal"><i class="bi bi-x-circle me-1"></i> Cerrar</button>
-                </div>`;
-        }
-
-        setTimeout(() => {
-            const btnImprimirModal = document.getElementById('btnImprimirVentaModal');
-            if (btnImprimirModal) { const nb = btnImprimirModal.cloneNode(true); btnImprimirModal.parentNode.replaceChild(nb, btnImprimirModal); nb.addEventListener('click', () => mostrarModalOpcionesImpresion(ventaActualId)); }
-            const btnCorreo = document.getElementById('btnReenviarNotaCorreo');
-            if (btnCorreo) { const nb = btnCorreo.cloneNode(true); btnCorreo.parentNode.replaceChild(nb, btnCorreo); nb.addEventListener('click', () => reenviarNotaVenta(ventaActualId, 'email')); }
-            const btnWp = document.getElementById('btnReenviarNotaWhatsApp');
-            if (btnWp) { const nb = btnWp.cloneNode(true); btnWp.parentNode.replaceChild(nb, btnWp); nb.addEventListener('click', () => reenviarNotaVenta(ventaActualId, 'whatsapp')); }
-            const btnCronograma = document.getElementById('btnCronogramaPagos');
-            if (btnCronograma) btnCronograma.addEventListener('click', () => abrirCronogramaPagos(ventaActualId));
-            const btnPedido = document.getElementById('btnVerPedidoOrigen');
-            if (btnPedido && venta.id_pedido) btnPedido.addEventListener('click', () => mostrarDetallePedidoDesdeVenta(parseInt(btnPedido.dataset.idPedido)));
-        }, 200);
-
-        let modal = bootstrap.Modal.getInstance(modalElement);
-        if (!modal) modal = new bootstrap.Modal(modalElement);
-        modal.show();
-    } catch (error) { console.error(error); mostrarToast('Error al cargar detalles', 'danger'); }
-}
-
-// ============================================
-// BUSCAR CLIENTE
-// ============================================
-function setupBusquedaClienteVenta() {
-    const tipoDoc = document.getElementById('tipo_documento_cliente');
-    const numDoc = document.getElementById('numero_documento_cliente');
-    const btnBuscar = document.getElementById('btnBuscarClienteVenta');
-    if (numDoc && tipoDoc) {
-        numDoc.addEventListener('input', function () {
-            this.value = this.value.replace(/[^0-9]/g, '');
-            const l = this.value.length;
-            if (l === 8) tipoDoc.value = 'DNI'; else if (l === 11) tipoDoc.value = 'RUC';
-            else if (l > 11) { this.value = this.value.slice(0, 11); tipoDoc.value = 'RUC'; }
-            else if (l === 0) tipoDoc.value = '';
-        });
-        numDoc.addEventListener('keydown', function (e) {
-            if (e.key === 'Enter') { e.preventDefault(); const l = this.value.length; if ((l === 8 || l === 11) && btnBuscar) { tipoDoc.value = l === 8 ? 'DNI' : 'RUC'; btnBuscar.click(); } }
-        });
-    }
-    if (!btnBuscar) return;
-    btnBuscar.addEventListener('click', async () => {
-        const td = tipoDoc?.value; const nd = numDoc?.value.trim();
-        if (!nd) {
-            document.getElementById('id_cliente').value = '1'; document.getElementById('nombre_cliente').value = 'CLIENTE VARIOS';
-            document.getElementById('apellido_cliente').value = ''; document.getElementById('clienteNoExistenteAlert').style.display = 'none';
-            mostrarToast('Venta sin documento - Cliente genérico', 'info'); return;
-        }
-        if (!td) return mostrarToast('Seleccione tipo de documento', 'warning');
-        if (td === 'DNI' && nd.length !== 8) return mostrarToast('DNI debe tener 8 dígitos', 'warning');
-        if (td === 'RUC' && nd.length !== 11) return mostrarToast('RUC debe tener 11 dígitos', 'warning');
-        const orig = btnBuscar.innerHTML; btnBuscar.disabled = true; btnBuscar.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
-        try {
-            const data = await (await fetch(`/api/clientes/consultar-documento?numero=${nd}&tipo=${td}`)).json();
-            if (data.error) throw new Error(data.error);
-            document.getElementById('nombre_cliente').value = data.cliente?.nombre || '';
-            document.getElementById('apellido_cliente').value = data.cliente?.apellido || '';
-            document.getElementById('nombre_cliente').readOnly = true; document.getElementById('apellido_cliente').readOnly = true;
-            if (data.encontrado && data.cliente?.id) {
-                document.getElementById('id_cliente').value = data.cliente.id;
-                document.getElementById('telefono_cliente').value = data.cliente.telefono || '';
-                document.getElementById('correo_cliente').value = data.cliente.correo || '';
-                document.getElementById('clienteNoExistenteAlert').style.display = 'none';
-                mostrarToast('Cliente encontrado', 'success');
+    const checkSegundo = $('checkSegundoPagoInicial');
+    if (checkSegundo) {
+        checkSegundo.addEventListener('change', function () {
+            const container = $('segundoPagoInicialContainer');
+            if (this.checked) {
+                container.style.display = 'block';
+                container.innerHTML = `
+                    <div class="row g-2 pago-inicial-item mb-2 align-items-end mt-2">
+                        <div class="col-md-5"><label class="form-label small">Segundo Medio <span class="text-danger">*</span></label><select class="form-select form-select-sm medio-pago-inicial-select" required><option value="">Seleccione...</option><option value="EFECTIVO">Efectivo</option><option value="YAPE">Yape</option><option value="PLIN">Plin</option><option value="TARJETA">Tarjeta</option><option value="TRANSFERENCIA">Transferencia</option></select></div>
+                        <div class="col-md-4"><label class="form-label small">Monto S/ <span class="text-danger">*</span></label><input type="number" class="form-control form-control-sm monto-pago-inicial" value="0" min="0" step="0.01" required></div>
+                        <div class="col-md-3"><label class="form-label small">N° Operación</label><input type="text" class="form-control form-control-sm numero-operacion-inicial" placeholder="Obligatorio" maxlength="50"></div>
+                    </div>`;
+                configurarEventosPagoInicial();
             } else {
-                document.getElementById('id_cliente').value = ''; document.getElementById('clienteNoExistenteAlert').style.display = 'block';
-                mostrarToast('Cliente no registrado. Se registrará al guardar.', 'info');
+                container.style.display = 'none';
+                container.innerHTML = '';
             }
-        } catch (e) { mostrarToast(e.message || 'Error al consultar', 'danger'); }
-        finally { btnBuscar.disabled = false; btnBuscar.innerHTML = orig; }
-    });
-    document.getElementById('btnLimpiarCliente')?.addEventListener('click', () => {
-        ['tipo_documento_cliente', 'numero_documento_cliente', 'nombre_cliente', 'apellido_cliente', 'telefono_cliente', 'correo_cliente', 'id_cliente'].forEach(id => {
-            const el = document.getElementById(id); if (el) { el.value = ''; el.readOnly = false; }
-        });
-        document.getElementById('clienteNoExistenteAlert').style.display = 'none';
-    });
-}
-
-// ✅ FUNCIÓN QUE FALTABA #2
-function setupValidacionesTiempoRealCliente() {
-    const tipoDocumento = document.getElementById('tipo_documento_cliente');
-    const numeroDocumento = document.getElementById('numero_documento_cliente');
-    const telefono = document.getElementById('telefono_cliente');
-    const nombre = document.getElementById('nombre_cliente');
-    const apellido = document.getElementById('apellido_cliente');
-    if (tipoDocumento) {
-        tipoDocumento.addEventListener('change', () => {
-            if (numeroDocumento) {
-                numeroDocumento.value = '';
-                numeroDocumento.oninput = () => soloNumeros(numeroDocumento);
-                if (tipoDocumento.value === 'DNI') { numeroDocumento.maxLength = 8; numeroDocumento.placeholder = 'Ej: 12345678'; }
-                else if (tipoDocumento.value === 'RUC') { numeroDocumento.maxLength = 11; numeroDocumento.placeholder = 'Ej: 20123456789'; }
-            }
+            actualizarResumenPagosIniciales();
         });
     }
-    if (telefono) telefono.oninput = () => soloNumeros(telefono);
-    if (nombre) nombre.oninput = () => soloLetrasYEspacios(nombre);
-    if (apellido) apellido.oninput = () => soloLetrasYEspacios(apellido);
+}
+
+function actualizarResumenPagosIniciales() {
+    let total = 0;
+    document.querySelectorAll('.monto-pago-inicial').forEach(inp => total += parseFloat(inp.value) || 0);
+    $('pagoInicialEfectivo').textContent = `S/ ${total.toFixed(2)}`;
+    $('pago_inicial').value = total;
+
+    // Actualizar también la sección de PAGO
+    actualizarVistaPago();
+}
+
+function obtenerPagosIniciales() {
+    const pagos = [];
+    document.querySelectorAll('.pago-inicial-item').forEach(row => {
+        const metodo = row.querySelector('.medio-pago-inicial-select')?.value;
+        const monto = parseFloat(row.querySelector('.monto-pago-inicial')?.value) || 0;
+        const numOp = row.querySelector('.numero-operacion-inicial')?.value || '';
+        if (metodo && monto > 0) pagos.push({ metodo_pago: metodo, monto, numero_operacion: numOp });
+    });
+    return pagos;
 }
 
 // ============================================
 // PRODUCTOS
 // ============================================
 function cargarSelectProductos(filtro = '') {
-    const selectProducto = document.getElementById('selectProducto');
-    if (!selectProducto) return;
-    let productosFiltrados = productosGlobal.filter(p => p.estado === 1);
-    if (filtro.trim() !== '') {
-        const termino = filtro.toLowerCase();
-        productosFiltrados = productosFiltrados.filter(p => p.nombre.toLowerCase().includes(termino) || (p.codigo_barras && p.codigo_barras.includes(termino)));
+    const select = $('selectProducto');
+    if (!select) return;
+    let filtrados = estado.productos.filter(p => p.estado === 1);
+    if (filtro.trim()) {
+        const term = filtro.toLowerCase();
+        filtrados = filtrados.filter(p => p.nombre.toLowerCase().includes(term) || (p.codigo_barras && p.codigo_barras.includes(term)));
     }
-    selectProducto.innerHTML = '<option value="">-- Seleccione un producto --</option>';
-    productosFiltrados.forEach(p => selectProducto.innerHTML += `<option value="${p.id}" data-precio="${p.precio}" data-stock="${p.stock}">${p.nombre} - Stock: ${p.stock}</option>`);
+    select.innerHTML = '<option value="">-- Seleccione un producto --</option>';
+    filtrados.forEach(p => select.innerHTML += `<option value="${p.id}" data-precio="${p.precio}" data-stock="${p.stock_disponible || p.stock}" data-nombre="${p.nombre}">${p.nombre} - Stock: ${p.stock_disponible || p.stock}</option>`);
 }
 
-function setupAgregarProducto() {
-    const selectProducto = document.getElementById('selectProducto');
-    const buscarInput = document.getElementById('buscarProductoInput');
-    const btnAgregarLista = document.getElementById('btnAgregarProductoLista');
-    if (buscarInput) buscarInput.addEventListener('input', (e) => cargarSelectProductos(e.target.value));
-    if (selectProducto) {
-        selectProducto.addEventListener('change', () => {
-            const opt = selectProducto.options[selectProducto.selectedIndex];
-            document.getElementById('precioUnitario').value = opt.dataset.precio ? parseFloat(opt.dataset.precio).toFixed(2) : '';
-            document.getElementById('stockDisponible').value = opt.dataset.stock || '';
-            document.getElementById('cantidadProducto').value = '1';
-        });
+function actualizarTablaProductos() {
+    const tbody = $('tablaProductosVenta');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+    estado.totalVenta = 0;
+    estado.productosSeleccionados.forEach((item, idx) => {
+        const precio = parseFloat(item.precio_unitario) || 0;
+        const cantidad = parseFloat(item.cantidad) || 0;
+        const subtotal = precio * cantidad;
+        estado.totalVenta += subtotal;
+        tbody.innerHTML += `<tr><td>${item.producto_nombre || '-'}</td><td class="text-end">S/ ${precio.toFixed(2)}</td><td class="text-center">${cantidad}</td><td class="text-end">S/ ${subtotal.toFixed(2)}</td><td class="text-center"><button class="btn btn-sm btn-outline-danger btn-eliminar-producto" data-idx="${idx}"><i class="bi bi-trash"></i></button></td></tr>`;
+    });
+    $('totalVentaSpan').innerHTML = `S/ ${estado.totalVenta.toFixed(2)}`;
+    const efectivoSpan = $('totalEfectivoSpan');
+    if (efectivoSpan && !estado.pagoMixtoActivo) efectivoSpan.textContent = `S/ ${estado.totalVenta.toFixed(2)}`;
+    actualizarResumenPagos();
+    if ($('modalidad_pago')?.value === 'CREDITO') calcularCuotas();
+    document.querySelectorAll('.btn-eliminar-producto').forEach(btn => {
+        btn.onclick = function () { estado.productosSeleccionados.splice(parseInt(this.dataset.idx), 1); actualizarTablaProductos(); };
+    });
+    actualizarVistaPago();
+}
+
+function actualizarVistaPago() {
+    const modalidad = $('modalidad_pago')?.value;
+    const pagoInicial = parseFloat($('pago_inicial')?.value) || 0;
+
+    if (modalidad === 'CREDITO') {
+        // En crédito, el pago inicial es lo que se paga ahora
+        // Siempre mostrar el pago inicial como efectivo
+        $('totalEfectivoSpan').textContent = `S/ ${pagoInicial.toFixed(2)}`;
+
+        // Actualizar resumen de pagos con el pago inicial
+        let totalPagado = pagoInicial;
+
+        // Si hay pago mixto inicial activo, sumar los montos
+        if (estado.pagoMixtoInicialActivo) {
+            totalPagado = 0;
+            document.querySelectorAll('.monto-pago-inicial').forEach(inp => {
+                totalPagado += parseFloat(inp.value) || 0;
+            });
+        }
+
+        const totalPagadoSpan = $('totalPagadoSpan');
+        const pendienteSpan = $('pendienteSpan');
+        if (totalPagadoSpan) totalPagadoSpan.textContent = `S/ ${totalPagado.toFixed(2)}`;
+        if (pendienteSpan) {
+            const pend = estado.totalVenta - totalPagado;
+            pendienteSpan.textContent = `S/ ${Math.max(0, pend).toFixed(2)}`;
+            pendienteSpan.style.color = pend > 0.01 ? '#dc2626' : '#059669';
+        }
+
+        // Asegurar que se muestre el pago en efectivo
+        $('pagoEfectivoInfo').style.display = 'block';
+        $('pagosContainer').style.display = 'none';
+
+    } else {
+        // CONTADO normal
+        actualizarResumenPagos();
     }
-    if (btnAgregarLista) {
-        btnAgregarLista.addEventListener('click', () => {
-            const productoId = selectProducto?.value;
-            const productoNombre = selectProducto?.options[selectProducto.selectedIndex]?.text?.split(' -')[0];
-            const precio = parseFloat(document.getElementById('precioUnitario')?.value);
-            const cantidad = parseFloat(document.getElementById('cantidadProducto')?.value);
-            const stock = parseFloat(document.getElementById('stockDisponible')?.value) || 0;
-            if (!productoId) return mostrarToast('Seleccione un producto', 'warning');
-            if (!cantidad || cantidad <= 0) return mostrarToast('Cantidad inválida', 'warning');
-            if (cantidad > stock) return mostrarToast('Stock insuficiente', 'warning');
-            const existente = productosSeleccionados.find(p => p.id_producto === parseInt(productoId));
-            if (existente) { existente.cantidad += cantidad; existente.precio_unitario = precio; }
-            else { productosSeleccionados.push({ id_producto: parseInt(productoId), producto_nombre: productoNombre, precio_unitario: precio, cantidad }); }
-            actualizarTablaProductos();
-            mostrarToast('Producto agregado', 'success');
-            if (selectProducto) selectProducto.value = ''; if (buscarInput) buscarInput.value = '';
-            document.getElementById('cantidadProducto').value = '1'; document.getElementById('precioUnitario').value = '';
-            document.getElementById('stockDisponible').value = ''; cargarSelectProductos('');
-        });
+}
+
+// ============================================
+// CLIENTE (DNI=Nombre+Apellido, RUC=Razón Social)
+// ============================================
+async function buscarCliente() {
+    const tipoDoc = $('tipo_documento_cliente')?.value;
+    const numDoc = $('numero_documento_cliente')?.value.trim();
+
+    if (!numDoc) {
+        $('id_cliente').value = '1';
+        $('nombre_cliente').value = 'CLIENTE VARIOS';
+        const apellidoEl = $('apellido_cliente');
+        if (apellidoEl) { apellidoEl.value = ''; apellidoEl.parentElement.style.display = 'none'; }
+        $('direccion_cliente').value = '';
+        $('clienteNoExistenteAlert').style.display = 'none';
+        $('rowDireccionCliente').style.display = 'none';
+        $('rowApellidoCliente').style.display = 'none';
+        mostrarToast('Cliente genérico asignado', 'info');
+        return;
     }
+    if (!tipoDoc) return mostrarToast('Seleccione tipo de documento', 'warning');
+    if (tipoDoc === 'DNI' && numDoc.length !== 8) return mostrarToast('DNI debe tener 8 dígitos', 'warning');
+    if (tipoDoc === 'RUC' && numDoc.length !== 11) return mostrarToast('RUC debe tener 11 dígitos', 'warning');
+
+    const btn = $('btnBuscarClienteVenta');
+    const orig = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+
+    try {
+        const data = await apiCall(`/api/clientes/consultar-documento?numero=${numDoc}&tipo=${tipoDoc}`);
+
+        // DNI → Nombre + Apellido
+        // RUC → Solo Razón Social + Dirección
+        if (tipoDoc === 'DNI') {
+            $('nombre_cliente').value = data.cliente?.nombre || '';
+            const apellidoEl = $('apellido_cliente');
+            if (apellidoEl) {
+                apellidoEl.value = data.cliente?.apellido || '';
+                apellidoEl.parentElement.style.display = 'block';
+            }
+            $('rowApellidoCliente').style.display = 'block';
+            $('rowDireccionCliente').style.display = 'none';
+            $('direccion_cliente').value = '';
+        } else {
+            // RUC → nombre completo en nombre_cliente
+            $('nombre_cliente').value = data.cliente?.nombre || '';
+            const apellidoEl = $('apellido_cliente');
+            if (apellidoEl) {
+                apellidoEl.value = '';
+                apellidoEl.parentElement.style.display = 'none';
+            }
+            $('rowApellidoCliente').style.display = 'none';
+            $('rowDireccionCliente').style.display = 'block';
+            $('direccion_cliente').value = data.cliente?.direccion || '';
+        }
+
+        if (data.encontrado && data.cliente?.id) {
+            $('id_cliente').value = data.cliente.id;
+            $('telefono_cliente').value = data.cliente.telefono || '';
+            $('correo_cliente').value = data.cliente.correo || '';
+            $('clienteNoExistenteAlert').style.display = 'none';
+            mostrarToast('Cliente encontrado en el sistema', 'success');
+        } else {
+            $('id_cliente').value = '';
+            $('clienteNoExistenteAlert').style.display = 'block';
+            mostrarToast(data.origen === 'sunat' ? 'Cliente encontrado en SUNAT. Se registrará al guardar.' : 'Cliente no registrado. Se registrará al guardar.', 'info');
+        }
+    } catch (e) {
+        mostrarToast(e.message || 'Error al consultar', 'danger');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = orig;
+    }
+}
+
+function limpiarCliente() {
+    ['tipo_documento_cliente', 'numero_documento_cliente', 'nombre_cliente', 'direccion_cliente', 'telefono_cliente', 'correo_cliente', 'id_cliente'].forEach(id => { const el = $(id); if (el) el.value = ''; });
+    const apellidoEl = $('apellido_cliente');
+    if (apellidoEl) { apellidoEl.value = ''; apellidoEl.parentElement.style.display = 'block'; }
+    $('clienteNoExistenteAlert').style.display = 'none';
+    $('rowDireccionCliente').style.display = 'none';
+}
+
+// ============================================
+// CRÉDITO
+// ============================================
+function calcularCuotas() {
+    const pagoInicial = parseFloat($('pago_inicial')?.value) || 0;
+    const cantCuotas = parseInt($('cantidad_cuotas')?.value) || 0;
+    const intervalo = parseInt($('intervalo_dias')?.value) || 0;
+    const panel = $('panelCuotas');
+    const tbody = $('tablaResumenCuotas');
+    if (estado.totalVenta > pagoInicial && cantCuotas > 0) {
+        const montoFinanciar = estado.totalVenta - pagoInicial;
+        const montoPorCuota = montoFinanciar / cantCuotas;
+        const fechaBase = new Date($('fecha_venta')?.value || new Date());
+        $('montoFinanciar').textContent = `S/ ${montoFinanciar.toFixed(2)}`;
+        tbody.innerHTML = '';
+        for (let i = 1; i <= cantCuotas; i++) {
+            const fechaVenc = new Date(fechaBase);
+            fechaVenc.setDate(fechaVenc.getDate() + (intervalo * i));
+            const ajuste = (i === cantCuotas) ? parseFloat((montoFinanciar - (montoPorCuota * (cantCuotas - 1))).toFixed(2)) : montoPorCuota;
+            tbody.innerHTML += `<tr><td class="text-center">${i}</td><td class="text-end">S/ ${ajuste.toFixed(2)}</td><td class="text-center">${fechaVenc.toLocaleDateString('es-PE')}</td></tr>`;
+        }
+        panel.style.display = 'block';
+    } else {
+        panel.style.display = 'none';
+    }
+}
+
+// ============================================
+// LIMPIAR FORMULARIO
+// ============================================
+async function limpiarFormulario() {
+    // Resetear formulario
+    $('formVenta')?.reset();
+
+    // Limpiar IDs ocultos
+    $('ventaId').value = '';
+    $('id_cotizacion_origen').value = '';
+    $('id_cliente').value = '';
+
+    // Título del modal
+    $('tituloModalVenta').textContent = 'Nueva Venta';
+
+    // Fecha = hoy
+    const hoy = new Date();
+    $('fecha_venta').value = hoy.toISOString().split('T')[0];
+
+    // Modalidad CONTADO por defecto
+    $('modalidad_pago').value = 'CONTADO';
+    $('divCredito').style.display = 'none';
+    $('tituloSeccionPago').textContent = 'Pago';
+
+    // Cotización
+    estado.cotizacionCargada = null;
+    $('cotizacionCargadaInfo').style.display = 'none';
+    $('btnCargarCotizacion').style.display = 'block';
+
+    // Limpiar cliente
+    ['tipo_documento_cliente', 'numero_documento_cliente', 'nombre_cliente', 'direccion_cliente', 'telefono_cliente', 'correo_cliente', 'id_cliente'].forEach(id => {
+        const el = $(id);
+        if (el) el.value = '';
+    });
+    const apellidoEl = $('apellido_cliente');
+    if (apellidoEl) {
+        apellidoEl.value = '';
+        apellidoEl.parentElement.style.display = 'block';
+    }
+    $('clienteNoExistenteAlert').style.display = 'none';
+    $('rowDireccionCliente').style.display = 'none';
+    $('rowApellidoCliente').style.display = 'none';
+
+    // Pago Mixto principal - HABILITADO (CONTADO por defecto)
+    estado.pagoMixtoActivo = false;
+    const switchPagoMixto = $('switchPagoMixto');
+    if (switchPagoMixto) {
+        switchPagoMixto.checked = false;
+        switchPagoMixto.disabled = false;
+    }
+    const switchContainer = $('switchPagoMixtoContainer');
+    if (switchContainer) {
+        switchContainer.style.opacity = '1';
+        switchContainer.style.pointerEvents = 'auto';
+    }
+    $('pagoEfectivoInfo').style.display = 'block';
+    $('pagosContainer').style.display = 'none';
+    $('totalEfectivoSpan').textContent = 'S/ 0.00';
+    $('totalPagadoSpan').textContent = 'S/ 0.00';
+    $('pendienteSpan').textContent = 'S/ 0.00';
+
+    // Pago Mixto Inicial - OCULTO
+    estado.pagoMixtoInicialActivo = false;
+    $('switchPagoMixtoInicial').checked = false;
+    $('pagosInicialContainer').style.display = 'none';
+    $('pago_inicial').value = 0;
+    $('pagoInicialEfectivo').textContent = 'S/ 0.00';
+
+    // Resetear contenedores de pagos
+    resetearPagosMixtos();
+    resetearPagosIniciales();
+
+    // Crédito - valores por defecto
+    $('cantidad_cuotas').value = 0;
+    $('intervalo_dias').value = 0;
+    $('panelCuotas').style.display = 'none';
+    $('tablaResumenCuotas').innerHTML = '';
+    $('montoFinanciar').textContent = 'S/ 0.00';
+
+    // Productos
+    estado.productosSeleccionados = [];
+    estado.totalVenta = 0;
+    actualizarTablaProductos();
+    $('buscarProductoInput').value = '';
+    $('cantidadProducto').value = '1';
+    $('precioUnitario').value = '';
+    $('stockDisponible').value = '';
+
+    // Observación
+    $('observacion').value = '';
+
+    // Generar nuevo número de nota
+    $('numero_nota_venta').value = await generarNumeroNota();
+
+    // Cargar productos en el select
+    cargarSelectProductos('');
+
+    // Actualizar vista de pago
+    actualizarVistaPago();
 }
 
 // ============================================
 // GUARDAR VENTA
 // ============================================
-function setupGuardarVenta() {
-    const btnGuardar = getElement('btnGuardarVenta');
-    if (!btnGuardar) return;
-    btnGuardar.onclick = async () => {
-        const id = getElement('ventaId')?.value;
-        const numero_nota_venta = getElement('numero_nota_venta')?.value.trim();
-        const id_cotizacion = document.getElementById('id_cotizacion_origen')?.value || null;
-        let id_cliente = document.getElementById('id_cliente')?.value;
-        const tipo_documento = document.getElementById('tipo_documento_cliente')?.value;
-        const numero_documento = document.getElementById('numero_documento_cliente')?.value.trim();
-        const nombre_cliente = document.getElementById('nombre_cliente')?.value.trim();
-        const apellido_cliente = document.getElementById('apellido_cliente')?.value.trim();
-        const telefono_cliente = document.getElementById('telefono_cliente')?.value.trim();
-        const correo_cliente = document.getElementById('correo_cliente')?.value.trim();
+// ============================================
+// GUARDAR VENTA (COMPLETO, CORREGIDO)
+// ============================================
+async function guardarVenta() {
+    const numero_nota_venta = $('numero_nota_venta')?.value.trim();
+    let id_cliente = $('id_cliente')?.value;
+    const tipo_documento = $('tipo_documento_cliente')?.value;
+    const numero_documento = $('numero_documento_cliente')?.value.trim();
+    const nombre_cliente = $('nombre_cliente')?.value.trim();
+    const apellido_cliente = $('apellido_cliente')?.value.trim() || '';
+    const telefono_cliente = $('telefono_cliente')?.value.trim();
+    const correo_cliente = $('correo_cliente')?.value.trim();
+    const modalidad_pago = $('modalidad_pago')?.value;
+    const observacion = $('observacion')?.value;
+    const id_cotizacion = $('id_cotizacion_origen')?.value || null;
+    const cantidad_cuotas = parseInt($('cantidad_cuotas')?.value) || 0;
+    const intervalo_dias = parseInt($('intervalo_dias')?.value) || 0;
+    const idVenta = $('ventaId')?.value;
 
-        if (!id_cliente && !nombre_cliente) return mostrarToast('Debe buscar un cliente o ingresar "CLIENTE VARIOS"', 'warning');
-        if (telefono_cliente && !/^\d{9}$/.test(telefono_cliente)) return mostrarToast('Teléfono debe tener 9 dígitos', 'warning');
-        if (correo_cliente && !/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(correo_cliente)) return mostrarToast('Correo electrónico inválido', 'warning');
+    // ─── VALIDACIONES BÁSICAS ───
+    if (!numero_nota_venta) return mostrarToast('Número de nota obligatorio', 'warning');
+    if (!modalidad_pago) return mostrarToast('Seleccione modalidad de pago', 'warning');
+    if (estado.productosSeleccionados.length === 0) return mostrarToast('Agregue al menos un producto', 'warning');
 
-        if (!id_cliente && numero_documento) {
-            try {
-                const nuevo = { tipo_documento, numero_documento, nombre: nombre_cliente || 'Cliente', apellido: apellido_cliente || '', telefono: telefono_cliente || '', correo: correo_cliente || '' };
-                const reg = await (await fetch('/api/clientes', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(nuevo) })).json();
-                if (reg.error) throw new Error(reg.error);
-                const clientes = await (await fetch('/api/clientes')).json();
-                id_cliente = clientes.find(x => x.numero_documento === numero_documento)?.id;
-                if (!id_cliente) throw new Error('No se pudo obtener ID del cliente');
-                mostrarToast('Cliente registrado', 'success');
-            } catch (e) { return mostrarToast(e.message, 'danger'); }
-        }
-        if (!id_cliente && !numero_documento) id_cliente = 1;
-
-        const sesion = JSON.parse(localStorage.getItem('sesion') || '{}');
-        const id_usuario = sesion?.usuario?.id;
-        if (!id_usuario) return mostrarToast('Usuario no encontrado', 'danger');
-
-        const modalidad_pago = getElement('modalidad_pago')?.value;
-        const cantidad_cuotas = parseInt(getElement('cantidad_cuotas')?.value) || 0;
-        const intervalo_dias = parseInt(getElement('intervalo_dias')?.value) || 0;
-        const observacion = getElement('observacion')?.value;
-
-        if (!numero_nota_venta) return mostrarToast('Número de nota obligatorio', 'warning');
-        if (!modalidad_pago) return mostrarToast('Seleccione modalidad de pago', 'warning');
-        if (productosSeleccionados.length === 0) return mostrarToast('Agregue al menos un producto', 'warning');
-
-        const pagos = obtenerPagos();
-        if (pagos.length === 0) return mostrarToast('Especifique al menos un método de pago', 'warning');
-        if (new Set(pagos.map(p => p.metodo_pago)).size !== pagos.length) return mostrarToast('No puede usar el mismo método dos veces', 'warning');
-
-        const totalPagado = pagos.reduce((s, p) => s + p.monto, 0);
-        if (modalidad_pago === 'CONTADO' && totalPagado < totalVenta) return mostrarToast(`El pago (S/ ${totalPagado.toFixed(2)}) no cubre el total (S/ ${totalVenta.toFixed(2)})`, 'warning');
-        if (modalidad_pago === 'CREDITO') {
-            if (totalVenta - totalPagado <= 0) return mostrarToast('No hay deuda para crédito', 'warning');
-            if (cantidad_cuotas <= 0) return mostrarToast('Ingrese cantidad de cuotas', 'warning');
-            if (intervalo_dias <= 0) return mostrarToast('Ingrese intervalo de días', 'warning');
-        }
-
+    // ─── CLIENTE ───
+    // Si no hay ID pero SÍ hay documento → registrar nuevo cliente
+    if (!id_cliente && numero_documento) {
+        if (!nombre_cliente) return mostrarToast('Busque el cliente o asigne CLIENTE VARIOS', 'warning');
         try {
-            const body = { numero_nota_venta, id_pedido: null, id_cotizacion: id_cotizacion ? parseInt(id_cotizacion) : null, id_cliente: parseInt(id_cliente), id_usuario, modalidad_pago, total_venta: totalVenta, observacion, productos: productosSeleccionados, pagos, cantidad_cuotas, intervalo_dias };
-            const data = await (await fetch(id ? `/api/ventas/${id}` : '/api/ventas', { method: id ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })).json();
-            if (data.error) throw new Error(data.error);
-            if (id_cotizacion) await fetch(`/api/cotizaciones/${id_cotizacion}/estado`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ estado: 3 }) });
-            await cargarVentas();
-            mostrarToast('Venta registrada correctamente', 'success');
-            bootstrap.Modal.getInstance(getElement('modalVenta'))?.hide();
-            await limpiarFormulario();
-        } catch (e) { mostrarToast(e.message, 'danger'); }
-    };
+            await apiCall('/api/clientes', {
+                method: 'POST',
+                body: JSON.stringify({
+                    tipo_documento,
+                    numero_documento,
+                    nombre: nombre_cliente,
+                    apellido: tipo_documento === 'DNI' ? apellido_cliente : '',
+                    telefono: telefono_cliente || '',
+                    correo: correo_cliente || ''
+                })
+            });
+            // Obtener ID del cliente recién creado
+            const clientes = await apiCall('/api/clientes');
+            const nuevo = clientes.find(c => c.numero_documento === numero_documento);
+            if (nuevo) {
+                id_cliente = nuevo.id;
+                $('id_cliente').value = nuevo.id;
+            }
+            mostrarToast('Cliente registrado', 'success');
+        } catch (e) {
+            // Si el error es "ya existe", obtener su ID
+            if (e.message.includes('ya existe')) {
+                const clientes = await apiCall('/api/clientes');
+                const existente = clientes.find(c => c.numero_documento === numero_documento);
+                if (existente) {
+                    id_cliente = existente.id;
+                    $('id_cliente').value = existente.id;
+                } else {
+                    return mostrarToast('Error al obtener cliente existente', 'danger');
+                }
+            } else {
+                return mostrarToast(e.message, 'danger');
+            }
+        }
+    }
+
+    // Si sigue sin ID y no hay documento → CLIENTE VARIOS (ID=1)
+    if (!id_cliente && !numero_documento) {
+        id_cliente = 1;
+        $('id_cliente').value = 1;
+        $('nombre_cliente').value = 'CLIENTE VARIOS';
+    }
+
+    if (!id_cliente) return mostrarToast('No se pudo determinar el cliente', 'warning');
+
+    // ─── PAGOS ───
+    let pagos = [];
+    let totalPagado = 0;
+    const pagoInicial = parseFloat($('pago_inicial')?.value) || 0;
+
+    if (modalidad_pago === 'CREDITO') {
+        // ─── CRÉDITO: el pago es el pago inicial ───
+        if (pagoInicial >= estado.totalVenta) {
+            return mostrarToast('Use CONTADO si el pago inicial cubre el total', 'warning');
+        }
+        if (cantidad_cuotas <= 0) return mostrarToast('Ingrese cantidad de cuotas', 'warning');
+        if (intervalo_dias <= 0) return mostrarToast('Ingrese intervalo de días', 'warning');
+
+        // Determinar de dónde vienen los pagos del inicial
+        if (estado.pagoMixtoInicialActivo) {
+            // Pago inicial mixto activo
+            pagos = obtenerPagosIniciales();
+        } else if (estado.pagoMixtoActivo) {
+            // Pago mixto principal activo
+            pagos = obtenerPagosMixtos();
+        } else {
+            // Pago en efectivo simple
+            pagos = [{ metodo_pago: 'EFECTIVO', monto: pagoInicial, numero_operacion: '', observacion: '' }];
+        }
+
+        // Validar que los pagos no excedan el total
+        totalPagado = pagos.reduce((s, p) => s + p.monto, 0);
+        if (totalPagado > estado.totalVenta) {
+            return mostrarToast('El pago inicial no puede exceder el total de la venta', 'warning');
+        }
+        if (totalPagado <= 0) {
+            // Permitir pago inicial 0 (todo a crédito)
+            pagos = [{ metodo_pago: 'EFECTIVO', monto: 0, numero_operacion: '', observacion: '' }];
+            totalPagado = 0;
+        }
+
+    } else {
+        // ─── CONTADO: el pago debe cubrir el total ───
+        if (estado.pagoMixtoActivo) {
+            pagos = obtenerPagosMixtos();
+            if (pagos.length === 0) return mostrarToast('Especifique al menos un método de pago', 'warning');
+
+            // Validar métodos duplicados
+            const metodos = pagos.map(p => p.metodo_pago);
+            if (new Set(metodos).size !== metodos.length) {
+                return mostrarToast('No puede usar el mismo método dos veces', 'warning');
+            }
+        } else {
+            // Pago en efectivo por el total
+            pagos = [{ metodo_pago: 'EFECTIVO', monto: estado.totalVenta, numero_operacion: '', observacion: '' }];
+        }
+
+        totalPagado = pagos.reduce((s, p) => s + p.monto, 0);
+
+        // Ajustar excedente
+        if (totalPagado > estado.totalVenta) {
+            const excedente = totalPagado - estado.totalVenta;
+            pagos[pagos.length - 1].monto = parseFloat((pagos[pagos.length - 1].monto - excedente).toFixed(2));
+            totalPagado = estado.totalVenta;
+        }
+
+        // Validar que cubra el total
+        if (totalPagado < estado.totalVenta) {
+            return mostrarToast(`Pago insuficiente. Total: S/ ${estado.totalVenta.toFixed(2)}, Pagado: S/ ${totalPagado.toFixed(2)}`, 'warning');
+        }
+    }
+
+    // ─── ENVIAR AL BACKEND ───
+    const sesion = JSON.parse(localStorage.getItem('sesion') || '{}');
+    const id_usuario = sesion?.usuario?.id;
+    if (!id_usuario) return mostrarToast('Usuario no autenticado', 'danger');
+
+    try {
+        const body = {
+            numero_nota_venta,
+            id_cliente: parseInt(id_cliente),
+            id_usuario,
+            modalidad_pago,
+            total_venta: estado.totalVenta,
+            observacion,
+            productos: estado.productosSeleccionados,
+            pagos,
+            cantidad_cuotas,
+            intervalo_dias,
+            id_cotizacion: id_cotizacion ? parseInt(id_cotizacion) : null
+        };
+
+        const url = idVenta ? `/api/ventas/${idVenta}` : '/api/ventas';
+        const method = idVenta ? 'PUT' : 'POST';
+
+        await apiCall(url, { method, body: JSON.stringify(body) });
+        await cargarVentas();
+        mostrarToast(idVenta ? 'Venta actualizada correctamente' : 'Venta registrada correctamente', 'success');
+
+        bootstrap.Modal.getInstance($('modalVenta'))?.hide();
+        await limpiarFormulario();
+
+    } catch (e) {
+        console.error('Error al guardar venta:', e);
+        mostrarToast(e.message, 'danger');
+    }
 }
 
-
 // ============================================
-// ABRIR MODAL DE SELECCIÓN DE COTIZACIONES
+// DETALLE DE VENTA
 // ============================================
-async function abrirModalSeleccionarCotizacion() {
+async function mostrarDetalleVenta(id) {
+    estado.ventaActual = id;
     try {
-        const response = await fetch('/api/cotizaciones');
-        if (!response.ok) throw new Error('Error al cargar cotizaciones');
+        const venta = await apiCall(`/api/ventas/${id}`);
+        limpiarBackdrops();
+        $('detalleNumeroNota').textContent = venta.numero_nota_venta;
+        $('detalleCliente').textContent = venta.cliente || '-';
+        $('detalleClienteDoc').textContent = venta.cliente_documento || '';
+        $('detalleFecha').textContent = formatearFecha(venta.fecha_venta);
+        $('detalleUsuario').textContent = venta.usuario || '-';
+        $('detalleTotal').textContent = `S/ ${parseFloat(venta.total_venta).toFixed(2)}`;
+        $('detalleTotalPagado').textContent = `S/ ${parseFloat(venta.total_pagado || 0).toFixed(2)}`;
+        $('detalleSaldoPendiente').textContent = `S/ ${Math.max(0, parseFloat(venta.deuda || 0)).toFixed(2)}`;
+        $('detalleModalidad').textContent = venta.modalidad_pago;
+        $('detalleObservacion').textContent = venta.observacion || '-';
+        const estados = { 0: { text: 'Pago Parcial', class: 'bg-warning text-dark' }, 1: { text: 'Pagada', class: 'bg-success' }, 2: { text: 'Anulada', class: 'bg-secondary' } };
+        const est = estados[venta.estado] || { text: 'Desconocido', class: 'bg-dark' };
+        $('detalleEstado').textContent = est.text;
+        $('detalleEstado').className = `badge ${est.class}`;
 
-        const cotizaciones = await response.json();
-        const activas = cotizaciones.filter(c => c.estado === 1);
+        const tbodyProd = $('detalleProductos'); tbodyProd.innerHTML = ''; let totalProd = 0;
+        if (venta.detalles) venta.detalles.forEach(d => { const sub = d.precio_unitario * d.cantidad; totalProd += sub; tbodyProd.innerHTML += `<tr><td>${d.producto || '-'}</td><td class="text-end">S/ ${parseFloat(d.precio_unitario).toFixed(2)}</td><td class="text-center">${d.cantidad}</td><td class="text-end">S/ ${sub.toFixed(2)}</td></tr>`; });
+        $('detalleProductosTotal').textContent = `S/ ${totalProd.toFixed(2)}`;
 
-        const tbody = document.getElementById('tablaCotizacionesModal');
-        const sinDatos = document.getElementById('sinCotizacionesModal');
-        if (!tbody) return;
+        const tbodyPagos = $('detallePagos'); const pagosSection = $('detallePagosSection'); tbodyPagos.innerHTML = '';
+        if (venta.pagos && venta.pagos.length > 0) { pagosSection.style.display = 'block'; venta.pagos.forEach(p => tbodyPagos.innerHTML += `<tr><td><span class="badge bg-secondary">${p.metodo_pago}</span></td><td class="text-end">S/ ${parseFloat(p.monto).toFixed(2)}</td><td>${p.numero_operacion || '-'}</td><td>${p.fecha_pago || '-'}</td></tr>`); }
+        else pagosSection.style.display = 'none';
 
-        tbody.innerHTML = '';
+        const tbodyCuotas = $('detalleCuotas'); const cuotasSection = $('detalleCuotasSection'); tbodyCuotas.innerHTML = '';
+        if (venta.modalidad_pago === 'CREDITO' && venta.cuotas && venta.cuotas.length > 0) {
+            cuotasSection.style.display = 'block'; const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+            venta.cuotas.forEach(c => {
+                const fechaVenc = new Date(c.fecha_vencimiento); const diasRest = Math.ceil((fechaVenc - hoy) / (1000 * 60 * 60 * 24));
+                let estadoBadge;
+                if (c.estado === 1) estadoBadge = '<span class="badge bg-success">Pagada</span>';
+                else if (diasRest < 0) estadoBadge = '<span class="badge bg-danger">Vencida</span>';
+                else if (diasRest <= 3) estadoBadge = '<span class="badge bg-warning text-dark">Por vencer</span>';
+                else estadoBadge = '<span class="badge bg-info">Pendiente</span>';
+                let btnPagar = c.estado === 0 ? `<button class="btn btn-sm btn-success btnPagarCuotaDetalle" data-id="${c.id}" data-monto="${c.monto}" data-numero="${c.numero_cuota}" data-vencimiento="${c.fecha_vencimiento}"><i class="bi bi-credit-card"></i></button>` : '';
+                tbodyCuotas.innerHTML += `<tr><td class="text-center">#${c.numero_cuota}</td><td class="text-end">S/ ${parseFloat(c.monto).toFixed(2)}</td><td class="text-center">${c.fecha_vencimiento}</td><td class="text-center">${estadoBadge}</td><td class="text-center">${btnPagar}</td></tr>`;
+            });
+        } else cuotasSection.style.display = 'none';
 
-        if (activas.length === 0) {
-            if (sinDatos) sinDatos.style.display = 'block';
+        configurarBotonesDetalle();
+        new bootstrap.Modal($('modalDetalleVenta')).show();
+    } catch (e) { console.error(e); mostrarToast('Error al cargar detalle', 'danger'); }
+}
+function configurarBotonesDetalle() {
+    const btnCorreo = $('btnReenviarCorreo');
+    if (btnCorreo) {
+        const n = btnCorreo.cloneNode(true);
+        btnCorreo.parentNode.replaceChild(n, btnCorreo);
+        n.addEventListener('click', () => reenviarNota('email'));
+    }
+
+    const btnWp = $('btnReenviarWhatsApp');
+    if (btnWp) {
+        const n = btnWp.cloneNode(true);
+        btnWp.parentNode.replaceChild(n, btnWp);
+        n.addEventListener('click', () => reenviarNota('whatsapp'));
+    }
+
+    // Botón imprimir - NUEVO
+    const btnImprimir = $('btnImprimirVenta');
+    if (btnImprimir) {
+        const n = btnImprimir.cloneNode(true);
+        btnImprimir.parentNode.replaceChild(n, btnImprimir);
+        n.addEventListener('click', () => {
+            if (estado.ventaActual) {
+                mostrarModalOpcionesImpresion(estado.ventaActual);
+            }
+        });
+    }
+}
+
+async function reenviarNota(canal) {
+    if (!estado.ventaActual) return;
+    try { await apiCall(`/api/ventas/${estado.ventaActual}/reenviar-nota`, { method: 'POST', body: JSON.stringify({ canal }) }); mostrarToast(`Enviado por ${canal}`, 'success'); }
+    catch (e) { mostrarToast(e.message, 'danger'); }
+}
+
+// ============================================
+// HISTORIAL DE PAGOS (COMPLETO, PROFESIONAL)
+// ============================================
+async function abrirHistorialPagos(id) {
+    try {
+        const venta = await apiCall(`/api/ventas/${id}`);
+        limpiarBackdrops();
+
+        // ─── DATOS DE CABECERA ───
+        $('histComprobante').textContent = venta.numero_nota_venta ? 'NOTA' : 'VENTA';
+        $('histVentaNumero').textContent = venta.numero_nota_venta || `#${id}`;
+        $('histClienteNombre').textContent = venta.cliente || 'CLIENTE VARIOS';
+        $('histClienteDoc').textContent = venta.cliente_documento
+            ? `${venta.cliente_documento}`
+            : 'Sin documento';
+
+        // ─── TOTALES ───
+        const totalVenta = parseFloat(venta.total_venta) || 0;
+        const totalPagado = parseFloat(venta.total_pagado) || 0;
+        const saldo = Math.max(0, totalVenta - totalPagado);
+
+        $('histTotalVenta').textContent = `S/ ${totalVenta.toFixed(2)}`;
+        $('histTotalPagado').textContent = `S/ ${totalPagado.toFixed(2)}`;
+        $('histSaldoPendiente').textContent = `S/ ${saldo.toFixed(2)}`;
+
+        // Color del saldo
+        $('histSaldoPendiente').className = saldo <= 0
+            ? 'fw-bold text-success fs-5'
+            : 'fw-bold text-warning fs-5';
+
+        // ─── RECOLECTAR TODOS LOS PAGOS ───
+        const todosPagos = [];
+
+        // 1. Pagos iniciales (pago_venta)
+        if (venta.pagos && venta.pagos.length > 0) {
+            venta.pagos.forEach(p => {
+                todosPagos.push({
+                    tipo: 'PAGO INICIAL',
+                    icono: 'bi-cash-stack',
+                    color: '#0d6efd',
+                    bg: '#e8f0fe',
+                    metodo: p.metodo_pago,
+                    monto: parseFloat(p.monto),
+                    numero_operacion: p.numero_operacion || '-',
+                    fecha: p.fecha_pago || venta.fecha_venta,
+                    origen: 'Venta'
+                });
+            });
+        }
+
+        // 2. Pagos de cuotas (pago_cuota)
+        if (venta.cuotas && venta.cuotas.length > 0) {
+            venta.cuotas.forEach(c => {
+                if (c.estado === 1 && c.total_pagado > 0) {
+                    // Buscar los pagos individuales de esta cuota
+                    // Como la API devuelve el total, creamos una entrada
+                    todosPagos.push({
+                        tipo: `CUOTA #${c.numero_cuota}`,
+                        icono: 'bi-credit-card',
+                        color: '#198754',
+                        bg: '#d1fae5',
+                        metodo: 'PAGO CUOTA',
+                        monto: parseFloat(c.total_pagado || c.monto),
+                        numero_operacion: '-',
+                        fecha: c.fecha_pago || c.fecha_vencimiento,
+                        origen: `Cuota ${c.numero_cuota}/${venta.cantidad_cuotas}`
+                    });
+                }
+            });
+        }
+
+        // Ordenar por fecha (más reciente primero)
+        todosPagos.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+
+        // ─── CONSTRUIR TIMELINE ───
+        const timeline = $('historialPagosTimeline');
+        timeline.innerHTML = '';
+
+        if (todosPagos.length === 0) {
+            timeline.innerHTML = `
+                <div class="text-center py-5">
+                    <i class="bi bi-inbox fs-1 text-muted"></i>
+                    <p class="text-muted mt-2 mb-0">No hay pagos registrados</p>
+                    <small class="text-muted">Los pagos aparecerán aquí cuando se registren</small>
+                </div>`;
         } else {
-            if (sinDatos) sinDatos.style.display = 'none';
+            todosPagos.forEach((pago, index) => {
+                const fecha = new Date(pago.fecha);
+                const fechaStr = fecha.toLocaleDateString('es-PE', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric'
+                });
+                const horaStr = fecha.toLocaleTimeString('es-PE', {
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
 
-            activas.forEach(cot => {
-                tbody.innerHTML += `
-                    <tr style="font-size:0.75rem;">
-                        <td><strong>${cot.numero_cotizacion}</strong></td>
-                        <td>${cot.cliente || '-'}</td>
-                        <td>${formatearFecha(cot.fecha)}</td>
-                        <td>${formatearFecha(cot.fecha_vencimiento)}</td>
-                        <td class="text-end fw-bold">S/ ${parseFloat(cot.total).toFixed(2)}</td>
-                        <td class="text-center">
-                            <button class="btn btn-sm btn-success btnSeleccionarCotizacion" data-id="${cot.id}">
-                                <i class="bi bi-check-circle me-1"></i> Seleccionar
-                            </button>
+                timeline.innerHTML += `
+                    <div class="d-flex gap-3 ${index < todosPagos.length - 1 ? 'mb-3' : ''}" 
+                         style="animation: fadeInUp 0.3s ease-out ${index * 0.05}s both;">
+                        
+                        <!-- Icono y línea -->
+                        <div class="d-flex flex-column align-items-center" style="min-width: 40px;">
+                            <div class="rounded-circle d-flex align-items-center justify-content-center" 
+                                 style="width: 36px; height: 36px; background: ${pago.bg}; color: ${pago.color}; flex-shrink: 0;">
+                                <i class="bi ${pago.icono}" style="font-size: 1rem;"></i>
+                            </div>
+                            ${index < todosPagos.length - 1 ? `
+                                <div style="width: 2px; flex-grow: 1; background: #e5e7eb; margin: 4px 0;"></div>
+                            ` : ''}
+                        </div>
+                        
+                        <!-- Contenido -->
+                        <div class="flex-grow-1">
+                            <div class="card border-0 shadow-sm" style="border-radius: 12px;">
+                                <div class="card-body p-2">
+                                    <div class="d-flex justify-content-between align-items-start mb-1">
+                                        <div>
+                                            <span class="badge" style="background: ${pago.bg}; color: ${pago.color}; font-size: 0.65rem;">
+                                                ${pago.tipo}
+                                            </span>
+                                            <span class="badge bg-secondary ms-1" style="font-size: 0.6rem;">
+                                                ${pago.metodo}
+                                            </span>
+                                        </div>
+                                        <span class="fw-bold" style="color: ${pago.color}; font-size: 0.95rem;">
+                                            S/ ${pago.monto.toFixed(2)}
+                                        </span>
+                                    </div>
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <small class="text-muted" style="font-size: 0.65rem;">
+                                                <i class="bi bi-calendar3 me-1"></i>${fechaStr} ${horaStr}
+                                            </small>
+                                            ${pago.numero_operacion !== '-' ? `
+                                                <br><small class="text-muted" style="font-size: 0.6rem;">
+                                                    <i class="bi bi-hash me-1"></i>Operación: ${pago.numero_operacion}
+                                                </small>
+                                            ` : ''}
+                                        </div>
+                                        <small class="text-muted" style="font-size: 0.6rem;">${pago.origen}</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>`;
+            });
+        }
+
+        // ─── CONTADOR DE PAGOS ───
+        $('histCantidadPagos').textContent = `${todosPagos.length} transaccione(s)`;
+
+        // ─── ÚLTIMO PAGO ───
+        if (todosPagos.length > 0) {
+            const ultimo = todosPagos[0];
+            const fechaUlt = new Date(ultimo.fecha);
+            $('histUltimoPago').textContent = `Último pago: ${fechaUlt.toLocaleDateString('es-PE')} - ${ultimo.tipo}`;
+        } else {
+            $('histUltimoPago').textContent = 'Sin pagos registrados';
+        }
+
+        // ─── RESUMEN POR MÉTODO DE PAGO ───
+        const resumenMetodos = {};
+        todosPagos.forEach(p => {
+            const key = p.metodo;
+            if (!resumenMetodos[key]) {
+                resumenMetodos[key] = { total: 0, cantidad: 0 };
+            }
+            resumenMetodos[key].total += p.monto;
+            resumenMetodos[key].cantidad += 1;
+        });
+
+        const coloresMetodo = {
+            'EFECTIVO': { color: '#059669', bg: '#d1fae5', icono: 'bi-cash' },
+            'YAPE': { color: '#7c3aed', bg: '#ede9fe', icono: 'bi-phone' },
+            'PLIN': { color: '#2563eb', bg: '#dbeafe', icono: 'bi-phone' },
+            'TARJETA': { color: '#dc2626', bg: '#fee2e2', icono: 'bi-credit-card' },
+            'TRANSFERENCIA': { color: '#d97706', bg: '#fef3c7', icono: 'bi-bank' },
+            'PAGO CUOTA': { color: '#0891b2', bg: '#cffafe', icono: 'bi-calendar-check' }
+        };
+
+        const tbodyResumen = $('histResumenMetodos');
+        tbodyResumen.innerHTML = '';
+
+        if (Object.keys(resumenMetodos).length === 0) {
+            tbodyResumen.innerHTML = `
+                <tr>
+                    <td colspan="4" class="text-center text-muted py-3 small">
+                        <i class="bi bi-inbox me-1"></i> No hay métodos de pago registrados
+                    </td>
+                </tr>`;
+        } else {
+            Object.entries(resumenMetodos).forEach(([metodo, datos]) => {
+                const col = coloresMetodo[metodo] || { color: '#6b7280', bg: '#f3f4f6', icono: 'bi-wallet2' };
+                const porcentaje = totalVenta > 0 ? ((datos.total / totalVenta) * 100).toFixed(1) : 0;
+                const porcentajeNum = Math.min(parseFloat(porcentaje), 100);
+
+                tbodyResumen.innerHTML += `
+                    <tr>
+                        <td>
+                            <div class="d-flex align-items-center gap-2">
+                                <div class="rounded p-1" style="background: ${col.bg}; color: ${col.color};">
+                                    <i class="bi ${col.icono}" style="font-size: 0.8rem;"></i>
+                                </div>
+                                <span class="small fw-semibold">${metodo}</span>
+                            </div>
+                        </td>
+                        <td class="text-end fw-bold small">S/ ${datos.total.toFixed(2)}</td>
+                        <td class="text-center small text-muted">${datos.cantidad}</td>
+                        <td>
+                            <div class="d-flex align-items-center gap-2">
+                                <div class="progress flex-grow-1" style="height: 6px; border-radius: 3px;">
+                                    <div class="progress-bar" style="width: ${porcentajeNum}%; background: ${col.color}; border-radius: 3px;"></div>
+                                </div>
+                                <small class="text-muted" style="font-size:0.6rem; min-width: 35px;">${porcentaje}%</small>
+                            </div>
                         </td>
                     </tr>`;
             });
-        }
 
-        // Configurar búsqueda en el modal
-        const buscarInput = document.getElementById('buscarCotizacionModal');
-        if (buscarInput) {
-            buscarInput.value = '';
-            buscarInput.oninput = (e) => {
-                const valor = e.target.value.toLowerCase();
-                tbody.querySelectorAll('tr').forEach(fila => {
-                    fila.style.display = fila.textContent.toLowerCase().includes(valor) ? '' : 'none';
-                });
-            };
-        }
+            const porcentajeTotal = totalVenta > 0 ? ((totalPagado / totalVenta) * 100).toFixed(1) : 0;
+            const saldoRestante = Math.max(0, totalVenta - totalPagado);
+            const porcentajeSaldo = totalVenta > 0 ? ((saldoRestante / totalVenta) * 100).toFixed(1) : 0;
 
-        // Configurar selección de cotización
-        tbody.querySelectorAll('.btnSeleccionarCotizacion').forEach(btn => {
-            btn.onclick = async (e) => {
-                const id = parseInt(e.currentTarget.dataset.id);
+            tbodyResumen.innerHTML += `
+                <tr class="table-light fw-bold">
+                    <td><i class="bi bi-check-circle text-success me-1"></i> TOTAL PAGADO</td>
+                    <td class="text-end text-success">S/ ${totalPagado.toFixed(2)}</td>
+                    <td class="text-center">${todosPagos.length}</td>
+                    <td>
+                        <div class="d-flex align-items-center gap-2">
+                            <div class="progress flex-grow-1" style="height: 6px; border-radius: 3px;">
+                                <div class="progress-bar bg-success" style="width: ${porcentajeTotal}%; border-radius: 3px;"></div>
+                            </div>
+                            <small style="font-size:0.6rem; min-width: 35px;">${porcentajeTotal}%</small>
+                        </div>
+                    </td>
+                </tr>`;
 
-                // Cerrar modal de selección
-                if (modalSeleccionCotizacion) {
-                    modalSeleccionCotizacion.hide();
-                }
-
-                // Cargar datos
-                await seleccionarCotizacion(id);
-            };
-        });
-
-        // Mostrar modal de selección
-        if (modalSeleccionCotizacion) {
-            modalSeleccionCotizacion.show();
-        }
-
-    } catch (error) {
-        console.error(error);
-        mostrarToast('Error al cargar cotizaciones', 'danger');
-    }
-}
-
-// ============================================
-// SELECCIONAR COTIZACIÓN Y CARGAR DATOS
-// ============================================
-async function seleccionarCotizacion(idCotizacion) {
-    try {
-        const response = await fetch(`/api/cotizaciones/${idCotizacion}`);
-        if (!response.ok) throw new Error('Error al obtener cotización');
-
-        const cot = await response.json();
-        cotizacionCargada = cot;
-
-        document.getElementById('id_cotizacion_origen').value = cot.id;
-
-        // Cargar datos del cliente
-        if (cot.id_cliente) {
-            document.getElementById('id_cliente').value = cot.id_cliente;
-
-            // Cargar datos completos del cliente desde la API
-            try {
-                const res = await fetch('/api/clientes');
-                const clientes = await res.json();
-                const cliente = clientes.find(c => c.id === cot.id_cliente);
-
-                if (cliente) {
-                    document.getElementById('nombre_cliente').value = cliente.nombre || '';
-                    document.getElementById('apellido_cliente').value = cliente.apellido || '';
-                    document.getElementById('numero_documento_cliente').value = cliente.numero_documento || '';
-                    document.getElementById('tipo_documento_cliente').value = cliente.tipo_documento || '';
-                    document.getElementById('telefono_cliente').value = cliente.telefono || '';
-                    document.getElementById('correo_cliente').value = cliente.correo || '';
-                    document.getElementById('clienteNoExistenteAlert').style.display = 'none';
-                } else {
-                    // Separar nombre completo como fallback
-                    const nombreCompleto = cot.cliente || '';
-                    const partes = nombreCompleto.split(' ');
-                    document.getElementById('nombre_cliente').value = partes[0] || '';
-                    document.getElementById('apellido_cliente').value = partes.slice(1).join(' ') || '';
-                }
-            } catch (e) {
-                const nombreCompleto = cot.cliente || '';
-                const partes = nombreCompleto.split(' ');
-                document.getElementById('nombre_cliente').value = partes[0] || '';
-                document.getElementById('apellido_cliente').value = partes.slice(1).join(' ') || '';
-            }
-        }
-
-        // Cargar productos
-        productosSeleccionados = [];
-        if (cot.detalles) {
-            cot.detalles.forEach(det => {
-                productosSeleccionados.push({
-                    id_producto: det.id_producto || null,
-                    producto_nombre: det.producto_nombre,
-                    precio_unitario: parseFloat(det.precio_original) || 0,
-                    cantidad: parseInt(det.cantidad) || 0
-                });
-            });
-        }
-
-        actualizarTablaProductos();
-
-        document.getElementById('cotizacionCargadaInfo').style.display = 'block';
-        document.getElementById('cotizacionCargadaNumero').textContent = cot.numero_cotizacion;
-        document.getElementById('btnCargarCotizacion').style.display = 'none';
-
-        mostrarToast(`Cotización ${cot.numero_cotizacion} cargada correctamente`, 'success');
-
-    } catch (error) {
-        console.error('Error al cargar cotización:', error);
-        mostrarToast('Error al cargar la cotización', 'danger');
-    }
-}
-
-// ============================================
-// QUITAR COTIZACIÓN CARGADA
-// ============================================
-function quitarCotizacionCargada() {
-    cotizacionCargada = null;
-    document.getElementById('id_cotizacion_origen').value = '';
-    document.getElementById('cotizacionCargadaInfo').style.display = 'none';
-    document.getElementById('btnCargarCotizacion').style.display = 'block';
-    mostrarToast('Cotización desvinculada. Puede seguir editando la venta.', 'info');
-}
-
-// ============================================
-// CARGAR COTIZACIÓN EN VENTA
-// ============================================
-function setupCargarCotizacion() {
-    const btnCargar = document.getElementById('btnCargarCotizacion');
-    if (!btnCargar) return;
-
-    btnCargar.addEventListener('click', abrirModalSeleccionarCotizacion);
-
-    const btnQuitar = document.getElementById('btnQuitarCotizacion');
-    if (btnQuitar) btnQuitar.addEventListener('click', quitarCotizacionCargada);
-
-    // Inicializar la instancia del modal UNA SOLA VEZ
-    const modalEl = document.getElementById('modalSeleccionarCotizacion');
-    if (modalEl && !modalSeleccionCotizacion) {
-        modalSeleccionCotizacion = new bootstrap.Modal(modalEl, {
-            backdrop: true,
-            keyboard: true,
-            focus: true
-        });
-    }
-}
-
-
-// ============================================
-// MODALIDAD DE PAGO
-// ============================================
-function setupModalidadPago() {
-    const modalidadPago = getElement('modalidad_pago');
-    if (!modalidadPago) return;
-
-    modalidadPago.addEventListener('change', () => {
-        const isCredito = modalidadPago.value === 'CREDITO';
-        const divCredito = document.getElementById('div_credito_fields');
-        if (divCredito) {
-            divCredito.style.display = isCredito ? 'block' : 'none';
-        }
-
-        if (isCredito) {
-            setTimeout(() => calcularYMostrarCuotas(), 100);
-        } else {
-            const panelCuotas = document.getElementById('panelCuotas');
-            if (panelCuotas) panelCuotas.style.display = 'none';
-        }
-    });
-}
-
-
-// ============================================
-// CALCULAR CUOTAS
-// ============================================
-function calcularYMostrarCuotas() {
-    const totalVentaValue = totalVenta;
-    const pagoInicial = parseFloat(document.getElementById('pago_inicial')?.value) || 0;
-    const cantidadCuotas = parseInt(document.getElementById('cantidad_cuotas')?.value) || 0;
-    const intervaloDias = parseInt(document.getElementById('intervalo_dias')?.value) || 0;
-    const modalidadPago = document.getElementById('modalidad_pago')?.value;
-    const panelCuotas = document.getElementById('panelCuotas');
-
-    if (modalidadPago === 'CREDITO' && cantidadCuotas > 0 && totalVentaValue > pagoInicial) {
-        const montoFinanciar = totalVentaValue - pagoInicial;
-        const montoPorCuota = montoFinanciar / cantidadCuotas;
-
-        const montoFinanciarSpan = document.getElementById('montoFinanciar');
-        if (montoFinanciarSpan) {
-            montoFinanciarSpan.innerHTML = `S/ ${montoFinanciar.toFixed(2)}`;
-        }
-
-        const tbody = document.getElementById('tablaResumenCuotas');
-        if (tbody) {
-            tbody.innerHTML = '';
-            let fechaActual = new Date();
-            const fechaInput = document.getElementById('fecha_venta');
-            if (fechaInput && fechaInput.value) {
-                fechaActual = new Date(fechaInput.value);
+            if (saldoRestante > 0) {
+                tbodyResumen.innerHTML += `
+                    <tr class="table-light  fw-bold">
+                        <td><i class="bi bi-exclamation-circle text-warning me-1"></i> SALDO CREDITO</td>
+                        <td class="text-end text-warning">S/ ${saldoRestante.toFixed(2)}</td>
+                        <td class="text-center">-</td>
+                        <td>
+                            <div class="d-flex align-items-center gap-2">
+                                <div class="progress flex-grow-1" style="height: 6px; border-radius: 3px;">
+                                    <div class="progress-bar bg-warning" style="width: ${porcentajeSaldo}%; border-radius: 3px;"></div>
+                                </div>
+                                <small style="font-size:0.6rem; min-width: 35px;">${porcentajeSaldo}%</small>
+                            </div>
+                        </td>
+                    </tr>`;
             }
 
-            for (let i = 1; i <= cantidadCuotas; i++) {
-                const fechaVencimiento = new Date(fechaActual);
-                fechaVencimiento.setDate(fechaVencimiento.getDate() + (intervaloDias * i));
-                const meses = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
-                const fechaFormateada = `${fechaVencimiento.getDate().toString().padStart(2, '0')} ${meses[fechaVencimiento.getMonth()]} ${fechaVencimiento.getFullYear()}`;
-
-                tbody.innerHTML += `
-                    <tr style="font-size: 0.75rem;">
-                        <td class="text-center fw-bold">${i}</td>
-                        <td class="text-end">S/ ${montoPorCuota.toFixed(2)}</td>
-                        <td class="text-center">${fechaFormateada}</td>
-                    </tr>
-                `;
-            }
+            tbodyResumen.innerHTML += `
+                <tr class="border-top">
+                    <td class="fw-bold">TOTAL VENTA</td>
+                    <td class="text-end fw-bold text-primary">S/ ${totalVenta.toFixed(2)}</td>
+                    <td class="text-center">-</td>
+                    <td><small class="text-muted">100%</small></td>
+                </tr>`;
         }
-        panelCuotas.style.display = 'block';
-    } else {
-        panelCuotas.style.display = 'none';
+
+        // ─── MOSTRAR MODAL ───
+        new bootstrap.Modal($('modalHistorialPagos')).show();
+
+    } catch (e) {
+        console.error('Error al cargar historial:', e);
+        mostrarToast('Error al cargar historial de pagos', 'danger');
     }
 }
 
-function setupCreditEventos() {
-    const recalcular = () => calcularYMostrarCuotas();
-    const pagoInicial = document.getElementById('pago_inicial');
-    const cantidadCuotas = document.getElementById('cantidad_cuotas');
-    const intervaloDias = document.getElementById('intervalo_dias');
-    const fechaVenta = document.getElementById('fecha_venta');
-
-    if (pagoInicial) pagoInicial.addEventListener('input', recalcular);
-    if (cantidadCuotas) cantidadCuotas.addEventListener('input', recalcular);
-    if (intervaloDias) intervaloDias.addEventListener('input', recalcular);
-    if (fechaVenta) fechaVenta.addEventListener('change', recalcular);
-}
-
 // ============================================
-// IMPRIMIR NOTA DE VENTA EN PDF
+// IMPRIMIR NOTA DE VENTA
 // ============================================
-async function imprimirNotaVentaPDF(idVenta, tipo = 'A4') {
+async function imprimirNotaVenta(idVenta, tipo = 'A4') {
     if (!idVenta) {
         mostrarToast('No hay una venta seleccionada', 'warning');
         return;
     }
 
-    const tipoTexto = tipo === 'A4' ? 'Formato A4' : 'Ticket 80mm';
-    mostrarToast(`Generando PDF (${tipoTexto})...`, 'info');
+    mostrarToast(`Generando PDF (${tipo === 'A4' ? 'Formato A4' : 'Ticket 80mm'})...`, 'info');
 
     try {
         const response = await fetch(`/api/reportes/venta/${idVenta}/pdf?tipo=${tipo}`);
-
         if (!response.ok) {
             const error = await response.json();
             throw new Error(error.error || 'Error al generar el PDF');
         }
 
         const blob = await response.blob();
-
-        if (blob.type !== 'application/pdf') {
-            throw new Error('El archivo generado no es un PDF válido');
-        }
-
         const url = window.URL.createObjectURL(blob);
         const nuevaVentana = window.open(url, '_blank');
 
         if (!nuevaVentana) {
-            mostrarToast('El navegador bloqueó la ventana emergente. Permita popups para esta página.', 'warning');
             const link = document.createElement('a');
             link.href = url;
             link.download = `nota_venta_${idVenta}_${tipo}.pdf`;
             link.click();
         }
 
-        setTimeout(() => {
-            window.URL.revokeObjectURL(url);
-        }, 2000);
-
+        setTimeout(() => window.URL.revokeObjectURL(url), 2000);
         mostrarToast('PDF generado correctamente', 'success');
-
     } catch (error) {
         console.error('Error al generar PDF:', error);
-        mostrarToast(error.message || 'Error al generar el PDF. Verifique que el servidor esté funcionando.', 'danger');
+        mostrarToast(error.message || 'Error al generar el PDF', 'danger');
     }
 }
 
-// ============================================
-// MODAL DE OPCIONES DE IMPRESIÓN
-// ============================================
 function mostrarModalOpcionesImpresion(idVenta) {
     let modalElement = document.getElementById('modalOpcionesImpresion');
 
@@ -1071,7 +1137,6 @@ function mostrarModalOpcionesImpresion(idVenta) {
                     </div>
                     <div class="modal-body p-4">
                         <p class="text-muted mb-3">Seleccione el formato para imprimir la nota de venta:</p>
-                        
                         <div class="d-grid gap-2">
                             <button class="btn btn-primary btn-lg" id="optImprimirA4">
                                 <i class="bi bi-file-text me-2"></i>
@@ -1080,7 +1145,6 @@ function mostrarModalOpcionesImpresion(idVenta) {
                                     <small class="text-white-50">Documento tamaño carta (recomendado)</small>
                                 </div>
                             </button>
-                            
                             <button class="btn btn-info btn-lg" id="optImprimirTicket">
                                 <i class="bi bi-receipt me-2"></i>
                                 <div class="d-inline-block text-start">
@@ -1106,370 +1170,620 @@ function mostrarModalOpcionesImpresion(idVenta) {
 
     const newOptA4 = optA4.cloneNode(true);
     const newOptTicket = optTicket.cloneNode(true);
-
     optA4.parentNode.replaceChild(newOptA4, optA4);
     optTicket.parentNode.replaceChild(newOptTicket, optTicket);
 
     newOptA4.addEventListener('click', () => {
         const modal = bootstrap.Modal.getInstance(modalElement);
         modal.hide();
-        imprimirNotaVentaPDF(idVenta, 'A4');
+        imprimirNotaVenta(idVenta, 'A4');
     });
 
     newOptTicket.addEventListener('click', () => {
         const modal = bootstrap.Modal.getInstance(modalElement);
         modal.hide();
-        imprimirNotaVentaPDF(idVenta, 'ticket');
+        imprimirNotaVenta(idVenta, 'ticket');
     });
 
     const modal = new bootstrap.Modal(modalElement);
     modal.show();
 }
 
-
 // ============================================
-// MOSTRAR DETALLE DE PEDIDO DESDE VENTA
+// CRONOGRAMA DE PAGOS (PAGO MASIVO ORDENADO)
 // ============================================
-async function mostrarDetallePedidoDesdeVenta(idPedido) {
+async function abrirCronogramaDesdeTabla(id) {
     try {
-        const response = await fetch(`/api/pedidos/${idPedido}`);
-        if (!response.ok) throw new Error('Error al obtener detalles del pedido');
-        const pedido = await response.json();
-        const setText = (idEl, value) => {
-            const el = document.getElementById(idEl);
-            if (el) el.textContent = value || '-';
-        };
+        const venta = await apiCall(`/api/ventas/${id}`);
+        estado.ventaActual = id;
+        abrirCronogramaPagos(venta);
+    } catch (e) { mostrarToast('Error al cargar', 'danger'); }
+}
 
-        const setHtml = (idEl, value) => {
-            const el = document.getElementById(idEl);
-            if (el) el.innerHTML = value;
-        };
-        const tbodyProductos = document.getElementById('detallePedidoProductos');
-        if (tbodyProductos) tbodyProductos.innerHTML = '';
+function abrirCronogramaPagos(venta) {
+    $('cronoComprobante').textContent = 'NOTA';
+    $('cronoVentaNumero').textContent = venta.numero_nota_venta || '-';
+    $('cronoFechaEmision').textContent = venta.fecha_venta ? new Date(venta.fecha_venta).toLocaleDateString('es-PE', { year: 'numeric', month: 'long', day: 'numeric' }) : '-';
+    $('cronoClienteNombre').textContent = venta.cliente || '-';
+    $('cronoClienteDocumento').textContent = venta.cliente_documento || '-';
+    $('cronoTotalVenta').textContent = `S/ ${parseFloat(venta.total_venta).toFixed(2)}`;
+    $('cronoMontoPendiente').textContent = `S/ ${Math.max(0, parseFloat(venta.deuda || 0)).toFixed(2)}`;
+    $('cronoPagoInicial').textContent = `S/ ${parseFloat(venta.total_pagado || 0).toFixed(2)}`;
+    $('cronoNumCuotas').textContent = venta.cuotas?.length || 0;
+    $('cronoIntervalo').textContent = venta.intervalo_dias ? `${venta.intervalo_dias} días` : '-';
+    $('cronoSaldoFinanciar').textContent = `S/ ${(venta.cuotas || []).reduce((s, c) => s + parseFloat(c.monto), 0).toFixed(2)}`;
 
+    const container = $('cronogramaCuotasContainer');
+    container.innerHTML = '';
 
-        setText('detallePedidoNumero', pedido.numero_pedido);
-        setText('detallePedidoCliente', pedido.cliente);
-        setText('detallePedidoFecha', formatearFecha(pedido.fecha_pedido));
-        setText('detallePedidoUsuario', pedido.usuario);
-        setText('detallePedidoObservacion', pedido.observacion);
-        setHtml('detallePedidoTotal', `S/ ${parseFloat(pedido.total_pedido).toFixed(2)}`);
-        const estadoBadge = document.getElementById('detallePedidoEstado');
-        if (estadoBadge) {
-            if (pedido.estado === 0) {
-                estadoBadge.textContent = 'Registrado';
-                estadoBadge.className = 'badge bg-warning text-dark';
-            } else if (pedido.estado === 1) {
-                estadoBadge.textContent = 'En Preparación';
-                estadoBadge.className = 'badge bg-info';
-            } else if (pedido.estado === 2) {
-                estadoBadge.textContent = 'Parcialmente Entregado';
-                estadoBadge.className = 'badge bg-warning';
-            } else if (pedido.estado === 3) {
-                estadoBadge.textContent = 'Entregado';
-                estadoBadge.className = 'badge bg-success';
-            } else if (pedido.estado === 4) {
-                estadoBadge.textContent = 'Cancelado';
-                estadoBadge.className = 'badge bg-secondary';
+    if (venta.cuotas && venta.cuotas.length > 0) {
+        const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+
+        // Encontrar la primera cuota pendiente (para pago masivo ordenado)
+        const cuotasPendientes = venta.cuotas.filter(c => c.estado === 0);
+        const primeraPendiente = cuotasPendientes.length > 0 ? cuotasPendientes[0].numero_cuota : -1;
+
+        venta.cuotas.forEach((cuota) => {
+            const fechaVenc = new Date(cuota.fecha_vencimiento);
+            const diasRest = Math.ceil((fechaVenc - hoy) / (1000 * 60 * 60 * 24));
+            let estadoBadge, estadoColor, estadoIcono;
+
+            if (cuota.estado === 1) {
+                estadoBadge = 'PAGADO'; estadoColor = 'success'; estadoIcono = 'check-circle';
+            } else if (diasRest < 0) {
+                estadoBadge = 'VENCIDO'; estadoColor = 'danger'; estadoIcono = 'exclamation-circle';
+            } else if (diasRest <= 3) {
+                estadoBadge = 'POR VENCER'; estadoColor = 'warning'; estadoIcono = 'clock';
+            } else {
+                estadoBadge = 'PENDIENTE'; estadoColor = 'info'; estadoIcono = 'hourglass-split';
             }
-        }
-        const tieneRecojo = pedido.fecha_recojo;
-        const tieneEnvio = pedido.fecha_envio || pedido.direccion_envio;
 
-        const seccionRecojo = document.getElementById('detallePedidoRecojoInfo');
-        const seccionEnvio = document.getElementById('detallePedidoEnvioInfo');
-        const tituloEntrega = document.getElementById('detallePedidoTipoEntregaTitulo');
+            // SOLO se puede pagar la primera cuota pendiente (pago ordenado)
+            const esPagable = cuota.estado === 0 && cuota.numero_cuota === primeraPendiente;
 
-        if (tieneRecojo) {
-            if (tituloEntrega) tituloEntrega.textContent = 'Recogida en Tienda';
-            if (seccionRecojo) seccionRecojo.style.display = 'block';
-            if (seccionEnvio) seccionEnvio.style.display = 'none';
-            setText('detallePedidoFechaRecojo', formatearFecha(pedido.fecha_recojo));
-        } else if (tieneEnvio) {
-            if (tituloEntrega) tituloEntrega.textContent = 'Envío a Domicilio';
-            if (seccionRecojo) seccionRecojo.style.display = 'none';
-            if (seccionEnvio) seccionEnvio.style.display = 'block';
-            setText('detallePedidoFechaEnvio', formatearFecha(pedido.fecha_envio));
-            setText('detallePedidoDireccionEnvio', pedido.direccion_envio);
-            setHtml('detallePedidoCostoEnvio', `S/ ${parseFloat(pedido.costo_envio || 0).toFixed(2)}`);
-        } else {
-            if (tituloEntrega) tituloEntrega.textContent = 'Información de Entrega';
-            if (seccionRecojo) seccionRecojo.style.display = 'block';
-            if (seccionEnvio) seccionEnvio.style.display = 'none';
-            setText('detallePedidoFechaRecojo', 'No especificada');
-        }
-        let totalProductos = 0;
-        if (pedido.detalles && pedido.detalles.length > 0) {
-            pedido.detalles.forEach(det => {
-                const subtotal = det.precio_unitario * det.cantidad;
-                totalProductos += subtotal;
-                tbodyProductos.innerHTML += `
-                    <tr class="small">
-                        <td class="text-truncate" style="max-width: 180px;">${det.producto || '-'}</td>
-                        <td class="text-end">S/ ${parseFloat(det.precio_unitario).toFixed(2)}</td>
-                        <td class="text-center">${det.cantidad}</td>
-                        <td class="text-end">S/ ${subtotal.toFixed(2)}</td>
-                    </tr>
-                `;
-            });
-        }
-        setHtml('detallePedidoProductosTotal', `S/ ${totalProductos.toFixed(2)}`);
-        const modalElement = document.getElementById('modalDetallePedidoVenta');
-        const modal = new bootstrap.Modal(modalElement);
-        modal.show();
-
-    } catch (error) {
-        console.error('Error al cargar detalle del pedido:', error);
-        mostrarToast('Error al cargar detalles del pedido', 'danger');
-    }
-}
-
-
-// ============================================
-// CRONOGRAMA DE PAGOS (VERSIÓN FINAL)
-// ============================================
-async function abrirCronogramaPagos(idVenta) {
-    if (!idVenta) return mostrarToast('No hay una venta seleccionada', 'warning');
-    try {
-        const response = await fetch(`/api/ventas/${idVenta}`);
-        if (!response.ok) throw new Error('Error al obtener datos');
-        const venta = await response.json();
-        const cuotas = venta.cuotas || [];
-        const pagos = venta.pagos || [];
-
-        document.getElementById('cronoComprobante').textContent = 'NOTA';
-        document.getElementById('cronoVentaNumero').textContent = venta.numero_nota_venta || '-';
-        document.getElementById('cronoFechaEmision').textContent = venta.fecha_venta ? new Date(venta.fecha_venta + 'T00:00:00').toLocaleDateString('es-PE', { year: 'numeric', month: 'long', day: 'numeric' }) : '-';
-        document.getElementById('cronoClienteNombre').textContent = venta.cliente || 'Venta Interna';
-        document.getElementById('cronoClienteDocumento').textContent = venta.cliente_documento || '-';
-
-        const totalVenta = parseFloat(venta.total_venta) || 0;
-        const totalPagado = pagos.reduce((sum, p) => sum + parseFloat(p.monto), 0);
-        document.getElementById('cronoTotalVenta').textContent = `S/ ${totalVenta.toFixed(2)}`;
-        document.getElementById('cronoMontoPendiente').textContent = `S/ ${Math.max(0, totalVenta - totalPagado).toFixed(2)}`;
-
-        if (cuotas.length > 0) {
-            document.getElementById('cronoPagoInicial').textContent = `S/ ${totalPagado.toFixed(2)}`;
-            document.getElementById('cronoNumCuotas').textContent = cuotas.length;
-            document.getElementById('cronoIntervalo').textContent = venta.intervalo_dias === 7 ? 'Semanal' : venta.intervalo_dias === 15 ? 'Quincenal' : 'Mensual';
-            document.getElementById('cronoSaldoFinanciar').textContent = `S/ ${cuotas.reduce((sum, c) => sum + parseFloat(c.monto), 0).toFixed(2)}`;
-
-            const container = document.getElementById('cronogramaCuotasContainer');
-            container.innerHTML = '';
-            const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
-            let primerPendienteIndex = -1;
-            for (let i = 0; i < cuotas.length; i++) { if (cuotas[i].estado === 0) { primerPendienteIndex = i; break; } }
-
-            cuotas.forEach((cuota, index) => {
-                const fechaVenc = new Date(cuota.fecha_vencimiento + 'T00:00:00');
-                const diasRestantes = Math.ceil((fechaVenc - hoy) / (1000 * 60 * 60 * 24));
-                let estado, estadoColor, estadoIcono;
-                if (cuota.estado === 1) { estado = 'PAGADO'; estadoColor = 'success'; estadoIcono = 'check-circle'; }
-                else if (diasRestantes < 0) { estado = 'VENCIDO'; estadoColor = 'danger'; estadoIcono = 'exclamation-circle'; }
-                else if (diasRestantes <= 3) { estado = 'POR VENCER'; estadoColor = 'warning'; estadoIcono = 'clock'; }
-                else { estado = 'PENDIENTE'; estadoColor = 'info'; estadoIcono = 'hourglass-split'; }
-
-                const esProxima = cuota.estado === 0 && index === primerPendienteIndex;
-
-                container.innerHTML += `
-                    <div class="col-md-6 col-lg-4 col-xl-3 mb-3">
-                        <div class="card h-100 border ${esProxima ? 'border-primary border-2' : 'border-secondary'} shadow-sm" style="border-radius: 8px;">
-                            <div class="card-body p-3">
-                                <div class="d-flex justify-content-between align-items-start mb-2">
-                                    <div><h6 class="fw-bold mb-0">Cuota ${cuota.numero_cuota}</h6><small class="text-muted">${venta.numero_nota_venta}</small></div>
-                                    <span class="badge bg-${estadoColor} bg-opacity-10 text-${estadoColor} px-2 py-1" style="font-size:0.7rem;"><i class="bi bi-${estadoIcono} me-1"></i>${estado}</span>
-                                </div>
-                                <div class="text-center my-3"><span class="fw-bold text-${estado === 'PAGADO' ? 'success' : estado === 'VENCIDO' ? 'danger' : 'primary'} fs-4">S/ ${parseFloat(cuota.monto).toFixed(2)}</span></div>
-                                <div class="d-flex justify-content-between align-items-center mb-2 pb-1 border-bottom">
-                                    <small class="text-muted"><i class="bi bi-calendar-event me-1"></i>Vence:</small>
-                                    <small class="fw-semibold ${diasRestantes < 0 && cuota.estado === 0 ? 'text-danger' : ''}">${fechaVenc.toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric' })}</small>
-                                </div>
-                                ${cuota.estado === 1 ? `<div class="text-center mt-2"><small class="text-success"><i class="bi bi-check-circle me-1"></i>Cancelado</small></div>` : `
-                                    <div class="d-grid mt-2">
-                                        <button class="btn btn-sm ${esProxima ? 'btn-success' : 'btn-secondary'} rounded-pill py-1 fw-semibold btn-pagar-cuota-cronograma"
-                                            data-id="${cuota.id}" data-monto="${cuota.monto}" data-cuota="${cuota.numero_cuota}"
-                                            data-vencimiento="${fechaVenc.toLocaleDateString('es-PE')}" data-venta="${venta.numero_nota_venta}" ${!esProxima ? 'disabled' : ''}>
-                                            <i class="bi bi-credit-card me-1"></i>${!esProxima ? 'Bloqueado' : 'Pagar Ahora'}
-                                        </button>
-                                    </div>`}
+            container.innerHTML += `
+                <div class="col-md-6 col-lg-4 col-xl-3 mb-3">
+                    <div class="card h-100 border ${esPagable ? 'border-primary border-2' : 'border-secondary'} shadow-sm" style="border-radius:8px;">
+                        <div class="card-body p-3">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <div><h6 class="fw-bold mb-0">Cuota ${cuota.numero_cuota}</h6><small class="text-muted">${venta.numero_nota_venta}</small></div>
+                                <span class="badge bg-${estadoColor} bg-opacity-10 text-${estadoColor} px-2 py-1" style="font-size:0.7rem;"><i class="bi bi-${estadoIcono} me-1"></i>${estadoBadge}</span>
                             </div>
+                            <div class="text-center my-3">
+                                <span class="fw-bold text-${cuota.estado === 1 ? 'success' : estadoColor === 'danger' ? 'danger' : 'primary'} fs-4">S/ ${parseFloat(cuota.monto).toFixed(2)}</span>
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center mb-2 pb-1 border-bottom">
+                                <small class="text-muted"><i class="bi bi-calendar-event me-1"></i>Vence:</small>
+                                <small class="fw-semibold ${diasRest < 0 && cuota.estado === 0 ? 'text-danger' : ''}">${fechaVenc.toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric' })}</small>
+                            </div>
+                            ${cuota.estado === 0 ? `
+                                <div class="d-grid mt-2">
+                                    <button class="btn btn-sm ${esPagable ? 'btn-success' : 'btn-secondary'} rounded-pill py-1 fw-semibold btnPagarCuotaCronograma"
+                                        data-id="${cuota.id}" data-monto="${cuota.monto}" data-cuota="${cuota.numero_cuota}"
+                                        data-vencimiento="${fechaVenc.toLocaleDateString('es-PE')}" ${!esPagable ? 'disabled' : ''}>
+                                        <i class="bi bi-credit-card me-1"></i>${!esPagable ? 'Pague la cuota anterior primero' : 'Pagar Ahora'}
+                                    </button>
+                                </div>` : `<div class="text-center mt-2"><small class="text-success"><i class="bi bi-check-circle me-1"></i>Cancelado</small></div>`}
                         </div>
-                    </div>`;
-            });
+                    </div>
+                </div>`;
+        });
 
-            setTimeout(() => {
-                document.querySelectorAll('.btn-pagar-cuota-cronograma:not([disabled])').forEach(btn => {
-                    btn.addEventListener('click', function () {
-                        bootstrap.Modal.getInstance(document.getElementById('modalCronogramaPagos')).hide();
-                        setTimeout(() => abrirModalPagoCuota(this.dataset.id, this.dataset.monto, this.dataset.cuota, this.dataset.vencimiento, idVenta), 300);
-                    });
+        setTimeout(() => {
+            document.querySelectorAll('.btnPagarCuotaCronograma:not([disabled])').forEach(btn => {
+                btn.addEventListener('click', function () {
+                    bootstrap.Modal.getInstance($('modalCronogramaPagos')).hide();
+                    setTimeout(() => abrirModalPagoCuota(this.dataset.id, this.dataset.monto, this.dataset.cuota, this.dataset.vencimiento), 300);
                 });
-            }, 100);
-        }
+            });
+        }, 100);
+    }
 
-        new bootstrap.Modal(document.getElementById('modalCronogramaPagos'), { backdrop: 'static', keyboard: false }).show();
-    } catch (error) { console.error('Error:', error); mostrarToast('Error al cargar cronograma', 'danger'); }
+    new bootstrap.Modal($('modalCronogramaPagos')).show();
 }
 
-
 // ============================================
-// MODAL PAGO DE CUOTA (PAGO MIXTO 2 MÉTODOS)
+// PAGO DE CUOTA
 // ============================================
-function abrirModalPagoCuota(cuotaId, monto, numeroCuota, vencimiento, idVenta) {
-    document.getElementById('cuotaIdPagar').value = cuotaId;
-    document.getElementById('cuotaMontoTotal').value = monto;
-    document.getElementById('montoCuotaPagar').textContent = `S/ ${parseFloat(monto).toFixed(2)}`;
-    document.getElementById('cuotaVentaNumeroPagar').textContent = `#${idVenta}`;
-    document.getElementById('cuotaNumeroPagar').textContent = numeroCuota;
-    document.getElementById('cuotaVencimientoPagar').textContent = vencimiento || '-';
-    document.getElementById('metodoPago1').value = '';
-    document.getElementById('montoPago1').value = '0';
-    document.getElementById('numeroOperacion1').value = '';
-    document.getElementById('usarSegundoMetodo').checked = false;
-    document.getElementById('segundoMetodoCard').style.display = 'none';
-    document.getElementById('metodoPago2').value = '';
-    document.getElementById('montoPago2').value = '0';
-    document.getElementById('numeroOperacion2').value = '';
-    document.getElementById('observacionCuota').value = '';
+function abrirModalPagoCuota(idCuota, monto, numero, vencimiento) {
+    $('cuotaIdPagar').value = idCuota;
+    $('cuotaMontoTotal').value = monto;
+    $('cuotaVentaIdPagar').value = estado.ventaActual;
+    $('cuotaNumeroPagar').textContent = numero;
+    $('cuotaVencimientoPagar').textContent = vencimiento || '-';
+    $('montoCuotaPagar').textContent = parseFloat(monto).toFixed(2);
+    $('metodoPago1').value = '';
+    $('montoPago1').value = '0';
+    $('numeroOperacion1').value = '';
+    $('usarSegundoMetodo').checked = false;
+    $('segundoMetodoCard').style.display = 'none';
+    $('metodoPago2').value = '';
+    $('montoPago2').value = '0';
+    $('numeroOperacion2').value = '';
     actualizarResumenPagoCuota();
-    new bootstrap.Modal(document.getElementById('modalPagarCuota'), { backdrop: 'static', keyboard: false }).show();
-}
-
-function setupEventosPagoCuota() {
-    document.getElementById('usarSegundoMetodo')?.addEventListener('change', function () {
-        document.getElementById('segundoMetodoCard').style.display = this.checked ? 'block' : 'none';
-        if (!this.checked) { document.getElementById('metodoPago2').value = ''; document.getElementById('montoPago2').value = '0'; document.getElementById('numeroOperacion2').value = ''; }
-        actualizarResumenPagoCuota();
-    });
-    document.getElementById('metodoPago1')?.addEventListener('change', function () {
-        const numOp = document.getElementById('numeroOperacion1');
-        numOp.placeholder = this.value === 'EFECTIVO' ? 'No requerido' : 'Obligatorio';
-        numOp.required = this.value !== 'EFECTIVO';
-    });
-    document.getElementById('metodoPago2')?.addEventListener('change', function () {
-        const numOp = document.getElementById('numeroOperacion2');
-        numOp.placeholder = this.value === 'EFECTIVO' ? 'No requerido' : 'Obligatorio';
-        numOp.required = this.value !== 'EFECTIVO';
-    });
-    document.getElementById('montoPago1')?.addEventListener('input', function () { validarMontoCuota(this, 'montoPago2'); actualizarResumenPagoCuota(); });
-    document.getElementById('montoPago2')?.addEventListener('input', function () { validarMontoCuota(this, 'montoPago1'); actualizarResumenPagoCuota(); });
-    document.getElementById('btnConfirmarPagoCuota')?.addEventListener('click', confirmarPagoCuota);
-}
-
-function validarMontoCuota(inputActual, otroInputId) {
-    const montoTotal = parseFloat(document.getElementById('cuotaMontoTotal').value) || 0;
-    let valor = parseFloat(inputActual.value) || 0;
-    if (valor < 0) { inputActual.value = '0'; return; }
-    if (valor > montoTotal) { inputActual.value = montoTotal.toFixed(2); mostrarToast(`No puede exceder S/ ${montoTotal.toFixed(2)}`, 'warning'); return; }
-    const otroValor = parseFloat(document.getElementById(otroInputId)?.value) || 0;
-    if (valor + otroValor > montoTotal) { inputActual.value = (montoTotal - otroValor).toFixed(2); mostrarToast(`Total no puede exceder S/ ${montoTotal.toFixed(2)}`, 'warning'); }
+    new bootstrap.Modal($('modalPagarCuota')).show();
 }
 
 function actualizarResumenPagoCuota() {
-    const montoTotal = parseFloat(document.getElementById('cuotaMontoTotal').value) || 0;
-    const monto1 = parseFloat(document.getElementById('montoPago1')?.value) || 0;
-    const usarSegundo = document.getElementById('usarSegundoMetodo')?.checked || false;
-    const monto2 = usarSegundo ? (parseFloat(document.getElementById('montoPago2')?.value) || 0) : 0;
+    const montoTotal = parseFloat($('cuotaMontoTotal')?.value) || 0;
+    const monto1 = parseFloat($('montoPago1')?.value) || 0;
+    const usarSegundo = $('usarSegundoMetodo')?.checked || false;
+    const monto2 = usarSegundo ? (parseFloat($('montoPago2')?.value) || 0) : 0;
     const totalPagado = monto1 + monto2;
     const pendiente = montoTotal - totalPagado;
-    document.getElementById('totalPagadoCuota').textContent = `S/ ${totalPagado.toFixed(2)}`;
-    const pendienteEl = document.getElementById('saldoPendienteCuota');
-    pendienteEl.textContent = `S/ ${Math.max(0, pendiente).toFixed(2)}`;
-    pendienteEl.classList.toggle('text-success', pendiente <= 0.01);
-    pendienteEl.classList.toggle('text-danger', pendiente > 0.01);
+    $('totalPagadoCuota').textContent = `S/ ${totalPagado.toFixed(2)}`;
+    $('saldoPendienteCuota').textContent = `S/ ${Math.max(0, pendiente).toFixed(2)}`;
+    $('saldoPendienteCuota').className = pendiente <= 0.01 ? 'fw-bold text-success' : 'fw-bold text-danger';
 }
 
 async function confirmarPagoCuota() {
-    const cuotaId = document.getElementById('cuotaIdPagar').value;
-    const montoTotal = parseFloat(document.getElementById('cuotaMontoTotal').value) || 0;
-    const metodo1 = document.getElementById('metodoPago1').value;
-    const monto1 = parseFloat(document.getElementById('montoPago1').value) || 0;
-    const numOp1 = document.getElementById('numeroOperacion1').value.trim();
-    const usarSegundo = document.getElementById('usarSegundoMetodo').checked;
-    const metodo2 = document.getElementById('metodoPago2').value;
-    const monto2 = parseFloat(document.getElementById('montoPago2').value) || 0;
-    const numOp2 = document.getElementById('numeroOperacion2').value.trim();
-    const observacion = document.getElementById('observacionCuota').value.trim();
+    const idCuota = $('cuotaIdPagar').value;
+    const montoTotal = parseFloat($('cuotaMontoTotal').value) || 0;
+    const metodo1 = $('metodoPago1').value;
+    const monto1 = parseFloat($('montoPago1').value) || 0;
+    const numOp1 = $('numeroOperacion1').value.trim();
+    const usarSegundo = $('usarSegundoMetodo').checked;
+    const metodo2 = $('metodoPago2').value;
+    const monto2 = parseFloat($('montoPago2').value) || 0;
+    const numOp2 = $('numeroOperacion2').value.trim();
 
-    if (!metodo1) return mostrarToast('Seleccione el primer método de pago', 'warning');
-    if (monto1 <= 0) return mostrarToast('Ingrese un monto válido para el primer método', 'warning');
-    if (metodo1 !== 'EFECTIVO' && !numOp1) return mostrarToast(`N° de operación obligatorio para ${metodo1}`, 'warning');
+    if (!metodo1) return mostrarToast('Seleccione método de pago', 'warning');
+    if (monto1 <= 0) return mostrarToast('Ingrese un monto válido', 'warning');
+    if (metodo1 !== 'EFECTIVO' && !numOp1) return mostrarToast('N° de operación obligatorio', 'warning');
+
+    const pagos = [{ metodo_pago: metodo1, monto: monto1, numero_operacion: numOp1 }];
 
     if (usarSegundo) {
-        if (!metodo2) return mostrarToast('Seleccione el segundo método de pago', 'warning');
-        if (monto2 <= 0) return mostrarToast('Ingrese un monto válido para el segundo método', 'warning');
-        if (metodo2 !== 'EFECTIVO' && !numOp2) return mostrarToast(`N° de operación obligatorio para ${metodo2}`, 'warning');
-        if (metodo1 === metodo2) return mostrarToast('No puede usar el mismo método dos veces', 'warning');
+        if (!metodo2) return mostrarToast('Seleccione segundo método', 'warning');
+        if (monto2 <= 0) return mostrarToast('Ingrese monto del segundo método', 'warning');
+        if (metodo2 !== 'EFECTIVO' && !numOp2) return mostrarToast('N° de operación obligatorio', 'warning');
+        if (metodo1 === metodo2) return mostrarToast('No puede usar el mismo método', 'warning');
+        pagos.push({ metodo_pago: metodo2, monto: monto2, numero_operacion: numOp2 });
     }
 
     const totalPagado = monto1 + monto2;
-    if (Math.abs(totalPagado - montoTotal) > 0.01) return mostrarToast(`El total debe ser S/ ${montoTotal.toFixed(2)}`, 'warning');
-
-    const pagos = [{ metodo_pago: metodo1, monto: monto1, numero_operacion: numOp1 || null }];
-    if (usarSegundo) pagos.push({ metodo_pago: metodo2, monto: monto2, numero_operacion: numOp2 || null });
+    if (Math.abs(totalPagado - montoTotal) > 0.01) {
+        return mostrarToast(`El total debe ser S/ ${montoTotal.toFixed(2)}`, 'warning');
+    }
 
     try {
-        const response = await fetch('/api/pago-cuota/mixto', {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id_cuota_venta: parseInt(cuotaId), pagos, observacion: observacion || null })
+        await apiCall('/api/ventas/pago-cuota/mixto', {
+            method: 'POST',
+            body: JSON.stringify({ id_cuota_venta: parseInt(idCuota), pagos })
         });
-        const data = await response.json();
-        if (!response.ok) throw new Error(data.error);
-        bootstrap.Modal.getInstance(document.getElementById('modalPagarCuota')).hide();
-        mostrarToast('✅ Cuota pagada correctamente', 'success');
+        bootstrap.Modal.getInstance($('modalPagarCuota'))?.hide();
+        mostrarToast('Cuota pagada correctamente', 'success');
         await cargarVentas();
-        if (ventaActualId) await mostrarDetalleVenta(ventaActualId);
-    } catch (error) { mostrarToast(error.message, 'danger'); }
+        if (estado.ventaActual) await mostrarDetalleVenta(estado.ventaActual);
+    } catch (e) {
+        console.error('Error al pagar cuota:', e);
+        mostrarToast(e.message, 'danger');
+    }
+}
+
+// ============================================
+// CAMBIAR ESTADO
+// ============================================
+async function cambiarEstadoVenta(id, estado, mensaje, tipo) {
+    try { await apiCall(`/api/ventas/${id}/estado`, { method: 'PUT', body: JSON.stringify({ estado }) }); await cargarVentas(); mostrarToast(mensaje, tipo); }
+    catch (e) { mostrarToast(e.message, 'danger'); }
+}
+async function eliminarVenta(id) {
+    try { await apiCall(`/api/ventas/${id}`, { method: 'DELETE' }); await cargarVentas(); mostrarToast('Venta eliminada', 'danger'); }
+    catch (e) { mostrarToast(e.message, 'danger'); }
+}
+
+// ============================================
+// EDITAR VENTA
+// ============================================
+async function editarVenta(id) {
+    try {
+        const venta = await apiCall(`/api/ventas/${id}`);
+        await limpiarFormulario();
+        $('ventaId').value = venta.id;
+        $('tituloModalVenta').textContent = 'Editar Venta';
+        $('numero_nota_venta').value = venta.numero_nota_venta;
+        $('fecha_venta').value = venta.fecha_venta?.split(' ')[0] || '';
+        $('modalidad_pago').value = venta.modalidad_pago;
+        $('observacion').value = venta.observacion || '';
+
+        if (venta.id_cliente && venta.id_cliente !== 1) {
+            $('id_cliente').value = venta.id_cliente;
+            $('nombre_cliente').value = venta.cliente || '';
+            $('telefono_cliente').value = venta.cliente_telefono || '';
+            $('correo_cliente').value = venta.cliente_correo || '';
+        }
+
+        estado.productosSeleccionados = [];
+        if (venta.detalles) {
+            venta.detalles.forEach(d => {
+                estado.productosSeleccionados.push({
+                    id_producto: d.id_producto,
+                    producto_nombre: d.producto,
+                    precio_unitario: parseFloat(d.precio_unitario),
+                    cantidad: parseFloat(d.cantidad)
+                });
+            });
+        }
+        actualizarTablaProductos();
+
+        if (venta.modalidad_pago === 'CREDITO') {
+            $('divCredito').style.display = 'block';
+            $('cantidad_cuotas').value = venta.cantidad_cuotas || 0;
+            $('intervalo_dias').value = venta.intervalo_dias || 0;
+            $('pago_inicial').value = venta.pago_inicial || 0;
+        }
+
+        new bootstrap.Modal($('modalVenta')).show();
+    } catch (e) { mostrarToast('Error al cargar venta', 'danger'); }
+}
+
+// ============================================
+// COTIZACIONES
+// ============================================
+async function abrirModalCotizaciones() {
+    try {
+        const cotizaciones = await apiCall('/api/cotizaciones');
+        const activas = cotizaciones.filter(c => c.estado === 1);
+        const tbody = $('tablaCotizacionesModal');
+        const sinDatos = $('sinCotizacionesModal');
+        tbody.innerHTML = '';
+        if (activas.length === 0) { sinDatos.style.display = 'block'; }
+        else {
+            sinDatos.style.display = 'none';
+            activas.forEach(c => tbody.innerHTML += `<tr><td><strong>${c.numero_cotizacion}</strong></td><td>${c.cliente || '-'}</td><td>${formatearFecha(c.fecha)}</td><td class="text-end fw-bold">S/ ${parseFloat(c.total).toFixed(2)}</td><td class="text-center"><button class="btn btn-sm btn-success btnSeleccionarCot" data-id="${c.id}"><i class="bi bi-check-circle me-1"></i> Seleccionar</button></td></tr>`);
+        }
+        $('buscarCotizacionModal').value = '';
+        $('buscarCotizacionModal').oninput = (e) => { const v = e.target.value.toLowerCase(); tbody.querySelectorAll('tr').forEach(f => f.style.display = f.textContent.toLowerCase().includes(v) ? '' : 'none'); };
+        tbody.querySelectorAll('.btnSeleccionarCot').forEach(btn => { btn.onclick = async () => { if (estado.modalSeleccionCotizacion) estado.modalSeleccionCotizacion.hide(); await cargarCotizacion(parseInt(btn.dataset.id)); }; });
+        if (!estado.modalSeleccionCotizacion) estado.modalSeleccionCotizacion = new bootstrap.Modal($('modalSeleccionarCotizacion'));
+        estado.modalSeleccionCotizacion.show();
+    } catch (e) { console.error(e); mostrarToast('Error al cargar cotizaciones', 'danger'); }
+}
+
+async function cargarCotizacion(id) {
+    try {
+        const cot = await apiCall(`/api/cotizaciones/${id}`);
+        estado.cotizacionCargada = cot;
+        $('id_cotizacion_origen').value = cot.id;
+        if (cot.id_cliente) {
+            $('id_cliente').value = cot.id_cliente;
+            try {
+                const cliente = await apiCall(`/api/clientes/${cot.id_cliente}`);
+                $('nombre_cliente').value = cliente.nombre || '';
+                $('numero_documento_cliente').value = cliente.numero_documento || '';
+                $('tipo_documento_cliente').value = cliente.tipo_documento || '';
+                $('telefono_cliente').value = cliente.telefono || '';
+                $('correo_cliente').value = cliente.correo || '';
+                $('clienteNoExistenteAlert').style.display = 'none';
+                if (cliente.tipo_documento === 'RUC') {
+                    $('rowDireccionCliente').style.display = 'block';
+                }
+            } catch (e) { $('nombre_cliente').value = cot.cliente || ''; }
+        }
+        estado.productosSeleccionados = [];
+        if (cot.detalles) cot.detalles.forEach(d => estado.productosSeleccionados.push({ id_producto: d.id_producto || null, producto_nombre: d.producto_nombre, precio_unitario: parseFloat(d.precio_original) || 0, cantidad: parseInt(d.cantidad) || 0 }));
+        actualizarTablaProductos();
+        $('cotizacionCargadaInfo').style.display = 'block';
+        $('cotizacionCargadaNumero').textContent = cot.numero_cotizacion;
+        $('btnCargarCotizacion').style.display = 'none';
+        mostrarToast(`Cotización ${cot.numero_cotizacion} cargada`, 'success');
+    } catch (e) { console.error(e); mostrarToast('Error al cargar cotización', 'danger'); }
+}
+
+function quitarCotizacion() {
+    estado.cotizacionCargada = null;
+    $('id_cotizacion_origen').value = '';
+    $('cotizacionCargadaInfo').style.display = 'none';
+    $('btnCargarCotizacion').style.display = 'block';
+    mostrarToast('Cotización desvinculada', 'info');
 }
 
 // ============================================
 // EVENTOS GLOBALES
 // ============================================
-function setupEventListeners() {
+function configurarEventos() {
+    // ============================================
+    // CLICK EN BOTONES DE TABLA
+    // ============================================
     document.body.addEventListener('click', async (e) => {
         if (!isCurrentPage()) return;
+
         const btnVer = e.target.closest('.btnVerVenta');
-        if (btnVer) return mostrarDetalleVenta(parseInt(btnVer.dataset.id));
+        if (btnVer) { await mostrarDetalleVenta(parseInt(btnVer.dataset.id)); return; }
+
+        const btnEditar = e.target.closest('.btnEditarVenta');
+        if (btnEditar) { await editarVenta(parseInt(btnEditar.dataset.id)); return; }
+
         const btnAnular = e.target.closest('.btnAnularVenta');
-        if (btnAnular) return mostrarModalConfirmacionProfesional('Anular Venta', '¿Desea anular esta venta?', () => cambiarEstado(parseInt(btnAnular.dataset.id), 2, 'Venta anulada', 'warning'), 'warning', 'Anular');
-        const btnActivar = e.target.closest('.btnActivarVenta');
-        if (btnActivar) return mostrarModalConfirmacionProfesional('Reactivar Venta', '¿Desea reactivar esta venta?', () => cambiarEstado(parseInt(btnActivar.dataset.id), 0, 'Venta reactivada', 'success'), 'success', 'Reactivar');
+        if (btnAnular) {
+            const id = parseInt(btnAnular.dataset.id);
+            mostrarModalConfirmacionProfesional('Anular Venta', '¿Desea anular esta venta?', () => cambiarEstadoVenta(id, 2, 'Venta anulada', 'warning'), 'warning', 'Anular');
+            return;
+        }
+
+        const btnReactivar = e.target.closest('.btnReactivarVenta');
+        if (btnReactivar) {
+            const id = parseInt(btnReactivar.dataset.id);
+            mostrarModalConfirmacionProfesional('Reactivar Venta', '¿Desea reactivar esta venta?', () => cambiarEstadoVenta(id, 0, 'Venta reactivada', 'success'), 'success', 'Reactivar');
+            return;
+        }
+
         const btnEliminar = e.target.closest('.btnEliminarVenta');
-        if (btnEliminar) return mostrarModalConfirmacionProfesional('Eliminar Venta', '¿Desea eliminar esta venta?', async () => {
-            try {
-                const r = await fetch(`/api/ventas/${parseInt(btnEliminar.dataset.id)}`, { method: 'DELETE' });
-                const d = await r.json(); if (!r.ok) throw new Error(d.error);
-                await cargarVentas(); mostrarToast('Venta eliminada', 'danger');
-            } catch (er) { mostrarToast(er.message, 'danger'); }
-        }, 'danger');
+        if (btnEliminar) {
+            const id = parseInt(btnEliminar.dataset.id);
+            mostrarModalConfirmacionProfesional('Eliminar Venta', '¿Desea eliminar esta venta?', () => eliminarVenta(id), 'danger', 'Eliminar');
+            return;
+        }
+
+        const btnHistorial = e.target.closest('.btnHistorialPagos');
+        if (btnHistorial) { await abrirHistorialPagos(parseInt(btnHistorial.dataset.id)); return; }
+
+        const btnCronograma = e.target.closest('.btnCronogramaPagos');
+        if (btnCronograma) { await abrirCronogramaDesdeTabla(parseInt(btnCronograma.dataset.id)); return; }
+
+        const btnPagarCuota = e.target.closest('.btnPagarCuotaDetalle');
+        if (btnPagarCuota) {
+            abrirModalPagoCuota(btnPagarCuota.dataset.id, btnPagarCuota.dataset.monto, btnPagarCuota.dataset.numero, btnPagarCuota.dataset.vencimiento);
+            return;
+        }
     });
-}
 
-function setupNuevaVenta() {
-    const nuevoBtn = document.querySelector('[data-bs-target="#modalVenta"]');
-    if (nuevoBtn) { const clon = nuevoBtn.cloneNode(true); nuevoBtn.parentNode.replaceChild(clon, nuevoBtn); clon.addEventListener('click', (e) => { e.preventDefault(); limpiarFormulario(); new bootstrap.Modal(document.getElementById('modalVenta')).show(); }); }
-}
+    // ============================================
+    // FILTROS
+    // ============================================
+    $('buscarVenta')?.addEventListener('input', aplicarFiltros);
+    $('filtroEstadoVentas')?.addEventListener('change', aplicarFiltros);
+    $('filtroCantidadVentas')?.addEventListener('change', aplicarFiltros);
 
+    // ============================================
+    // NUEVA VENTA
+    // ============================================
+    $('btnNuevaVenta')?.addEventListener('click', async () => {
+        await limpiarFormulario();
+        new bootstrap.Modal($('modalVenta')).show();
+    });
+
+    // ============================================
+    // GUARDAR VENTA
+    // ============================================
+    $('btnGuardarVenta')?.addEventListener('click', guardarVenta);
+
+    // ============================================
+    // MODALIDAD DE PAGO
+    // ============================================
+    $('modalidad_pago')?.addEventListener('change', function () {
+        const isCredito = this.value === 'CREDITO';
+        $('divCredito').style.display = isCredito ? 'block' : 'none';
+
+        // Actualizar título de sección de pago
+        const tituloPago = $('tituloSeccionPago');
+        if (tituloPago) tituloPago.textContent = isCredito ? 'Pago Inicial' : 'Pago';
+
+        // DESHABILITAR switch de pago mixto en CRÉDITO
+        const switchPagoMixto = $('switchPagoMixto');
+        const switchContainer = $('switchPagoMixtoContainer');
+        if (isCredito) {
+            if (switchPagoMixto) {
+                switchPagoMixto.checked = false;
+                switchPagoMixto.disabled = true;
+                estado.pagoMixtoActivo = false;
+            }
+            if (switchContainer) {
+                switchContainer.style.opacity = '0.5';
+                switchContainer.style.pointerEvents = 'none';
+            }
+            $('pagoEfectivoInfo').style.display = 'block';
+            $('pagosContainer').style.display = 'none';
+            $('intervalo_dias').value = 15;
+            setTimeout(calcularCuotas, 100);
+        } else {
+            if (switchPagoMixto) {
+                switchPagoMixto.disabled = false;
+            }
+            if (switchContainer) {
+                switchContainer.style.opacity = '1';
+                switchContainer.style.pointerEvents = 'auto';
+            }
+        }
+
+        actualizarVistaPago();
+    });
+    // ============================================
+    // SWITCH PAGO MIXTO (PRINCIPAL)
+    // ============================================
+    $('switchPagoMixto')?.addEventListener('change', function () {
+        estado.pagoMixtoActivo = this.checked;
+        $('pagoEfectivoInfo').style.display = this.checked ? 'none' : 'block';
+        $('pagosContainer').style.display = this.checked ? 'block' : 'none';
+        if (this.checked) resetearPagosMixtos();
+        actualizarVistaPago();
+    });
+
+    // ============================================
+    // SWITCH PAGO MIXTO INICIAL (CRÉDITO)
+    // ============================================
+    $('switchPagoMixtoInicial')?.addEventListener('change', function () {
+        estado.pagoMixtoInicialActivo = this.checked;
+        $('pagosInicialContainer').style.display = this.checked ? 'block' : 'none';
+        if (this.checked) {
+            resetearPagosIniciales();
+        } else {
+            $('pago_inicial').value = 0;
+            $('pagoInicialEfectivo').textContent = 'S/ 0.00';
+        }
+        calcularCuotas();
+        actualizarVistaPago();
+    });
+
+    // ============================================
+    // CRÉDITO: PAGO INICIAL, CUOTAS, INTERVALO
+    // ============================================
+    $('pago_inicial')?.addEventListener('input', () => {
+        if (!estado.pagoMixtoInicialActivo) {
+            $('pagoInicialEfectivo').textContent = `S/ ${($('pago_inicial')?.value || 0)}`;
+        }
+        calcularCuotas();
+        actualizarVistaPago();
+    });
+
+    $('cantidad_cuotas')?.addEventListener('input', () => {
+        calcularCuotas();
+        actualizarVistaPago();
+    });
+
+    $('intervalo_dias')?.addEventListener('input', () => {
+        calcularCuotas();
+        actualizarVistaPago();
+    });
+
+    // ============================================
+    // PRODUCTOS
+    // ============================================
+    $('buscarProductoInput')?.addEventListener('input', (e) => cargarSelectProductos(e.target.value));
+
+    $('selectProducto')?.addEventListener('change', function () {
+        const opt = this.options[this.selectedIndex];
+        $('precioUnitario').value = opt.dataset.precio || '';
+        $('stockDisponible').value = opt.dataset.stock || '';
+        $('cantidadProducto').value = '1';
+    });
+
+    $('btnAgregarProducto')?.addEventListener('click', () => {
+        const select = $('selectProducto');
+        const productoId = select?.value;
+        if (!productoId) return mostrarToast('Seleccione un producto', 'warning');
+
+        const opt = select.options[select.selectedIndex];
+        const nombre = opt.dataset.nombre || '';
+        const precio = parseFloat($('precioUnitario')?.value) || 0;
+        const cantidad = parseFloat($('cantidadProducto')?.value) || 0;
+        const stock = parseFloat(opt.dataset.stock) || 0;
+
+        if (cantidad <= 0) return mostrarToast('Cantidad inválida', 'warning');
+        if (cantidad > stock) return mostrarToast('Stock insuficiente', 'warning');
+
+        const existe = estado.productosSeleccionados.find(p => p.id_producto === parseInt(productoId));
+        if (existe) {
+            existe.cantidad += cantidad;
+        } else {
+            estado.productosSeleccionados.push({
+                id_producto: parseInt(productoId),
+                producto_nombre: nombre,
+                precio_unitario: precio,
+                cantidad
+            });
+        }
+
+        actualizarTablaProductos();
+        select.value = '';
+        $('buscarProductoInput').value = '';
+        $('cantidadProducto').value = '1';
+        $('precioUnitario').value = '';
+        $('stockDisponible').value = '';
+        cargarSelectProductos('');
+    });
+
+    // ============================================
+    // CLIENTE
+    // ============================================
+    $('btnBuscarClienteVenta')?.addEventListener('click', buscarCliente);
+    $('btnLimpiarClienteVenta')?.addEventListener('click', limpiarCliente);
+
+    $('numero_documento_cliente')?.addEventListener('input', function () {
+        soloNumeros(this);
+        const l = this.value.length;
+        if (l === 8) $('tipo_documento_cliente').value = 'DNI';
+        else if (l === 11) $('tipo_documento_cliente').value = 'RUC';
+        else if (l === 0) $('tipo_documento_cliente').value = '';
+    });
+
+    $('numero_documento_cliente')?.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            buscarCliente();
+        }
+    });
+
+    $('tipo_documento_cliente')?.addEventListener('change', function () {
+        $('rowDireccionCliente').style.display = this.value === 'RUC' ? 'block' : 'none';
+        const apellidoEl = $('apellido_cliente');
+        if (apellidoEl) {
+            apellidoEl.parentElement.style.display = this.value === 'DNI' ? 'block' : 'none';
+            if (this.value === 'RUC') apellidoEl.value = '';
+        }
+    });
+
+    // ============================================
+    // COTIZACIÓN
+    // ============================================
+    $('btnCargarCotizacion')?.addEventListener('click', abrirModalCotizaciones);
+    $('btnQuitarCotizacion')?.addEventListener('click', quitarCotizacion);
+
+    // ============================================
+    // PAGO DE CUOTA - SEGUNDO MÉTODO (CHECKBOX)
+    // ============================================
+    $('usarSegundoMetodo')?.addEventListener('change', function () {
+        $('segundoMetodoCard').style.display = this.checked ? 'block' : 'none';
+        if (!this.checked) {
+            $('metodoPago2').value = '';
+            $('montoPago2').value = '0';
+            $('numeroOperacion2').value = '';
+        }
+        actualizarResumenPagoCuota();
+    });
+
+    // ============================================
+    // PAGO DE CUOTA - MÉTODO 1 Y 2
+    // ============================================
+    ['metodoPago1', 'metodoPago2'].forEach(id => {
+        $(id)?.addEventListener('change', function () {
+            const numOp = $(id === 'metodoPago1' ? 'numeroOperacion1' : 'numeroOperacion2');
+            if (numOp) {
+                numOp.placeholder = this.value === 'EFECTIVO' ? 'No requerido' : 'Obligatorio';
+                numOp.required = this.value !== 'EFECTIVO';
+            }
+        });
+    });
+
+    // ============================================
+    // PAGO DE CUOTA - MONTOS
+    // ============================================
+    ['montoPago1', 'montoPago2'].forEach(id => {
+        $(id)?.addEventListener('input', function () {
+            const montoTotal = parseFloat($('cuotaMontoTotal')?.value) || 0;
+            const otroId = id === 'montoPago1' ? 'montoPago2' : 'montoPago1';
+            const otroValor = parseFloat($(otroId)?.value) || 0;
+            let valor = parseFloat(this.value) || 0;
+            if (valor < 0) { this.value = '0'; valor = 0; }
+            if (valor + otroValor > montoTotal) {
+                this.value = (montoTotal - otroValor).toFixed(2);
+            }
+            actualizarResumenPagoCuota();
+        });
+    });
+
+    // ============================================
+    // CONFIRMAR PAGO DE CUOTA
+    // ============================================
+    $('btnConfirmarPagoCuota')?.addEventListener('click', confirmarPagoCuota);
+}
 // ============================================
 // INICIALIZACIÓN
 // ============================================
 export async function init() {
     if (!isCurrentPage()) return;
-    if (eventosInicializados) { await cargarVentas(); await cargarClientes(); await cargarProductos(); return; }
-    eventosInicializados = true;
-    setupEventListeners(); setupGuardarVenta(); setupNuevaVenta();
-    setupModalidadPago(); setupAgregarProducto(); setupBusquedaClienteVenta();
-    setupValidacionesTiempoRealCliente(); // ✅ AGREGADA
-    setupCreditEventos(); setupCargarCotizacion(); setupPagoEvents(); setupEventosPagoCuota();
-    document.getElementById('btnAgregarPago')?.addEventListener('click', agregarPago);
-    getElement('buscarVenta')?.addEventListener('input', aplicarFiltros);
-    getElement('filtroCantidad')?.addEventListener('change', aplicarFiltros);
-    getElement('filtroEstado')?.addEventListener('change', aplicarFiltros);
-    await cargarClientes(); await cargarProductos(); await cargarVentas();
+    if (estado.inicializado) { await cargarVentas(); await cargarProductos(); return; }
+    estado.inicializado = true;
+    configurarEventos();
+    await cargarProductos();
+    await cargarVentas();
 }
 
 export function destroy() {
-    eventosInicializados = false; elementos = {};
-    ventasGlobal = []; productosGlobal = []; clientesGlobal = [];
-    productosSeleccionados = []; totalVenta = 0; ventaActualId = null; cotizacionCargada = null;
+    estado.inicializado = false;
+    estado.ventas = []; estado.productos = []; estado.ventaActual = null;
+    estado.productosSeleccionados = []; estado.totalVenta = 0;
+    estado.cotizacionCargada = null; estado.modalSeleccionCotizacion = null;
+    estado.pagoMixtoActivo = false; estado.pagoMixtoInicialActivo = false;
 }

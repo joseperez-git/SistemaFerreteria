@@ -1193,11 +1193,95 @@ button:disabled {
 
 /* Responsive */
 @media (max-width: 576px) {
+
     #ultimosPedidosContainer .card-body,
     #stockCriticoContainer .card-body {
         padding: 12px !important;
     }
+
     #ultimosPedidosContainer .card .fw-bold {
         font-size: 0.85rem !important;
     }
+}
+
+/* Animación para timeline del historial */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(15px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* ============================================
+   VENTAS - ESTILOS ESPECÍFICOS
+   ============================================ */
+
+/* Modal de venta - scroll interno */
+#modalVenta .modal-body::-webkit-scrollbar {
+    width: 5px;
+}
+
+#modalVenta .modal-body::-webkit-scrollbar-track {
+    background: #f1f5f9;
+    border-radius: 10px;
+}
+
+#modalVenta .modal-body::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 10px;
+}
+
+/* Pago item */
+.pago-item {
+    background: #fff;
+    padding: 10px;
+    border-radius: 12px;
+    border: 1px solid #e2e8f0;
+    transition: all 0.2s;
+}
+
+.pago-item:hover {
+    border-color: #cbd5e1;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+/* Tabla de productos en venta */
+#tablaProductosVenta td,
+#tablaProductosVenta th {
+    font-size: 0.8rem;
+    padding: 6px 8px;
+}
+
+/* Resumen de cuotas */
+#tablaResumenCuotas td,
+#tablaResumenCuotas th {
+    font-size: 0.75rem;
+    padding: 4px 8px;
+}
+
+/* Badge de modalidad */
+#detalleModalidad {
+    font-weight: 600;
+}
+
+/* Animación para items */
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.pago-item {
+    animation: slideIn 0.2s ease-out;
 }
